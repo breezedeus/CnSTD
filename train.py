@@ -43,7 +43,7 @@ def train(
     # net.initialize(ctx=ctx)
 
     # pse_loss = DiceLoss(lam=0.7, num_kernels=num_kernels)
-    pse_loss = DiceLoss_with_OHEM(lam=0.7, num_kernels=num_kernels)
+    pse_loss = DiceLoss_with_OHEM(lam=0.7, num_kernels=num_kernels, debug=False)
 
     cos_shc = ls.PolyScheduler(
         max_update=icdar_loader.length * epoches // batch_size, base_lr=lr
@@ -67,6 +67,7 @@ def train(
 
             with autograd.record():
                 kernels_pred = net(im)
+                # import pdb; pdb.set_trace()
                 loss = pse_loss(score_maps, kernels, kernels_pred, training_masks)
                 loss.backward()
             trainer.step(batch_size)

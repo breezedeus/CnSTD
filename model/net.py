@@ -2,7 +2,7 @@
 from mxnet.gluon import HybridBlock, nn
 import mxnet as mx
 from gluoncv import model_zoo
-from gluoncv.model_zoo.resnetv1b import resnet18_v1b
+from gluoncv.model_zoo.resnetv1b import resnet50_v1b
 from .feature import FPNFeatureExpander
 from mxnet.gluon.contrib.nn import SyncBatchNorm
 
@@ -20,7 +20,7 @@ class PSENet(HybridBlock):
         super(PSENet, self).__init__()
         self.num_kernels = num_kernels
 
-        base_network = resnet18_v1b(
+        base_network = resnet50_v1b(
             pretrained=pretrained,
             dilated=False,
             use_global_stats=False,

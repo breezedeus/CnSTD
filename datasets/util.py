@@ -106,15 +106,17 @@ def parse_lines(filename):
     with open(filename, 'r') as f:
         lines = f.readlines()
 
+    # print(filename)
     text_polys = []
     text_tags = []
     if not os.path.exists(filename):
         return np.array(text_polys, dtype=np.float32)
     for line in lines:
         line = line.strip('\n').split(',')
+        # print(line)
         label = line[-1]
         # strip BOM. \ufeff for python3,  \xef\xbb\bf for python2
-        # line = [i.strip('\ufeff').strip('\xef\xbb\xbf') for i in line]
+        line = [i.strip('\ufeff').strip('\xef\xbb\xbf') for i in line]
         if 10 > len(line) > 7:
             x1, y1, x2, y2, x3, y3, x4, y4 = list(map(float, line[:8]))
             text_polys.append([[x1, y1], [x2, y2], [x3, y3], [x4, y4]])

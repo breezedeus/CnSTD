@@ -44,7 +44,7 @@ class ICDAR(Dataset):
 
     def __getitem__(self, item):
         img_name = self.imglst[item]
-        prefix = ".".join(img_name.split('.')[:-1])
+        prefix = 'gt_' + ".".join(img_name.split('.')[:-1])
         label_name = prefix + '.txt'
         text_polys, text_tags = parse_lines(os.path.join(self.gts_dir, label_name))
         im = cv2.imread(os.path.join(self.img_dir, img_name))
