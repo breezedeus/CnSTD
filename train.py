@@ -1,16 +1,15 @@
 # coding=utf-8
-from mxnet.gluon import trainer
-from datasets.dataloader import ICDAR
-from mxnet.gluon.data import DataLoader
-from model.net import PSENet
-import mxnet as mx
-from mxnet.gluon import Trainer
-from model.loss import DiceLoss, DiceLoss_with_OHEM
-from mxnet import autograd
-
-from mxnet import lr_scheduler as ls
 import os
+import numpy as np
+import mxnet as mx
+from mxnet.gluon.data import DataLoader
+from mxnet.gluon import Trainer
+from mxnet import autograd, gluon, lr_scheduler as ls
 from tensorboardX import SummaryWriter
+
+from datasets.dataloader import ICDAR
+from model.loss import DiceLoss, DiceLoss_with_OHEM
+from model.net import PSENet
 
 
 def train(
@@ -22,11 +21,14 @@ def train(
     momentum=0.9,
     batch_size=5,
     ctx=mx.cpu(),
-    verbose_step=1,
+    verbose_step=5,
     ckpt='ckpt',
 ):
     num_kernels = 3
     icdar_loader = ICDAR(root_dir=data_dir, num_kernels=num_kernels - 1)
+    if not isinstance(ctx, (list, tuple)):
+        ctx = [ctx]
+    batch_size = batch_size * len(ctx)
     loader = DataLoader(icdar_loader, batch_size=batch_size, shuffle=True)
     net = PSENet(num_kernels=num_kernels, ctx=ctx, pretrained=True)
     # initial params
@@ -57,19 +59,28 @@ def train(
     for e in range(epoches):
         cumulative_loss = 0
 
+        num_batches = 0
         for i, item in enumerate(loader):
-            im, score_maps, kernels, training_masks, ori_img = item
-
-            im = im.as_in_context(ctx)
-            score_maps = score_maps[:, ::4, ::4].as_in_context(ctx)
-            kernels = kernels[:, :, ::4, ::4].as_in_context(ctx)
-            training_masks = training_masks[:, ::4, ::4].as_in_context(ctx)
-
-            with autograd.record():
-                kernels_pred = net(im)
+            item_ctxs = [split_and_load(field, ctx) for field in item]
+            # item_ctxs = split_and_load(item, ctx)
+            loss_list = []
+            for im, score_maps, kernels, training_masks, ori_img in zip(*item_ctxs):
+                # im, score_maps, kernels, training_masks, ori_img = item
+                # im = im.as_in_context(ctx)
                 # import pdb; pdb.set_trace()
-                loss = pse_loss(score_maps, kernels, kernels_pred, training_masks)
+                score_maps = score_maps[:, ::4, ::4]
+                kernels = kernels[:, :, ::4, ::4]
+                training_masks = training_masks[:, ::4, ::4]
+
+                with autograd.record():
+                    kernels_pred = net(im)
+                    loss = pse_loss(score_maps, kernels, kernels_pred, training_masks)
+                    loss_list.append(loss)
+            mean_loss = []
+            for loss in loss_list:
                 loss.backward()
+                mean_loss.append(mx.nd.mean(loss.as_in_context(mx.cpu())).asscalar())
+            mean_loss = np.mean(mean_loss)
             trainer.step(batch_size)
             if i % verbose_step == 0:
                 global_steps = icdar_loader.length * e + i * batch_size
@@ -85,9 +96,7 @@ def train(
                 summary_writer.add_image(
                     'kernel_map_pred', kernels_pred[0:1, 0, :, :], global_steps
                 )
-                summary_writer.add_scalar(
-                    'loss', mx.nd.mean(loss).asscalar(), global_steps
-                )
+                summary_writer.add_scalar('loss', mean_loss, global_steps)
                 summary_writer.add_scalar(
                     'c_loss', mx.nd.mean(pse_loss.C_loss).asscalar(), global_steps
                 )
@@ -103,17 +112,24 @@ def train(
                 print(
                     "step: {}, loss: {}, score_loss: {}, kernel_loss: {}, pixel_acc: {}, kernel_acc:{}".format(
                         i * batch_size,
-                        mx.nd.mean(loss).asscalar(),
+                        mean_loss,
                         mx.nd.mean(pse_loss.C_loss).asscalar(),
                         mx.nd.mean(pse_loss.kernel_loss).asscalar(),
                         pse_loss.pixel_acc,
                         pse_loss.kernel_acc,
                     )
                 )
-            cumulative_loss += mx.nd.mean(loss).asscalar()
-        print("Epoch {}, loss: {}".format(e, cumulative_loss))
+            cumulative_loss += mean_loss
+            num_batches += 1
+        print("Epoch {}, mean loss: {}".format(e, cumulative_loss / num_batches))
         net.save_parameters(os.path.join(ckpt, 'model_{}.param'.format(e)))
     summary_writer.close()
+
+
+def split_and_load(xs, ctx_list):
+    return gluon.utils.split_and_load(
+        xs, ctx_list=ctx_list, batch_axis=0, even_split=False
+    )
 
 
 if __name__ == '__main__':
@@ -121,11 +137,11 @@ if __name__ == '__main__':
 
     data_dir = sys.argv[1]
     pretrain_model = sys.argv[2]
-    ctx = sys.argv[3]
-    if len(sys.argv) < 2:
-        print("Usage: python train.py $data_dir $pretrain_model")
-    if eval(ctx) >= 0:
-        devices = mx.gpu(eval(ctx))
+    num_gpus = int(sys.argv[3])
+    if len(sys.argv) < 3:
+        print("Usage: python train.py $data_dir $pretrain_model $num_gpus")
+    if num_gpus > 0:
+        devices = [mx.gpu(i) for i in range(num_gpus)]
     else:
-        devices = mx.cpu()
+        devices = [mx.cpu()]
     train(data_dir=data_dir, pretrain_model=pretrain_model, ctx=devices)
