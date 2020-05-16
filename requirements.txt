@@ -1,1 +1,5 @@
 shapely
+Polygon3
+pyclipper
+TensorboardX
+opencv-python
