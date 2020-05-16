@@ -51,7 +51,7 @@ def _parse_network(network, outputs, inputs, pretrained, ctx, **kwargs):
     params = None
     prefix = ''
     if isinstance(network, string_types):
-        from ..model_zoo import get_model
+        from gluoncv.model_zoo import get_model
         network = get_model(network, pretrained=pretrained, ctx=ctx, **kwargs)
     if isinstance(network, HybridBlock):
         params = network.collect_params()
