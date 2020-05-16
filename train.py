@@ -79,44 +79,44 @@ def train(
             mean_loss = []
             for loss in loss_list:
                 loss.backward()
-                mean_loss.append(mx.nd.mean(loss.as_in_context(mx.cpu())).asscalar())
+                mean_loss.append(mx.nd.mean(to_cpu(loss)).asscalar())
             mean_loss = np.mean(mean_loss)
             trainer.step(batch_size)
             if i % verbose_step == 0:
                 global_steps = icdar_loader.length * e + i * batch_size
                 summary_writer.add_image(
-                    'score_map', score_maps[0:1, :, :], global_steps
+                    'score_map', to_cpu(score_maps[0:1, :, :]), global_steps
                 )
                 summary_writer.add_image(
-                    'score_map_pred', kernels_pred[0:1, -1, :, :], global_steps
+                    'score_map_pred', to_cpu(kernels_pred[0:1, -1, :, :]), global_steps
                 )
                 summary_writer.add_image(
-                    'kernel_map', kernels[0:1, 0, :, :], global_steps
+                    'kernel_map', to_cpu(kernels[0:1, 0, :, :]), global_steps
                 )
                 summary_writer.add_image(
-                    'kernel_map_pred', kernels_pred[0:1, 0, :, :], global_steps
+                    'kernel_map_pred', to_cpu(kernels_pred[0:1, 0, :, :]), global_steps
                 )
                 summary_writer.add_scalar('loss', mean_loss, global_steps)
                 summary_writer.add_scalar(
-                    'c_loss', mx.nd.mean(pse_loss.C_loss).asscalar(), global_steps
+                    'c_loss', mx.nd.mean(to_cpu(pse_loss.C_loss)).asscalar(), global_steps
                 )
                 summary_writer.add_scalar(
                     'kernel_loss',
-                    mx.nd.mean(pse_loss.kernel_loss).asscalar(),
+                    mx.nd.mean(to_cpu(pse_loss.kernel_loss)).asscalar(),
                     global_steps,
                 )
                 summary_writer.add_scalar(
-                    'pixel_accuracy', pse_loss.pixel_acc, global_steps
+                    'pixel_accuracy', to_cpu(pse_loss.pixel_acc), global_steps
                 )
             if i % 1 == 0:
                 print(
                     "step: {}, loss: {}, score_loss: {}, kernel_loss: {}, pixel_acc: {}, kernel_acc:{}".format(
                         i * batch_size,
                         mean_loss,
-                        mx.nd.mean(pse_loss.C_loss).asscalar(),
-                        mx.nd.mean(pse_loss.kernel_loss).asscalar(),
-                        pse_loss.pixel_acc,
-                        pse_loss.kernel_acc,
+                        mx.nd.mean(to_cpu(pse_loss.C_loss)).asscalar(),
+                        mx.nd.mean(to_cpu(pse_loss.kernel_loss)).asscalar(),
+                        to_cpu(pse_loss.pixel_acc),
+                        to_cpu(pse_loss.kernel_acc),
                     )
                 )
             cumulative_loss += mean_loss
@@ -124,6 +124,10 @@ def train(
         print("Epoch {}, mean loss: {}".format(e, cumulative_loss / num_batches))
         net.save_parameters(os.path.join(ckpt, 'model_{}.param'.format(e)))
     summary_writer.close()
+
+
+def to_cpu(nd_array):
+    return nd_array.as_in_context(mx.cpu())
 
 
 def split_and_load(xs, ctx_list):
