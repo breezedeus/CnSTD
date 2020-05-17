@@ -19,7 +19,7 @@ def train(
     lr=0.001,
     wd=5e-4,
     momentum=0.9,
-    batch_size=5,
+    batch_size=4,
     ctx=mx.cpu(),
     verbose_step=5,
     ckpt='ckpt',
@@ -106,7 +106,7 @@ def train(
                     global_steps,
                 )
                 summary_writer.add_scalar(
-                    'pixel_accuracy', to_cpu(pse_loss.pixel_acc), global_steps
+                    'pixel_accuracy', pse_loss.pixel_acc, global_steps
                 )
             if i % 1 == 0:
                 print(
@@ -115,8 +115,8 @@ def train(
                         mean_loss,
                         mx.nd.mean(to_cpu(pse_loss.C_loss)).asscalar(),
                         mx.nd.mean(to_cpu(pse_loss.kernel_loss)).asscalar(),
-                        to_cpu(pse_loss.pixel_acc),
-                        to_cpu(pse_loss.kernel_acc),
+                        pse_loss.pixel_acc,
+                        pse_loss.kernel_acc,
                     )
                 )
             cumulative_loss += mean_loss
