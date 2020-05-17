@@ -41,15 +41,21 @@ class ICDAR(Dataset):
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]
         )
+        print('data size: {}'.format(len(self)))
 
     def __getitem__(self, item):
         img_name = self.imglst[item]
-        prefix = 'gt_' + ".".join(img_name.split('.')[:-1])
+        prefix = ".".join(img_name.split('.')[:-1])
         label_name = prefix + '.txt'
         text_polys, text_tags = parse_lines(os.path.join(self.gts_dir, label_name))
-        im = cv2.imread(os.path.join(self.img_dir, img_name))
-        # im = Image.open(os.path.join(self.data_dir, img_name)).convert('RGB')
-        im = np.array(im)[:, :, :3]
+        img_fp = os.path.join(self.img_dir, img_name)
+        #img_fp = img_fp.encode('utf-8', 'surrogateescape').decode('utf-8', 'surrogateescape')
+        im = imread(img_fp)
+        #im = mx.image.imread(os.path.join(self.img_dir, img_name), 1)
+        if len(im.shape) != 3 or im.shape[2] != 3:
+            print('bad image: {}, with shape {}'.format(img_name, im.shape))
+            import pdb; pdb.set_trace()
+        #im = im[:, :, :3]
 
         image, score_map, kernel_map, training_mask = process_data(
             im, text_polys, text_tags, self.num_kernel
@@ -83,6 +89,15 @@ class ICDAR(Dataset):
 
     def __len__(self):
         return self.length
+
+def imread(img_fp):
+    # im = cv2.imdecode(np.fromfile(img_fp, dtype=np.uint8), flag)
+    im = cv2.imread(img_fp, flags=1)  # res: color BGR
+    if im is None:
+        im = np.asarray(Image.open(img_fp).convert('RGB'))
+    else:
+        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+    return im
 
 
 if __name__ == '__main__':
