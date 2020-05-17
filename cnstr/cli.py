@@ -19,7 +19,7 @@ def cli():
 @click.option('-i', '--data_dir', type=str, help='数据所在的根目录')
 @click.option('--pretrain_model_fp', type=str, default=None, help='初始化模型路径')
 @click.option('--gpu', type=int, default=-1, help='使用的GPU数量。默认值为-1，表示自动判断')
-@click.option('--batch_size', type=int, default=4, help='batch size [Default: 4]')
+@click.option('--batch_size', type=int, default=4, help='batch size for each device [Default: 4]')
 @click.option('--epoch', type=int, default=50, help='train epochs [Default: 50]')
 @click.option('--lr', type=float, default=0.001, help='learning rate [Default: 0.001]')
 @click.option('--momentum', type=float, default=0.9, help='momentum [Default: 0.9]')
