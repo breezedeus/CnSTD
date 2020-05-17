@@ -1,5 +1,6 @@
 # coding=utf-8
 import os
+import logging
 import numpy as np
 import mxnet as mx
 from mxnet.gluon.data import DataLoader
@@ -7,15 +8,19 @@ from mxnet.gluon import Trainer
 from mxnet import autograd, gluon, lr_scheduler as ls
 from tensorboardX import SummaryWriter
 
-from datasets.dataloader import ICDAR
-from model.loss import DiceLoss, DiceLoss_with_OHEM
-from model.net import PSENet
+from .utils import to_cpu, split_and_load
+from .datasets.dataloader import ICDAR
+from .model.loss import DiceLoss, DiceLoss_with_OHEM
+from .model.net import PSENet
+
+
+logger = logging.getLogger(__name__)
 
 
 def train(
     data_dir,
     pretrain_model,
-    epoches=50,
+    epochs=50,
     lr=0.001,
     wd=5e-4,
     momentum=0.9,
@@ -48,7 +53,7 @@ def train(
     pse_loss = DiceLoss_with_OHEM(lam=0.7, num_kernels=num_kernels, debug=False)
 
     cos_shc = ls.PolyScheduler(
-        max_update=icdar_loader.length * epoches // batch_size, base_lr=lr
+        max_update=icdar_loader.length * epochs // batch_size, base_lr=lr
     )
     trainer = Trainer(
         net.collect_params(),
@@ -56,7 +61,7 @@ def train(
         {'learning_rate': lr, 'wd': wd, 'momentum': momentum, 'lr_scheduler': cos_shc},
     )
     summary_writer = SummaryWriter(ckpt)
-    for e in range(epoches):
+    for e in range(epochs):
         cumulative_loss = 0
 
         num_batches = 0
@@ -109,7 +114,7 @@ def train(
                     'pixel_accuracy', pse_loss.pixel_acc, global_steps
                 )
             if i % 1 == 0:
-                print(
+                logger.info(
                     "step: {}, loss: {}, score_loss: {}, kernel_loss: {}, pixel_acc: {}, kernel_acc:{}".format(
                         i * batch_size,
                         mean_loss,
@@ -121,31 +126,6 @@ def train(
                 )
             cumulative_loss += mean_loss
             num_batches += 1
-        print("Epoch {}, mean loss: {}".format(e, cumulative_loss / num_batches))
+        logger.info("Epoch {}, mean loss: {}\n".format(e, cumulative_loss / num_batches))
         net.save_parameters(os.path.join(ckpt, 'model_{}.param'.format(e)))
     summary_writer.close()
-
-
-def to_cpu(nd_array):
-    return nd_array.as_in_context(mx.cpu())
-
-
-def split_and_load(xs, ctx_list):
-    return gluon.utils.split_and_load(
-        xs, ctx_list=ctx_list, batch_axis=0, even_split=False
-    )
-
-
-if __name__ == '__main__':
-    import sys
-
-    data_dir = sys.argv[1]
-    pretrain_model = sys.argv[2]
-    num_gpus = int(sys.argv[3])
-    if len(sys.argv) < 3:
-        print("Usage: python train.py $data_dir $pretrain_model $num_gpus")
-    if num_gpus > 0:
-        devices = [mx.gpu(i) for i in range(num_gpus)]
-    else:
-        devices = [mx.cpu()]
-    train(data_dir=data_dir, pretrain_model=pretrain_model, ctx=devices)

@@ -1,6 +1,15 @@
 # coding=utf-8
-from mxnet.gluon.data.dataset import Dataset
+import os
+import glob
+import logging
+
+import cv2
+from PIL import Image
+import mxnet as mx
+import numpy as np
 from mxnet.gluon.data.vision import transforms
+from mxnet.gluon.data.dataset import Dataset
+
 from .util import (
     random_crop,
     random_rotate,
@@ -11,13 +20,8 @@ from .util import (
     random_horizontal_flip,
     process_data,
 )
-import os
-import glob
-import cv2
-from PIL import Image
-import mxnet as mx
-import numpy as np
-from mxnet.gluon.data.vision import transforms
+
+logger = logging.getLogger(__name__)
 
 
 class ICDAR(Dataset):
@@ -41,7 +45,7 @@ class ICDAR(Dataset):
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]
         )
-        print('data size: {}'.format(len(self)))
+        logger.info('data size: {}'.format(len(self)))
 
     def __getitem__(self, item):
         img_name = self.imglst[item]
@@ -49,13 +53,9 @@ class ICDAR(Dataset):
         label_name = prefix + '.txt'
         text_polys, text_tags = parse_lines(os.path.join(self.gts_dir, label_name))
         img_fp = os.path.join(self.img_dir, img_name)
-        #img_fp = img_fp.encode('utf-8', 'surrogateescape').decode('utf-8', 'surrogateescape')
         im = imread(img_fp)
-        #im = mx.image.imread(os.path.join(self.img_dir, img_name), 1)
         if len(im.shape) != 3 or im.shape[2] != 3:
-            print('bad image: {}, with shape {}'.format(img_name, im.shape))
-            import pdb; pdb.set_trace()
-        #im = im[:, :, :3]
+            logger.warning('bad image: {}, with shape {}'.format(img_name, im.shape))
 
         image, score_map, kernel_map, training_mask = process_data(
             im, text_polys, text_tags, self.num_kernel

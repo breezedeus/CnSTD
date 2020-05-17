@@ -1,7 +1,10 @@
 # coding=utf-8
+import logging
 from mxnet import gluon
 from mxnet import nd as F
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 def batch_pix_accuracy(output, target):
