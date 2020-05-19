@@ -4,20 +4,14 @@ import glob
 import logging
 
 import cv2
-from PIL import Image
 import mxnet as mx
 import numpy as np
 from mxnet.gluon.data.vision import transforms
 from mxnet.gluon.data.dataset import Dataset
 
+from ..utils import imread
 from .util import (
-    random_crop,
-    random_rotate,
-    random_scale,
-    shrink_polys,
     parse_lines,
-    save_images,
-    random_horizontal_flip,
     process_data,
 )
 
@@ -89,15 +83,6 @@ class ICDAR(Dataset):
 
     def __len__(self):
         return self.length
-
-def imread(img_fp):
-    # im = cv2.imdecode(np.fromfile(img_fp, dtype=np.uint8), flag)
-    im = cv2.imread(img_fp, flags=1)  # res: color BGR
-    if im is None:
-        im = np.asarray(Image.open(img_fp).convert('RGB'))
-    else:
-        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-    return im
 
 
 if __name__ == '__main__':

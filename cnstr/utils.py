@@ -20,7 +20,11 @@ from pathlib import Path
 import logging
 import platform
 import zipfile
+
+import cv2
 import mxnet as mx
+import numpy as np
+from PIL import Image
 from mxnet import gluon
 from mxnet.gluon.utils import download
 
@@ -167,3 +171,13 @@ def normalize_img_array(img, dtype='float32'):
     # return (img - np.mean(img, dtype=dtype)) / 255.0
     return img / 255.0
     # return (img - np.median(img)) / (np.std(img, dtype=dtype) + 1e-6)  # 转完以后有些情况会变得不可识别
+
+
+def imread(img_fp):
+    # im = cv2.imdecode(np.fromfile(img_fp, dtype=np.uint8), flag)
+    im = cv2.imread(img_fp, flags=1)  # res: color BGR
+    if im is None:
+        im = np.asarray(Image.open(img_fp).convert('RGB'))
+    else:
+        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+    return im

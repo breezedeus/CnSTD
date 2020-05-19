@@ -1,8 +1,10 @@
 # coding=utf-8
+import os
 import click
 
 from .utils import set_logger, gen_context
 from .train import train
+from .eval import evaluate
 
 
 _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
@@ -41,6 +43,8 @@ def train_model(
     output_dir,
 ):
     devices = gen_context(gpu)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     train(
         data_dir=data_dir,
@@ -54,6 +58,26 @@ def train_model(
         verbose_step=log_step,
         ckpt=output_dir,
     )
+
+
+@cli.command('evaluate', context_settings=_CONTEXT_SETTINGS)
+@click.option('-i', '--data_dir', type=str, help='数据所在的根目录')
+@click.option('--model_fp', type=str, default=None, help='模型路径')
+@click.option('--gpu', type=int, default=-1, help='使用的GPU数量。默认值为-1，表示自动判断')
+@click.option('--batch_size', type=int, default=4, help='batch size for each device [Default: 4]')
+@click.option('-o', '--output_dir', default='ckpt', help='模型输出的目录')
+def evaluate_model(
+        data_dir,
+        model_fp,
+        gpu,
+        batch_size,
+        output_dir,
+):
+    devices = gen_context(gpu)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    evaluate(data_dir, model_fp, output_dir, devices)
 
 
 if __name__ == '__main__':
