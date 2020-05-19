@@ -104,10 +104,10 @@ def train(
                     'text_pred', to_cpu(kernels_pred[0:1, 0, :, :]), global_steps
                 )
                 summary_writer.add_image(
-                    'gt_kernels[0]', to_cpu(gt_kernels[0:1, 0, :, :]), global_steps
+                    'gt_kernels_0', to_cpu(gt_kernels[0:1, 0, :, :]), global_steps
                 )
                 summary_writer.add_image(
-                    'kernels[0]_pred', to_cpu(kernels_pred[0:1, 1, :, :]), global_steps
+                    'kernels_0_pred', to_cpu(kernels_pred[0:1, 1, :, :]), global_steps
                 )
                 summary_writer.add_scalar('loss', mean_loss, global_steps)
                 summary_writer.add_scalar(
