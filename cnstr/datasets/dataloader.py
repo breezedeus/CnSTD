@@ -51,16 +51,16 @@ class ICDAR(Dataset):
         if len(im.shape) != 3 or im.shape[2] != 3:
             logger.warning('bad image: {}, with shape {}'.format(img_name, im.shape))
 
-        image, score_map, kernel_map, training_mask = process_data(
+        # gt_kernels 是从大到小的，与论文中使用的下标刚好相反
+        image, gt_text, gt_kernels, training_mask = process_data(
             im, text_polys, text_tags, self.num_kernel
         )
         if self.debug:
             im_show = np.concatenate(
                 [
-                    score_map * 255,
-                    kernel_map[0, :, :] * 255,
-                    kernel_map[1, :, :] * 255,
-                    kernel_map[2, :, :] * 255,
+                    gt_text * 255,
+                    gt_kernels[0, :, :] * 255,
+                    gt_kernels[1, :, :] * 255,
                     training_mask * 255,
                 ],
                 axis=1,
@@ -69,13 +69,13 @@ class ICDAR(Dataset):
             cv2.imshow('score_map', im_show)
             cv2.waitKey()
         image = mx.nd.array(image)
-        score_map = mx.nd.array(score_map, dtype=np.float32)
-        kernal_map = mx.nd.array(kernel_map, dtype=np.float32)
+        gt_text = mx.nd.array(gt_text, dtype=np.float32)
+        kernal_map = mx.nd.array(gt_kernels, dtype=np.float32)
         training_mask = mx.nd.array(training_mask, dtype=np.float32)
         trans_image = self.trans(image)
         return (
             trans_image,
-            score_map,
+            gt_text,
             kernal_map,
             training_mask,
             transforms.ToTensor()(image),
