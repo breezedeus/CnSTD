@@ -125,8 +125,10 @@ def train(
                 )
             if i % 1 == 0:
                 logger.info(
-                    "step: {}, loss: {}, score_loss: {}, kernel_loss: {}, pixel_acc: {}, kernel_acc:{}".format(
+                    "step: {}, lr: {}, "
+                    "loss: {}, score_loss: {}, kernel_loss: {}, pixel_acc: {}, kernel_acc: {}".format(
                         i * batch_size,
+                        trainer.learning_rate,
                         mean_loss,
                         mx.nd.mean(to_cpu(pse_loss.C_loss)).asscalar(),
                         mx.nd.mean(to_cpu(pse_loss.kernel_loss)).asscalar(),
