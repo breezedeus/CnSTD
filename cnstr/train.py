@@ -98,16 +98,16 @@ def train(
             if i % verbose_step == 0:
                 global_steps = icdar_ds.length * e + i * batch_size
                 summary_writer.add_image(
-                    'gt_text', to_cpu(gt_text[0, :, :]), global_steps
+                    'gt_text', to_cpu(gt_text[0:1, :, :]), global_steps
                 )
                 summary_writer.add_image(
-                    'text_pred', to_cpu(kernels_pred[0, 0, :, :]), global_steps
+                    'text_pred', to_cpu(kernels_pred[0:1, 0, :, :]), global_steps
                 )
                 summary_writer.add_image(
-                    'gt_kernels[0]', to_cpu(gt_kernels[0, 0, :, :]), global_steps
+                    'gt_kernels[0]', to_cpu(gt_kernels[0:1, 0, :, :]), global_steps
                 )
                 summary_writer.add_image(
-                    'kernels[0]_pred', to_cpu(kernels_pred[0, 1, :, :]), global_steps
+                    'kernels[0]_pred', to_cpu(kernels_pred[0:1, 1, :, :]), global_steps
                 )
                 summary_writer.add_scalar('loss', mean_loss, global_steps)
                 summary_writer.add_scalar(
