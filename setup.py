@@ -18,6 +18,7 @@ exec(
 )
 
 required = [
+    'click',
     'shapely',
     'Polygon3',
     'pyclipper',
