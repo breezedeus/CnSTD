@@ -9,7 +9,7 @@ from .eval import evaluate
 
 _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
 
-logger = set_logger('INFO')
+logger = set_logger(log_level='INFO')
 
 
 @click.group(context_settings=_CONTEXT_SETTINGS)
