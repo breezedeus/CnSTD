@@ -168,9 +168,10 @@ def read_charset(charset_fp):
 def normalize_img_array(img, dtype='float32'):
     """ rescale to [-1.0, 1.0] """
     img = img.astype(dtype)
-    # return (img - np.mean(img, dtype=dtype)) / 255.0
-    return img / 255.0
-    # return (img - np.median(img)) / (np.std(img, dtype=dtype) + 1e-6)  # 转完以后有些情况会变得不可识别
+    img = img / 255.0
+    img -= np.array((0.485, 0.456, 0.406))
+    img /= np.array((0.229, 0.224, 0.225))
+    return img
 
 
 def imread(img_fp):

@@ -9,7 +9,7 @@ import numpy as np
 from mxnet.gluon.data.vision import transforms
 from mxnet.gluon.data.dataset import Dataset
 
-from ..utils import imread
+from ..utils import imread, normalize_img_array
 from .util import (
     parse_lines,
     process_data,
@@ -36,7 +36,7 @@ class ICDAR(Dataset):
             [
                 # transforms.RandomColorJitter(brightness = 32.0 / 255, saturation = 0.5),
                 transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+                # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]
         )
         logger.info('data size: {}'.format(len(self)))
@@ -68,6 +68,7 @@ class ICDAR(Dataset):
             cv2.imshow('img', image)
             cv2.imshow('score_map', im_show)
             cv2.waitKey()
+        image = normalize_img_array(image)
         image = mx.nd.array(image)
         gt_text = mx.nd.array(gt_text, dtype=np.float32)
         kernal_map = mx.nd.array(gt_kernels, dtype=np.float32)

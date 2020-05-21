@@ -10,7 +10,7 @@ import mxnet as mx
 from mxnet.gluon.data.vision import transforms
 
 from .postprocess.pse_poster import pse
-from .utils import imread
+from .utils import imread, normalize_img_array
 from .model.net import PSENet
 
 
@@ -139,7 +139,7 @@ def evaluate(
     trans = transforms.Compose(
         [
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ]
     )
 
@@ -155,6 +155,7 @@ def evaluate(
         resize_img, (ratio_h, ratio_w) = resize_image(img, max_side_len=max_size)
 
         h, w, _ = resize_img.shape
+        resize_img = normalize_img_array(resize_img)
         im_res = mx.nd.array(resize_img)
         im_res = trans(im_res)
 
