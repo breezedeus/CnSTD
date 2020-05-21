@@ -73,17 +73,43 @@ def train_model(
 @cli.command('evaluate', context_settings=_CONTEXT_SETTINGS)
 @click.option('-i', '--data_dir', type=str, help='数据所在的根目录')
 @click.option('--model_fp', type=str, default=None, help='模型路径')
+@click.option(
+    '--max_size',
+    type=int,
+    default=768,
+    help='图片预测时的最大尺寸（最好是32的倍数）。超过这个尺寸的图片会被等比例压缩到此尺寸 [Default: 768]',
+)
+@click.option(
+    '--pse_threshold',
+    type=float,
+    default=0.45,
+    help='threshold for pse [Default: 0.45]',
+)
+@click.option(
+    '--pse_min_area', type=int, default=100, help='min area for pse [Default: 100]'
+)
 @click.option('--gpu', type=int, default=-1, help='使用的GPU数量。默认值为-1，表示自动判断')
 @click.option(
     '--batch_size', type=int, default=4, help='batch size for each device [Default: 4]'
 )
-@click.option('-o', '--output_dir', default='ckpt', help='模型输出的目录')
-def evaluate_model(data_dir, model_fp, gpu, batch_size, output_dir):
+@click.option('-o', '--output_dir', default='outputs', help='模型输出的目录')
+def evaluate_model(
+    data_dir,
+    model_fp,
+    max_size,
+    pse_threshold,
+    pse_min_area,
+    gpu,
+    batch_size,
+    output_dir,
+):
     devices = gen_context(gpu)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    evaluate(data_dir, model_fp, output_dir, devices)
+    evaluate(
+        data_dir, model_fp, output_dir, max_size, pse_threshold, pse_min_area, devices
+    )
 
 
 if __name__ == '__main__':

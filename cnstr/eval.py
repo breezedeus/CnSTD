@@ -3,16 +3,18 @@ import os
 import sys
 import glob
 import time
+import logging
 import cv2
 import numpy as np
 import mxnet as mx
-from mxnet import gluon
 from mxnet.gluon.data.vision import transforms
 
-# from pse import pse
 from .postprocess.pse_poster import pse
 from .utils import imread
 from .model.net import PSENet
+
+
+logger = logging.getLogger(__name__)
 
 
 def resize_image(im, max_side_len=2400):
@@ -29,18 +31,12 @@ def resize_image(im, max_side_len=2400):
 
     # limit the max side
     if max(resize_h, resize_w) > max_side_len:
-        ratio = (
-            float(max_side_len) / resize_h
-            if resize_h > resize_w
-            else float(max_side_len) / resize_w
-        )
-    else:
-        ratio = 1.0
-    resize_h = int(resize_h * ratio)
-    resize_w = int(resize_w * ratio)
+        ratio = float(max_side_len) / max(resize_h, resize_w)
+        resize_h = int(resize_h * ratio)
+        resize_w = int(resize_w * ratio)
 
-    resize_h = resize_h if resize_h % 32 == 0 else (resize_h // 32 - 1) * 32
-    resize_w = resize_w if resize_w % 32 == 0 else (resize_w // 32 - 1) * 32
+    resize_h = resize_h if resize_h % 32 == 0 else max(1, resize_h // 32) * 32
+    resize_w = resize_w if resize_w % 32 == 0 else max(1, resize_w // 32) * 32
     im = cv2.resize(im, (int(resize_w), int(resize_h)))
 
     ratio_h = resize_h / float(h)
@@ -80,7 +76,9 @@ def mask_to_boxes_pse(result_map, score_map, min_score=0.5, min_area=200, scale=
     return np.array(bboxes, dtype=np.float32), np.array(scores, dtype=np.float32)
 
 
-def detect_pse(seg_maps, threshold=0.5, threshold_k=0.55, boxes_thres=0.01):
+def detect_pse(
+    seg_maps, threshold=0.5, threshold_k=0.55, boxes_thres=0.01, min_area=100
+):
     """
     poster with pse
     """
@@ -90,7 +88,7 @@ def detect_pse(seg_maps, threshold=0.5, threshold_k=0.55, boxes_thres=0.01):
 
     result_map = pse(seg_maps, 5)
     bboxes, scores = mask_to_boxes_pse(
-        result_map, seg_maps[0, :, :], min_score=boxes_thres
+        result_map, seg_maps[0, :, :], min_score=boxes_thres, min_area=min_area
     )
     return bboxes, scores
 
@@ -133,7 +131,9 @@ def sort_poly(p):
         return p[[0, 3, 2, 1]]
 
 
-def evaluate(image_dir, ckpt_path, output_dir, ctx=None):
+def evaluate(
+    image_dir, ckpt_path, output_dir, max_size, pse_threshold, pse_min_area, ctx=None
+):
     # restore model
     net = restore_model(ckpt_path, n_kernel=3, ctx=ctx)
     trans = transforms.Compose(
@@ -147,8 +147,12 @@ def evaluate(image_dir, ckpt_path, output_dir, ctx=None):
     imglst = glob.glob1(image_dir, "*g")
     for item in imglst:
         im_name = os.path.join(image_dir, item)
+        out_fusion_img_name = os.path.join(output_dir, "fusion_" + item)
+        if os.path.exists(out_fusion_img_name):
+            continue
         img = imread(im_name)
-        resize_img, (ratio_h, ratio_w) = resize_image(img, max_side_len=784)
+        logger.info("processing image {}, with shape {}".format(item, img.shape))
+        resize_img, (ratio_h, ratio_w) = resize_image(img, max_side_len=max_size)
 
         h, w, _ = resize_img.shape
         im_res = mx.nd.array(resize_img)
@@ -157,10 +161,21 @@ def evaluate(image_dir, ckpt_path, output_dir, ctx=None):
         t1 = time.time()
         seg_maps = net(im_res.expand_dims(axis=0)).asnumpy()
         t2 = time.time()
-        bboxes, scores = detect_pse(seg_maps, threshold=0.5)
+        bboxes, scores = detect_pse(
+            seg_maps,
+            threshold=pse_threshold,
+            threshold_k=pse_threshold,
+            boxes_thres=0.01,
+            min_area=pse_min_area,
+        )
         t3 = time.time()
 
-        print("net: {}, nms: {}, text_boxes: {}".format(t2 - t1, t3 - t2, len(bboxes)))
+        logger.info(
+            "\tfinished, time costs: psenet pred {}, pse {}, text_boxes: {}".format(
+                t2 - t1, t3 - t2, len(bboxes)
+            )
+        )
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         if len(bboxes) > 0:
             bboxes = bboxes.reshape((-1, 4, 2))
             bboxes[:, :, 0] /= ratio_w
@@ -169,7 +184,6 @@ def evaluate(image_dir, ckpt_path, output_dir, ctx=None):
             # save result
             out_text_name = os.path.join(output_dir, item[:-4] + '.txt')
             out_img_name = os.path.join(output_dir, item)
-            out_fusion_img_name = os.path.join(output_dir, "fusion_" + item)
             with open(out_text_name, 'w') as f:
                 for box in bboxes:
                     box = sort_poly(box.astype(np.int32))
@@ -182,7 +196,7 @@ def evaluate(image_dir, ckpt_path, output_dir, ctx=None):
                         img,
                         [box.astype(np.int32).reshape((-1, 1, 2))],
                         True,
-                        color=(255, 255, 0),
+                        color=(0, 0, 255),
                         thickness=1,
                     )
                     f.write(
