@@ -1,6 +1,5 @@
 # coding=utf-8
 import os
-import glob
 import logging
 
 import cv2
@@ -10,24 +9,29 @@ from mxnet.gluon.data.vision import transforms
 from mxnet.gluon.data.dataset import Dataset
 
 from ..utils import imread, normalize_img_array
-from .util import (
-    parse_lines,
-    process_data,
-)
+from .util import parse_lines, process_data
 
 logger = logging.getLogger(__name__)
 
 
-class ICDAR(Dataset):
+class STRDataset(Dataset):
     def __init__(
-        self, root_dir, strides=4, input_size=(640, 640), num_kernels=6, debug=False
+        self,
+        root_dir,
+        train_idx_fp,
+        strides=4,
+        input_size=(640, 640),
+        num_kernels=6,
+        debug=False,
     ):
-        super(ICDAR, self).__init__()
-        self.img_dir = os.path.join(root_dir, 'images')
-        self.gts_dir = os.path.join(root_dir, 'gts')
+        super(STRDataset, self).__init__()
+        img_label_pairs = read_idx_file(train_idx_fp)
+        self.img_label_pairs = [
+            (os.path.join(root_dir, img_fp), os.path.join(root_dir, gt_fp))
+            for img_fp, gt_fp in img_label_pairs
+        ]
 
-        self.imglst = glob.glob1(self.img_dir, '*g')
-        self.length = len(self.imglst)
+        self.length = len(self.img_label_pairs)
         self.input_size = input_size
         self.strides = strides
         self.num_kernel = num_kernels
@@ -42,14 +46,11 @@ class ICDAR(Dataset):
         logger.info('data size: {}'.format(len(self)))
 
     def __getitem__(self, item):
-        img_name = self.imglst[item]
-        prefix = ".".join(img_name.split('.')[:-1])
-        label_name = prefix + '.txt'
-        text_polys, text_tags = parse_lines(os.path.join(self.gts_dir, label_name))
-        img_fp = os.path.join(self.img_dir, img_name)
+        img_fp, label_fp = self.img_label_pairs[item]
+        text_polys, text_tags = parse_lines(label_fp)
         im = imread(img_fp)
         if len(im.shape) != 3 or im.shape[2] != 3:
-            logger.warning('bad image: {}, with shape {}'.format(img_name, im.shape))
+            logger.warning('bad image: {}, with shape {}'.format(img_fp, im.shape))
 
         # gt_kernels 是从大到小的，与论文中使用的下标刚好相反
         image, gt_text, gt_kernels, training_mask = process_data(
@@ -86,17 +87,10 @@ class ICDAR(Dataset):
         return self.length
 
 
-if __name__ == '__main__':
-    from mxnet.gluon.data import dataloader
-    import sys
-
-    root_dir = sys.argv[1]
-    icdar = ICDAR(root_dir=root_dir, num_kernel=6, debug=True)
-    loader = dataloader.DataLoader(dataset=icdar, batch_size=1)
-    for k, item in enumerate(loader):
-        img, score, kernel, training_mask, ori_img = item
-        img = img.asnumpy()
-        kernels = kernel.asnumpy()
-        print(img.shape, score.shape, img.max(), img.min())
-        if k == 10:
-            break
+def read_idx_file(idx_fp):
+    img_label_pairs = []
+    with open(idx_fp) as f:
+        for line in f:
+            img_fp, gt_fp = line.strip().split('\t')
+            img_label_pairs.append((img_fp, gt_fp))
+    return img_label_pairs

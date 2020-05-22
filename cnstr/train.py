@@ -9,7 +9,7 @@ from mxnet import autograd, lr_scheduler as ls
 from tensorboardX import SummaryWriter
 
 from .utils import to_cpu, split_and_load
-from .datasets.dataloader import ICDAR
+from .datasets.dataloader import STRDataset
 from .model.loss import DiceLoss, DiceLoss_with_OHEM
 from .model.net import PSENet
 
@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 def train(
-    data_dir,
+    root_dir,
+    train_index_fp,
     pretrain_model,
     optimizer,
     epochs=50,
@@ -31,11 +32,13 @@ def train(
     ckpt='ckpt',
 ):
     num_kernels = 3
-    icdar_ds = ICDAR(root_dir=data_dir, num_kernels=num_kernels - 1)
+    dataset = STRDataset(
+        root_dir=root_dir, train_idx_fp=train_index_fp, num_kernels=num_kernels - 1
+    )
     if not isinstance(ctx, (list, tuple)):
         ctx = [ctx]
     batch_size = batch_size * len(ctx)
-    loader = DataLoader(icdar_ds, batch_size=batch_size, shuffle=True)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     net = PSENet(num_kernels=num_kernels, ctx=ctx, pretrained=True)
     # initial params
     net.initialize(mx.init.Xavier(), ctx=ctx)
@@ -55,7 +58,7 @@ def train(
     # lr_scheduler = ls.PolyScheduler(
     #     max_update=icdar_loader.length * epochs // batch_size, base_lr=lr
     # )
-    max_update = len(icdar_ds) * epochs // batch_size
+    max_update = len(dataset) * epochs // batch_size
     lr_scheduler = ls.MultiFactorScheduler(
         base_lr=lr, step=[max_update // 3, max_update * 2 // 3], factor=0.1
     )
@@ -95,20 +98,9 @@ def train(
                 mean_loss.append(mx.nd.mean(to_cpu(loss)).asscalar())
             mean_loss = np.mean(mean_loss)
             trainer.step(batch_size)
+
             if i % verbose_step == 0:
-                global_steps = icdar_ds.length * e + i * batch_size
-                summary_writer.add_image(
-                    'complete_gt', to_cpu(gt_text[0:1, :, :]), global_steps
-                )
-                summary_writer.add_image(
-                    'complete_pred', to_cpu(kernels_pred[0:1, 0, :, :]), global_steps
-                )
-                summary_writer.add_images(
-                    'kernels_gt', to_cpu(gt_kernels[0:1, :, :, :]).reshape(-1, 1, 0, 0), global_steps
-                )
-                summary_writer.add_images(
-                    'kernels_pred', to_cpu(kernels_pred[0:1, 1:, :, :]).reshape(-1, 1, 0, 0), global_steps
-                )
+                global_steps = dataset.length * e + i * batch_size
                 summary_writer.add_scalar('loss', mean_loss, global_steps)
                 summary_writer.add_scalar(
                     'c_loss',
@@ -138,8 +130,27 @@ def train(
                 )
             cumulative_loss += mean_loss
             num_batches += 1
+        summary_writer.add_scalar('mean loss per epoch', cumulative_loss / num_batches, global_steps)
         logger.info(
             "Epoch {}, mean loss: {}\n".format(e, cumulative_loss / num_batches)
         )
         net.save_parameters(os.path.join(ckpt, 'model_{}.param'.format(e)))
+
+    summary_writer.add_image(
+        'complete_gt', to_cpu(gt_text[0:1, :, :]), global_steps
+    )
+    summary_writer.add_image(
+        'complete_pred', to_cpu(kernels_pred[0:1, 0, :, :]), global_steps
+    )
+    summary_writer.add_images(
+        'kernels_gt',
+        to_cpu(gt_kernels[0:1, :, :, :]).reshape(-1, 1, 0, 0),
+        global_steps,
+    )
+    summary_writer.add_images(
+        'kernels_pred',
+        to_cpu(kernels_pred[0:1, 1:, :, :]).reshape(-1, 1, 0, 0),
+        global_steps,
+    )
+
     summary_writer.close()
