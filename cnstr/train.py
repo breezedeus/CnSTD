@@ -33,6 +33,7 @@ def train(
     output_dir='ckpt',
 ):
     output_dir = os.path.join(output_dir, backbone)
+    os.makedirs(output_dir, exist_ok=True)
     num_kernels = 3
     dataset = STRDataset(
         root_dir=root_dir, train_idx_fp=train_index_fp, num_kernels=num_kernels - 1

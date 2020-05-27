@@ -39,7 +39,6 @@ class PSENet(HybridBlock):
         scale=1,
         ctx=mx.cpu(),
         pretrained=False,
-        num_device=0,
         **kwargs
     ):
         super(PSENet, self).__init__()

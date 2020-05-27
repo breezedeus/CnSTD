@@ -2,6 +2,7 @@
 import os
 import click
 
+from .consts import BACKBONE_NET_NAME
 from .utils import set_logger, gen_context
 from .train import train
 from .eval import evaluate
@@ -9,7 +10,7 @@ from .eval import evaluate
 
 _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
 
-logger = set_logger(log_level='INFO')
+logger = set_logger(log_level='DEBUG')
 
 
 @click.group(context_settings=_CONTEXT_SETTINGS)
@@ -20,7 +21,7 @@ def cli():
 @cli.command('train', context_settings=_CONTEXT_SETTINGS)
 @click.option(
     '--backbone',
-    type=click.Choice(['mobilenetv3', 'resnet50_v1b']),
+    type=click.Choice(BACKBONE_NET_NAME),
     default='mobilenetv3',
     help='backbone model name',
 )
@@ -82,8 +83,14 @@ def train_model(
 
 
 @cli.command('evaluate', context_settings=_CONTEXT_SETTINGS)
+@click.option(
+    '--backbone',
+    type=click.Choice(BACKBONE_NET_NAME),
+    default='mobilenetv3',
+    help='backbone model name',
+)
+@click.option('--model_epoch', type=str, default=None, help='model epoch')
 @click.option('-i', '--data_dir', type=str, help='数据所在的根目录')
-@click.option('--model_fp', type=str, default=None, help='模型路径')
 @click.option(
     '--max_size',
     type=int,
@@ -100,18 +107,15 @@ def train_model(
     '--pse_min_area', type=int, default=100, help='min area for pse [Default: 100]'
 )
 @click.option('--gpu', type=int, default=-1, help='使用的GPU数量。默认值为-1，表示自动判断')
-@click.option(
-    '--batch_size', type=int, default=4, help='batch size for each device [Default: 4]'
-)
 @click.option('-o', '--output_dir', default='outputs', help='模型输出的目录')
 def evaluate_model(
+    backbone,
+    model_epoch,
     data_dir,
-    model_fp,
     max_size,
     pse_threshold,
     pse_min_area,
     gpu,
-    batch_size,
     output_dir,
 ):
     devices = gen_context(gpu)
@@ -119,7 +123,14 @@ def evaluate_model(
         os.makedirs(output_dir)
 
     evaluate(
-        data_dir, model_fp, output_dir, max_size, pse_threshold, pse_min_area, devices
+        backbone,
+        model_epoch,
+        data_dir,
+        output_dir,
+        max_size,
+        pse_threshold,
+        pse_min_area,
+        devices,
     )
 
 

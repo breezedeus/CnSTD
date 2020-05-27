@@ -9,102 +9,11 @@ import numpy as np
 import mxnet as mx
 from mxnet.gluon.data.vision import transforms
 
-from .postprocess.pse_poster import pse
+from .cn_str import restore_model, resize_image, detect_pse, sort_poly
 from .utils import imread, normalize_img_array
-from .model.net import PSENet
-
+from .cn_str import CnStr
 
 logger = logging.getLogger(__name__)
-
-
-def resize_image(im, max_side_len=2400):
-    """
-    resize image to a size multiple of 32 which is required by the network
-    :param im: the resized image
-    :param max_side_len: limit of max image size to avoid out of memory in gpu
-    :return: the resized image and the resize ratio
-    """
-    h, w, _ = im.shape
-
-    resize_w = w
-    resize_h = h
-
-    # limit the max side
-    if max(resize_h, resize_w) > max_side_len:
-        ratio = float(max_side_len) / max(resize_h, resize_w)
-        resize_h = int(resize_h * ratio)
-        resize_w = int(resize_w * ratio)
-
-    resize_h = resize_h if resize_h % 32 == 0 else max(1, resize_h // 32) * 32
-    resize_w = resize_w if resize_w % 32 == 0 else max(1, resize_w // 32) * 32
-    im = cv2.resize(im, (int(resize_w), int(resize_h)))
-
-    ratio_h = resize_h / float(h)
-    ratio_w = resize_w / float(w)
-
-    return im, (ratio_h, ratio_w)
-
-
-def mask_to_boxes_pse(result_map, score_map, min_score=0.5, min_area=200, scale=4.0):
-    """
-    Generate boxes from mask
-    Args:
-        - result_map: fusion from kernel maps
-        - score_map: text_region
-        - min_score: the threshold to filter box that lower than min_score
-        - min_area: filter box whose area is smaller than min_area
-        - scale: ratio about input and output of network
-    """
-    label = result_map
-    label_num = np.max(label) + 1
-    bboxes = []
-    scores = []
-    for i in range(1, label_num):
-        points = np.array(np.where(label == i)).transpose((1, 0))[:, ::-1]
-        if points.shape[0] < min_area / (scale * scale):
-            continue
-
-        score_i = np.mean(score_map[label == i])
-        if score_i < min_score:
-            continue
-
-        rect = cv2.minAreaRect(points)
-        bbox = cv2.boxPoints(rect) * scale
-        bbox = bbox.astype('int32')
-        bboxes.append(bbox.reshape(-1))
-        scores.append(score_i)
-    return np.array(bboxes, dtype=np.float32), np.array(scores, dtype=np.float32)
-
-
-def detect_pse(
-    seg_maps, threshold=0.5, threshold_k=0.55, boxes_thres=0.01, min_area=100
-):
-    """
-    poster with pse
-    """
-    seg_maps = seg_maps[0, :, :, :]
-    mask = np.where(seg_maps[0, :, :] > threshold, 1.0, 0.0)
-    seg_maps = seg_maps * mask > threshold_k
-
-    result_map = pse(seg_maps, 5)
-    bboxes, scores = mask_to_boxes_pse(
-        result_map, seg_maps[0, :, :], min_score=boxes_thres, min_area=min_area
-    )
-    return bboxes, scores
-
-
-def restore_model(ckpt_path, n_kernel, ctx):
-    """
-    Restore model and get runtime session, input, output
-    Args:
-        - ckpt_path: the path to checkpoint file
-        - n_kernel: [kernel_map, score_map]
-    """
-
-    net = PSENet(num_kernels=n_kernel, ctx=ctx)
-    net.load_parameters(ckpt_path)
-
-    return net
 
 
 def weighted_fusion(seg_maps, image):
@@ -122,26 +31,18 @@ def weighted_fusion(seg_maps, image):
     return save_img
 
 
-def sort_poly(p):
-    min_axis = np.argmin(np.sum(p, axis=1))
-    p = p[[min_axis, (min_axis + 1) % 4, (min_axis + 2) % 4, (min_axis + 3) % 4]]
-    if abs(p[0, 0] - p[1, 0]) > abs(p[0, 1] - p[1, 1]):
-        return p
-    else:
-        return p[[0, 3, 2, 1]]
-
-
 def evaluate(
-    image_dir, ckpt_path, output_dir, max_size, pse_threshold, pse_min_area, ctx=None
+    backbone,
+    model_epoch,
+    image_dir,
+    output_dir,
+    max_size,
+    pse_threshold,
+    pse_min_area,
+    ctx=None,
 ):
     # restore model
-    net = restore_model(ckpt_path, n_kernel=3, ctx=ctx)
-    trans = transforms.Compose(
-        [
-            transforms.ToTensor(),
-            # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        ]
-    )
+    cn_str = CnStr(model_name=backbone, model_epoch=model_epoch, context=ctx)
 
     # process image
     imglst = glob.glob1(image_dir, "*g")
@@ -150,43 +51,19 @@ def evaluate(
         out_fusion_img_name = os.path.join(output_dir, "fusion_" + item)
         if os.path.exists(out_fusion_img_name):
             continue
+        logger.info("processing image {}".format(item))
+        bboxe_score_list = cn_str.recognize(
+            im_name, max_size, pse_threshold, pse_min_area
+        )
+
         img = imread(im_name)
-        logger.info("processing image {}, with shape {}".format(item, img.shape))
-        resize_img, (ratio_h, ratio_w) = resize_image(img, max_side_len=max_size)
-
-        h, w, _ = resize_img.shape
-        resize_img = normalize_img_array(resize_img)
-        im_res = mx.nd.array(resize_img)
-        im_res = trans(im_res)
-
-        t1 = time.time()
-        seg_maps = net(im_res.expand_dims(axis=0)).asnumpy()
-        t2 = time.time()
-        bboxes, scores = detect_pse(
-            seg_maps,
-            threshold=pse_threshold,
-            threshold_k=pse_threshold,
-            boxes_thres=0.01,
-            min_area=pse_min_area,
-        )
-        t3 = time.time()
-
-        logger.info(
-            "\tfinished, time costs: psenet pred {}, pse {}, text_boxes: {}".format(
-                t2 - t1, t3 - t2, len(bboxes)
-            )
-        )
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        if len(bboxes) > 0:
-            bboxes = bboxes.reshape((-1, 4, 2))
-            bboxes[:, :, 0] /= ratio_w
-            bboxes[:, :, 1] /= ratio_h
-
+        if len(bboxe_score_list) > 0:
             # save result
             out_text_name = os.path.join(output_dir, item[:-4] + '.txt')
             out_img_name = os.path.join(output_dir, item)
             with open(out_text_name, 'w') as f:
-                for box in bboxes:
+                for box, score in bboxe_score_list:
                     box = sort_poly(box.astype(np.int32))
                     if (
                         np.linalg.norm(box[0] - box[1]) < 5
@@ -213,7 +90,7 @@ def evaluate(
                         )
                     )
 
-            fusion_img = weighted_fusion(seg_maps, img)
+            fusion_img = weighted_fusion(cn_str.seg_maps, img)
             fusion_img = np.concatenate((fusion_img, img), 1)
             # cv2.imwrite(out_img_name, img)
             cv2.imwrite(out_fusion_img_name, fusion_img)

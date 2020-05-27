@@ -28,7 +28,7 @@ from PIL import Image
 from mxnet import gluon
 from mxnet.gluon.utils import download
 
-from .consts import MODEL_VERSION
+from .consts import MODEL_VERSION, BACKBONE_NET_NAME, AVAILABLE_MODELS
 
 
 fmt = '[%(levelname)s %(asctime)s %(funcName)s:%(lineno)d] %(' 'message)s '
@@ -102,9 +102,9 @@ def data_dir_default():
     """
     system = platform.system()
     if system == 'Windows':
-        return os.path.join(os.environ.get('APPDATA'), 'cnocr')
+        return os.path.join(os.environ.get('APPDATA'), 'cnstr')
     else:
-        return os.path.join(os.path.expanduser("~"), '.cnocr')
+        return os.path.join(os.path.expanduser("~"), '.cnstr')
 
 
 def data_dir():
@@ -115,46 +115,44 @@ def data_dir():
     return os.getenv('CNOCR_HOME', data_dir_default())
 
 
-# def check_model_name(model_name):
-#     emb_model_type, seq_model_type = model_name.rsplit('-', maxsplit=1)
-#     assert emb_model_type in EMB_MODEL_TYPES
-#     assert seq_model_type in SEQ_MODEL_TYPES
-#
-#
-# def get_model_file(model_dir):
-#     r"""Return location for the downloaded models on local file system.
-#
-#     This function will download from online model zoo when model cannot be found or has mismatch.
-#     The root directory will be created if it doesn't exist.
-#
-#     Parameters
-#     ----------
-#     model_dir : str, default $CNOCR_HOME
-#         Location for keeping the model parameters.
-#
-#     Returns
-#     -------
-#     file_path
-#         Path to the requested pretrained model file.
-#     """
-#     model_dir = os.path.expanduser(model_dir)
-#     par_dir = os.path.dirname(model_dir)
-#     os.makedirs(par_dir, exist_ok=True)
-#
-#     zip_file_path = model_dir + '.zip'
-#     if not os.path.exists(zip_file_path):
-#         model_name = os.path.basename(model_dir)
-#         if model_name not in AVAILABLE_MODELS:
-#             raise NotImplementedError('%s is not an available downloaded model' % model_name)
-#         url = AVAILABLE_MODELS[model_name][1]
-#         download(url, path=zip_file_path, overwrite=True)
-#     with zipfile.ZipFile(zip_file_path) as zf:
-#         zf.extractall(par_dir)
-#     os.remove(zip_file_path)
-#
-#     return model_dir
-#
-#
+def check_model_name(model_name):
+    assert model_name in BACKBONE_NET_NAME
+
+
+def get_model_file(model_dir):
+    r"""Return location for the downloaded models on local file system.
+
+    This function will download from online model zoo when model cannot be found or has mismatch.
+    The root directory will be created if it doesn't exist.
+
+    Parameters
+    ----------
+    model_dir : str, default $CNOCR_HOME
+        Location for keeping the model parameters.
+
+    Returns
+    -------
+    file_path
+        Path to the requested pretrained model file.
+    """
+    model_dir = os.path.expanduser(model_dir)
+    par_dir = os.path.dirname(model_dir)
+    os.makedirs(par_dir, exist_ok=True)
+
+    zip_file_path = model_dir + '.zip'
+    if not os.path.exists(zip_file_path):
+        model_name = os.path.basename(model_dir)
+        if model_name not in AVAILABLE_MODELS:
+            raise NotImplementedError('%s is not an available downloaded model' % model_name)
+        url = AVAILABLE_MODELS[model_name][1]
+        download(url, path=zip_file_path, overwrite=True)
+    with zipfile.ZipFile(zip_file_path) as zf:
+        zf.extractall(par_dir)
+    os.remove(zip_file_path)
+
+    return model_dir
+
+
 def read_charset(charset_fp):
     alphabet = [None]
     # 第0个元素是预留id，在CTC中用来分割字符。它不对应有意义的字符
@@ -181,6 +179,7 @@ def normalize_img_array(img, dtype='float32'):
 
 
 def imread(img_fp):
+    """返回RGB格式的numpy数组"""
     # im = cv2.imdecode(np.fromfile(img_fp, dtype=np.uint8), flag)
     im = cv2.imread(img_fp, flags=1)  # res: color BGR
     if im is None:
