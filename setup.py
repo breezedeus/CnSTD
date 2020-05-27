@@ -26,7 +26,7 @@ required = [
     'opencv-python',
     'numpy>=1.14.0,<1.20.0',
     'pillow>=5.3.0',
-    'mxnet>=1.5.0,<1.7.0',
+    'mxnet>=1.5.0,<1.8.0',
     'gluoncv>=0.3.0,<0.7.0',
 ]
 

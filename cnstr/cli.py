@@ -18,8 +18,12 @@ def cli():
 
 
 @cli.command('train', context_settings=_CONTEXT_SETTINGS)
-@click.option('-r', '--root_dir', type=str, help='数据所在的根目录，它与索引文件中指定的文件路径合并后获得最终的文件路径')
-@click.option('-i', '--train_index_fp', type=str, help='存放训练数据的索引文件')
+@click.option(
+    '--backbone',
+    type=click.Choice(['mobilenetv3', 'resnet50_v1b']),
+    default='mobilenetv3',
+    help='backbone model name',
+)
 @click.option('--pretrain_model_fp', type=str, default=None, help='初始化模型路径')
 @click.option('--gpu', type=int, default=-1, help='使用的GPU数量。默认值为-1，表示自动判断')
 @click.option(
@@ -38,10 +42,11 @@ def cli():
     '--wd', type=float, default=5e-4, help='weight decay factor [Default: 0.0]'
 )
 @click.option('--log_step', type=int, default=5, help='隔多少步打印一次信息 [Default: 5]')
+@click.option('-r', '--root_dir', type=str, help='数据所在的根目录，它与索引文件中指定的文件路径合并后获得最终的文件路径')
+@click.option('-i', '--train_index_fp', type=str, help='存放训练数据的索引文件')
 @click.option('-o', '--output_dir', default='ckpt', help='模型输出的目录')
 def train_model(
-    root_dir,
-    train_index_fp,
+    backbone,
     pretrain_model_fp,
     gpu,
     optimizer,
@@ -51,6 +56,8 @@ def train_model(
     momentum,
     wd,
     log_step,
+    root_dir,
+    train_index_fp,
     output_dir,
 ):
     devices = gen_context(gpu)
@@ -58,6 +65,7 @@ def train_model(
         os.makedirs(output_dir)
 
     train(
+        backbone=backbone,
         root_dir=root_dir,
         train_index_fp=train_index_fp,
         pretrain_model=pretrain_model_fp,
@@ -68,7 +76,7 @@ def train_model(
         momentum=momentum,
         wd=wd,
         verbose_step=log_step,
-        ckpt=output_dir,
+        output_dir=output_dir,
         ctx=devices,
     )
 

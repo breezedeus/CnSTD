@@ -8,7 +8,7 @@ from mxnet.gluon import Trainer
 from mxnet import autograd, lr_scheduler as ls
 from tensorboardX import SummaryWriter
 
-from .utils import to_cpu, split_and_load
+from .utils import to_cpu, split_and_load, model_fn_prefix
 from .datasets.dataloader import STRDataset
 from .model.loss import DiceLoss, DiceLoss_with_OHEM
 from .model.net import PSENet
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def train(
+    backbone,
     root_dir,
     train_index_fp,
     pretrain_model,
@@ -29,8 +30,9 @@ def train(
     batch_size=4,
     ctx=mx.cpu(),
     verbose_step=5,
-    ckpt='ckpt',
+    output_dir='ckpt',
 ):
+    output_dir = os.path.join(output_dir, backbone)
     num_kernels = 3
     dataset = STRDataset(
         root_dir=root_dir, train_idx_fp=train_index_fp, num_kernels=num_kernels - 1
@@ -39,7 +41,9 @@ def train(
         ctx = [ctx]
     batch_size = batch_size * len(ctx)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    net = PSENet(num_kernels=num_kernels, ctx=ctx, pretrained=True)
+    net = PSENet(
+        base_net_name=backbone, num_kernels=num_kernels, ctx=ctx, pretrained=True
+    )
     # initial params
     net.initialize(mx.init.Xavier(), ctx=ctx)
     net.collect_params("extra_.*_weight|decoder_.*_weight").initialize(
@@ -48,9 +52,11 @@ def train(
     net.collect_params("extra_.*_bias|decoder_.*_bias").initialize(
         mx.init.Zero(), ctx=ctx, force_reinit=True
     )
-    # net.collect_params("!(resnet*)").setattr("lr_mult", 10)
-    # net.collect_params("!(resnet*)").setattr('grad_req', 'null')
-    net.load_parameters(pretrain_model, ctx=ctx, allow_missing=True, ignore_extra=True)
+
+    if pretrain_model is not None:
+        net.load_parameters(
+            pretrain_model, ctx=ctx, allow_missing=True, ignore_extra=True
+        )
 
     # pse_loss = DiceLoss(lam=0.7, num_kernels=num_kernels)
     pse_loss = DiceLoss_with_OHEM(lam=0.7, num_kernels=num_kernels, debug=False)
@@ -75,7 +81,7 @@ def train(
     trainer = Trainer(
         net.collect_params(), optimizer=optimizer, optimizer_params=optimizer_params
     )
-    summary_writer = SummaryWriter(ckpt)
+    summary_writer = SummaryWriter(output_dir)
     for e in range(epochs):
         cumulative_loss = 0
 
@@ -130,15 +136,15 @@ def train(
                 )
             cumulative_loss += mean_loss
             num_batches += 1
-        summary_writer.add_scalar('mean loss per epoch', cumulative_loss / num_batches, global_steps)
+        summary_writer.add_scalar(
+            'mean_loss_per_epoch', cumulative_loss / num_batches, global_steps
+        )
         logger.info(
             "Epoch {}, mean loss: {}\n".format(e, cumulative_loss / num_batches)
         )
-        net.save_parameters(os.path.join(ckpt, 'model_{}.param'.format(e)))
+        net.save_parameters(os.path.join(output_dir, model_fn_prefix(backbone, e)))
 
-    summary_writer.add_image(
-        'complete_gt', to_cpu(gt_text[0:1, :, :]), global_steps
-    )
+    summary_writer.add_image('complete_gt', to_cpu(gt_text[0:1, :, :]), global_steps)
     summary_writer.add_image(
         'complete_pred', to_cpu(kernels_pred[0:1, 0, :, :]), global_steps
     )

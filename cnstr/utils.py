@@ -28,8 +28,10 @@ from PIL import Image
 from mxnet import gluon
 from mxnet.gluon.utils import download
 
-fmt = '[%(levelname)s %(asctime)s %(funcName)s:%(lineno)d] %(' \
-      'message)s '
+from .consts import MODEL_VERSION
+
+
+fmt = '[%(levelname)s %(asctime)s %(funcName)s:%(lineno)d] %(' 'message)s '
 logging.basicConfig(format=fmt)
 logging.captureWarnings(True)
 logger = logging.getLogger()
@@ -56,6 +58,10 @@ def set_logger(log_file=None, log_level=logging.INFO, log_file_level=logging.NOT
         file_handler.setFormatter(log_format)
         logger.addHandler(file_handler)
     return logger
+
+
+def model_fn_prefix(backbone, epoch):
+    return 'cnstr-v%s-%s-%04d.params' % (MODEL_VERSION, backbone, epoch)
 
 
 def gen_context(num_gpu):

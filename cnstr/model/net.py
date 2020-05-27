@@ -1,15 +1,40 @@
 # coding=utf-8
+from collections import namedtuple
 from mxnet.gluon import HybridBlock, nn
 import mxnet as mx
-from gluoncv import model_zoo
 from gluoncv.model_zoo.resnetv1b import resnet50_v1b
+from gluoncv.model_zoo.mobilenetv3 import mobilenet_v3_small
 from .feature import FPNFeatureExpander
 from mxnet.gluon.contrib.nn import SyncBatchNorm
+
+
+Config = namedtuple('Config', ('net', 'outputs'))
+base_net_configs = {
+    'resnet50_v1b': Config(
+        resnet50_v1b,
+        outputs=[
+            'layers1_relu8_fwd',
+            'layers2_relu11_fwd',
+            'layers3_relu17_fwd',
+            'layers4_relu8_fwd',
+        ],
+    ),
+    'mobilenetv3': Config(
+        mobilenet_v3_small,
+        outputs=[
+            '_resunit0_seq-0-linear-batchnorm_fwd',
+            '_resunit2_seq-2-linear-batchnorm_fwd',
+            '_resunit7_seq-7-linear-batchnorm_fwd',
+            '_resunit10_seq-10-linear-batchnorm_fwd',
+        ],
+    ),
+}
 
 
 class PSENet(HybridBlock):
     def __init__(
         self,
+        base_net_name,
         num_kernels,
         scale=1,
         ctx=mx.cpu(),
@@ -20,22 +45,19 @@ class PSENet(HybridBlock):
         super(PSENet, self).__init__()
         self.num_kernels = num_kernels
 
-        base_network = resnet50_v1b(
+        base_net_params = dict(
             pretrained=pretrained,
-            dilated=False,
-            use_global_stats=False,
             norm_layer=nn.BatchNorm,
             ctx=ctx,
             **kwargs
         )
+        base_net_cls = base_net_configs[base_net_name].net
+        base_net_outputs = base_net_configs[base_net_name].outputs
+
+        base_network = base_net_cls(**base_net_params)
         self.features = FPNFeatureExpander(
             network=base_network,
-            outputs=[
-                'layers1_relu8_fwd',
-                'layers2_relu11_fwd',
-                'layers3_relu17_fwd',
-                'layers4_relu8_fwd',
-            ],
+            outputs=base_net_outputs,
             num_filters=[256, 256, 256, 256],
             use_1x1=True,
             use_upsample=True,
