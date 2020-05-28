@@ -2,8 +2,8 @@
 import os
 import click
 
-from .consts import BACKBONE_NET_NAME
-from .utils import set_logger, gen_context
+from .consts import BACKBONE_NET_NAME, MODEL_VERSION
+from .utils import set_logger, gen_context, data_dir
 from .train import train
 from .eval import evaluate
 
@@ -45,7 +45,7 @@ def cli():
 @click.option('--log_step', type=int, default=5, help='隔多少步打印一次信息 [Default: 5]')
 @click.option('-r', '--root_dir', type=str, help='数据所在的根目录，它与索引文件中指定的文件路径合并后获得最终的文件路径')
 @click.option('-i', '--train_index_fp', type=str, help='存放训练数据的索引文件')
-@click.option('-o', '--output_dir', default='ckpt', help='模型输出的目录')
+@click.option('-o', '--output_dir', default=data_dir(), help='模型输出的根目录')
 def train_model(
     backbone,
     pretrain_model_fp,
@@ -62,6 +62,7 @@ def train_model(
     output_dir,
 ):
     devices = gen_context(gpu)
+    output_dir = os.path.join(output_dir, MODEL_VERSION)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -89,7 +90,8 @@ def train_model(
     default='mobilenetv3',
     help='backbone model name',
 )
-@click.option('--model_epoch', type=str, default=None, help='model epoch')
+@click.option('--model_root_dir', default=data_dir(), help='模型所在的根目录')
+@click.option('--model_epoch', type=int, default=None, help='model epoch')
 @click.option('-i', '--data_dir', type=str, help='数据所在的根目录')
 @click.option(
     '--max_size',
@@ -110,6 +112,7 @@ def train_model(
 @click.option('-o', '--output_dir', default='outputs', help='模型输出的目录')
 def evaluate_model(
     backbone,
+    model_root_dir,
     model_epoch,
     data_dir,
     max_size,
@@ -118,12 +121,13 @@ def evaluate_model(
     gpu,
     output_dir,
 ):
-    devices = gen_context(gpu)
+    devices = gen_context(gpu)[0]
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     evaluate(
         backbone,
+        model_root_dir,
         model_epoch,
         data_dir,
         output_dir,

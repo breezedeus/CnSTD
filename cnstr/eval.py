@@ -33,6 +33,7 @@ def weighted_fusion(seg_maps, image):
 
 def evaluate(
     backbone,
+    model_root_dir,
     model_epoch,
     image_dir,
     output_dir,
@@ -42,7 +43,9 @@ def evaluate(
     ctx=None,
 ):
     # restore model
-    cn_str = CnStr(model_name=backbone, model_epoch=model_epoch, context=ctx)
+    cn_str = CnStr(
+        model_name=backbone, model_epoch=model_epoch, root=model_root_dir, context=ctx
+    )
 
     # process image
     imglst = glob.glob1(image_dir, "*g")

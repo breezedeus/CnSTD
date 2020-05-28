@@ -40,7 +40,14 @@ class CnStr(object):
         self._assert_and_prepare_model_files()
         model_fp = os.path.join(self._model_dir, self._model_file_name)
 
-        self._context = mx.gpu() if context.lower() == 'gpu' else mx.cpu()
+        if isinstance(context, mx.Context):
+            self._context = context
+        elif isinstance(context, str):
+            self._context = mx.gpu() if context.lower() == 'gpu' else mx.cpu()
+        else:
+            self._context = mx.cpu()
+        logger.info('CnStr is initialized, with context {}'.format(self._context))
+
         self._model = restore_model(
             self._model_name, model_fp, n_kernel=3, ctx=self._context
         )
