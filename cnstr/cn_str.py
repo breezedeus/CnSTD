@@ -70,7 +70,7 @@ class CnStr(object):
 
         get_model_file(model_dir)
 
-    def recognize(self, img_fp, max_size, pse_threshold, pse_min_area):
+    def recognize(self, img_fp, max_size=768, pse_threshold=0.45, pse_min_area=100):
         if isinstance(img_fp, str):
             if not os.path.isfile(img_fp):
                 raise FileNotFoundError(img_fp)

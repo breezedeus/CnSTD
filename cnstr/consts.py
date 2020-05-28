@@ -14,5 +14,6 @@ root_url = (
 )
 # name: (epochs, url)
 AVAILABLE_MODELS = {
-    # 'conv-lite-fc': (25, root_url + '/conv-lite-fc.zip'),
+    'mobilenetv3': (40, root_url + '/mobilenetv3.zip'),
+    'resnet50_v1b': (49, root_url + '/resnet50_v1b.zip'),
 }
