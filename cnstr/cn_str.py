@@ -97,7 +97,7 @@ class CnStr(object):
             im_res.expand_dims(axis=0).as_in_context(self._context)
         ).asnumpy()
         t2 = time.time()
-        bboxes, scores = detect_pse(
+        boxes, scores, rects = detect_pse(
             self.seg_maps,
             threshold=pse_threshold,
             threshold_k=pse_threshold,
@@ -105,19 +105,35 @@ class CnStr(object):
             min_area=pse_min_area,
         )
         t3 = time.time()
-
         logger.debug(
             "\tfinished, time costs: psenet pred {}, pse {}, text_boxes: {}".format(
-                t2 - t1, t3 - t2, len(bboxes)
+                t2 - t1, t3 - t2, len(boxes)
             )
         )
 
-        if len(bboxes) > 0:
-            bboxes = bboxes.reshape((-1, 4, 2))
-            bboxes[:, :, 0] /= ratio_w
-            bboxes[:, :, 1] /= ratio_h
+        if len(boxes) == 0:
+            return []
 
-        return list(zip(bboxes, scores))
+        boxes = boxes.reshape((-1, 4, 2))
+        boxes[:, :, 0] /= ratio_w
+        boxes[:, :, 1] /= ratio_h
+        boxes = boxes.astype('int32')
+
+        cropped_imgs = []
+        for idx, rect in enumerate(rects):
+            # import pdb; pdb.set_trace()
+            # cv2.drawContours(img, [np.int0(bboxes[idx])], 0, (0, 0, 255), 3)
+            # cv2.imwrite('img_box.jpg', img)
+            rect = resize_rect(rect, 1.0 / ratio_w, 1.0 / ratio_h)
+            cropped_img = crop_rect(img, rect, alph=0.05)
+            cropped_imgs.append(cropped_img)
+            # cv2.imwrite("img_crop_rot%d.jpg" % idx, cropped_img)
+
+        names = ('box', 'score', 'cropped_img')
+        final_res = []
+        for one_info in zip(boxes, scores, cropped_imgs):
+            final_res.append(dict(zip(names, one_info)))
+        return final_res
 
 
 def restore_model(backbone, ckpt_path, n_kernel, ctx):
@@ -176,6 +192,7 @@ def mask_to_boxes_pse(result_map, score_map, min_score=0.5, min_area=200, scale=
     label_num = np.max(label) + 1
     bboxes = []
     scores = []
+    rects = []
     for i in range(1, label_num):
         points = np.array(np.where(label == i)).transpose((1, 0))[:, ::-1]
         if points.shape[0] < min_area / (scale * scale):
@@ -187,10 +204,12 @@ def mask_to_boxes_pse(result_map, score_map, min_score=0.5, min_area=200, scale=
 
         rect = cv2.minAreaRect(points)
         bbox = cv2.boxPoints(rect) * scale
-        bbox = bbox.astype('int32')
         bboxes.append(bbox.reshape(-1))
         scores.append(score_i)
-    return np.array(bboxes, dtype=np.float32), np.array(scores, dtype=np.float32)
+
+        rect = resize_rect(rect, scale, scale)
+        rects.append(rect)
+    return np.array(bboxes, dtype=np.float32), np.array(scores, dtype=np.float32), rects
 
 
 def detect_pse(
@@ -204,10 +223,39 @@ def detect_pse(
     seg_maps = seg_maps * mask > threshold_k
 
     result_map = pse(seg_maps, 5)
-    bboxes, scores = mask_to_boxes_pse(
+    bboxes, scores, rects = mask_to_boxes_pse(
         result_map, seg_maps[0, :, :], min_score=boxes_thres, min_area=min_area
     )
-    return bboxes, scores
+    return bboxes, scores, rects
+
+
+def crop_rect(img, rect, alph=0.05):
+    center, sizes, angle = rect[0], rect[1], rect[2]
+    sizes = (int(sizes[0] * (1 + alph)), int(sizes[1] + sizes[0] * alph))
+    center = (int(center[0]), int(center[1]))
+
+    if 1.5 * sizes[0] < sizes[1]:
+        sizes = (sizes[1], sizes[0])
+        angle += 90
+
+    height, width = img.shape[0], img.shape[1]
+    M = cv2.getRotationMatrix2D(center, angle, 1)
+    img_rot = cv2.warpAffine(img, M, (width, height))
+    img_crop = cv2.getRectSubPix(img_rot, sizes, center)
+    # cv2.imwrite("img_rot.jpg", img_rot)
+    # cv2.imwrite("img_crop_rot.jpg", img_crop)
+    # import pdb; pdb.set_trace()
+    # img_crop = Image.fromarray(img_crop)
+    return img_crop
+
+
+def resize_rect(rect, w_scale, h_scale):
+    # FIXME 如果w_scale和h_scale不同，angle其实也要对应修正
+    center, sizes, angle = rect
+    center = (center[0] * w_scale, center[1] * h_scale)
+    sizes = (sizes[0] * w_scale, sizes[1] * h_scale)
+    rect = (center, sizes, angle)
+    return rect
 
 
 def sort_poly(p):

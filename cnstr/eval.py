@@ -2,15 +2,12 @@
 import os
 import sys
 import glob
-import time
 import logging
 import cv2
 import numpy as np
-import mxnet as mx
-from mxnet.gluon.data.vision import transforms
 
-from .cn_str import restore_model, resize_image, detect_pse, sort_poly
-from .utils import imread, normalize_img_array
+from .cn_str import sort_poly
+from .utils import imread
 from .cn_str import CnStr
 
 logger = logging.getLogger(__name__)
@@ -55,18 +52,16 @@ def evaluate(
         if os.path.exists(out_fusion_img_name):
             continue
         logger.info("processing image {}".format(item))
-        bboxe_score_list = cn_str.recognize(
-            im_name, max_size, pse_threshold, pse_min_area
-        )
+        box_info_list = cn_str.recognize(im_name, max_size, pse_threshold, pse_min_area)
 
         img = imread(im_name)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        if len(bboxe_score_list) > 0:
+        if len(box_info_list) > 0:
             # save result
             out_text_name = os.path.join(output_dir, item[:-4] + '.txt')
-            out_img_name = os.path.join(output_dir, item)
             with open(out_text_name, 'w') as f:
-                for box, score in bboxe_score_list:
+                for idx, box_info in enumerate(box_info_list):
+                    box = box_info['box']
                     box = sort_poly(box.astype(np.int32))
                     if (
                         np.linalg.norm(box[0] - box[1]) < 5
@@ -92,10 +87,16 @@ def evaluate(
                             box[3, 1],
                         )
                     )
+                    cropped_img = box_info['cropped_img']
+                    cropped_img_name = os.path.join(
+                        output_dir, "fusion_" + item + "_crop%d.jpg" % idx
+                    )
+                    cv2.imwrite(
+                        cropped_img_name, cv2.cvtColor(cropped_img, cv2.COLOR_RGB2BGR)
+                    )
 
             fusion_img = weighted_fusion(cn_str.seg_maps, img)
             fusion_img = np.concatenate((fusion_img, img), 1)
-            # cv2.imwrite(out_img_name, img)
             cv2.imwrite(out_fusion_img_name, fusion_img)
 
 
