@@ -29,7 +29,9 @@ class CnStr(object):
     场景文字识别器（Scene Text Recognition）。虽然名字中有个"Cn"（Chinese），但其实也可以轻松识别英文的。
     """
 
-    def __init__(self, model_name, model_epoch, root=data_dir(), context='cpu'):
+    def __init__(
+        self, model_name='mobilenetv3', model_epoch=None, root=data_dir(), context='cpu'
+    ):
         check_model_name(model_name)
         self._model_name = model_name
         self._model_epoch = model_epoch or AVAILABLE_MODELS[model_name][0]
