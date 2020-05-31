@@ -108,7 +108,7 @@ def train_model(
 )
 @click.option('--model_root_dir', default=data_dir(), help='模型所在的根目录')
 @click.option('--model_epoch', type=int, default=None, help='model epoch')
-@click.option('-i', '--data_dir', type=str, help='数据所在的根目录')
+@click.option('-i', '--img_dir', type=str, help='评估图片所在的目录或者单个图片文件路径')
 @click.option(
     '--max_size',
     type=int,
@@ -130,7 +130,7 @@ def evaluate_model(
     backbone,
     model_root_dir,
     model_epoch,
-    data_dir,
+    img_dir,
     max_size,
     pse_threshold,
     pse_min_area,
@@ -145,7 +145,7 @@ def evaluate_model(
         backbone,
         model_root_dir,
         model_epoch,
-        data_dir,
+        img_dir,
         output_dir,
         max_size,
         pse_threshold,
