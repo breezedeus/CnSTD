@@ -30,7 +30,8 @@ from .util import parse_lines, process_data
 logger = logging.getLogger(__name__)
 
 
-class STRDataset(Dataset):
+class StdDataset(Dataset):
+    """在ICPR和ICDAR15数据集上（需要调整原始数据的存放方式）测试过，是没问题的。"""
     def __init__(
         self,
         root_dir,
@@ -40,7 +41,7 @@ class STRDataset(Dataset):
         num_kernels=6,
         debug=False,
     ):
-        super(STRDataset, self).__init__()
+        super(StdDataset, self).__init__()
         img_label_pairs = read_idx_file(train_idx_fp)
         self.img_label_pairs = [
             (os.path.join(root_dir, img_fp), os.path.join(root_dir, gt_fp))

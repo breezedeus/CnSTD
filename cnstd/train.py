@@ -25,7 +25,7 @@ from mxnet import autograd, lr_scheduler as ls
 from tensorboardX import SummaryWriter
 
 from .utils import to_cpu, split_and_load, model_fn_prefix
-from .datasets.dataloader import STRDataset
+from .datasets.dataloader import StdDataset
 from .model.loss import DiceLoss, DiceLoss_with_OHEM
 from .model.net import PSENet
 
@@ -51,7 +51,7 @@ def train(
     output_dir = os.path.join(output_dir, backbone)
     os.makedirs(output_dir, exist_ok=True)
     num_kernels = 3
-    dataset = STRDataset(
+    dataset = StdDataset(
         root_dir=root_dir, train_idx_fp=train_index_fp, num_kernels=num_kernels - 1
     )
     if not isinstance(ctx, (list, tuple)):
