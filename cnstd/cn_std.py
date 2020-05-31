@@ -89,6 +89,38 @@ class CnStd(object):
         get_model_file(model_dir)
 
     def detect(self, img_fp, max_size=768, pse_threshold=0.45, pse_min_area=100):
+        """
+        检测图片中的文本。
+        Args:
+            img_fp: image file path; or color image mx.nd.NDArray or np.ndarray,
+            with shape (height, width, 3), and the channels should be RGB formatted.
+            max_size: 如果图片的长边超过这个值，就把图片等比例压缩到长边等于这个size
+            pse_threshold: pse中的阈值；越低会导致识别出的文本框越大；反之越小
+            pse_min_area: 面积大小低于此值的框会被去掉。所以此值越小，识别出的框可能越多
+
+        Returns: List(Dict), 每个元素存储了检测出的一个框的信息，使用词典记录，包括以下几个值：
+                    'box'：检测出的文字对应的矩形框四个点的坐标（第一列是宽度方向，第二列是高度方向）；
+                           np.ndarray类型，shape==(4, 2)；
+                    'score'：得分；float类型；
+                    'croppped_img'：对应'box'中的图片patch（RGB格式），会把倾斜的图片旋转为水平。
+                           np.ndarray类型，shape==(width, height, 3)；
+
+          示例:
+            [{'box': array([[416,  77],
+                            [486,  13],
+                            [800, 325],
+                            [730, 390]], dtype=int32),
+              'score': 1.0, 'cropped_img': array([[[25, 20, 24],
+                                                   [26, 21, 25],
+                                                   [25, 20, 24],
+                                                   ...,
+                                                   [11, 11, 13],
+                                                   [11, 11, 13],
+                                                   [11, 11, 13]]], dtype=uint8)},
+             ...
+            ]
+
+        """
         if isinstance(img_fp, str):
             if not os.path.isfile(img_fp):
                 raise FileNotFoundError(img_fp)
@@ -150,7 +182,9 @@ class CnStd(object):
         names = ('box', 'score', 'cropped_img')
         final_res = []
         for one_info in zip(boxes, scores, cropped_imgs):
-            final_res.append(dict(zip(names, one_info)))
+            one_dict = dict(zip(names, one_info))
+            one_dict['box'] = sort_poly(one_dict['box'])
+            final_res.append(one_dict)
         return final_res
 
 
@@ -208,7 +242,7 @@ def mask_to_boxes_pse(result_map, score_map, min_score=0.5, min_area=200, scale=
     """
     label = result_map
     label_num = np.max(label) + 1
-    bboxes = []
+    boxes = []
     scores = []
     rects = []
     for i in range(1, label_num):
@@ -221,13 +255,13 @@ def mask_to_boxes_pse(result_map, score_map, min_score=0.5, min_area=200, scale=
             continue
 
         rect = cv2.minAreaRect(points)
-        bbox = cv2.boxPoints(rect) * scale
-        bboxes.append(bbox.reshape(-1))
+        box = cv2.boxPoints(rect) * scale
+        boxes.append(box.reshape(-1))
         scores.append(score_i)
 
         rect = resize_rect(rect, scale, scale)
         rects.append(rect)
-    return np.array(bboxes, dtype=np.float32), np.array(scores, dtype=np.float32), rects
+    return np.array(boxes, dtype=np.float32), np.array(scores, dtype=np.float32), rects
 
 
 def detect_pse(
@@ -241,13 +275,17 @@ def detect_pse(
     seg_maps = seg_maps * mask > threshold_k
 
     result_map = pse(seg_maps, 5)
-    bboxes, scores, rects = mask_to_boxes_pse(
+    boxes, scores, rects = mask_to_boxes_pse(
         result_map, seg_maps[0, :, :], min_score=boxes_thres, min_area=min_area
     )
-    return bboxes, scores, rects
+    return boxes, scores, rects
 
 
 def crop_rect(img, rect, alph=0.05):
+    """
+    adapted from https://github.com/ouyanghuiyu/chineseocr_lite/blob/e959b6dbf3/utils.py
+    从图片中按框截取出图片patch。
+    """
     center, sizes, angle = rect[0], rect[1], rect[2]
     sizes = (int(sizes[0] * (1 + alph)), int(sizes[1] + sizes[0] * alph))
     center = (int(center[0]), int(center[1]))
@@ -257,14 +295,31 @@ def crop_rect(img, rect, alph=0.05):
         angle += 90
 
     height, width = img.shape[0], img.shape[1]
+    # 先把中心点平移到图片中心，然后再旋转就不会截断图片了
+    img = translate(img, width // 2 - center[0], height // 2 - center[1])
+    center = (width // 2, height // 2)
+
+    # FIXME 如果遇到一个贯穿整个图片对角线的文字行，旋转还是会有边缘被截断的情况
     M = cv2.getRotationMatrix2D(center, angle, 1)
     img_rot = cv2.warpAffine(img, M, (width, height))
     img_crop = cv2.getRectSubPix(img_rot, sizes, center)
+    # cv2.imwrite("img_translate.jpg", img)
     # cv2.imwrite("img_rot.jpg", img_rot)
     # cv2.imwrite("img_crop_rot.jpg", img_crop)
     # import pdb; pdb.set_trace()
-    # img_crop = Image.fromarray(img_crop)
     return img_crop
+
+
+def translate(image, x, y):
+    """from https://www.programcreek.com/python/example/89459/cv2.getRotationMatrix2D:
+        Example 29
+    """
+    # 定义平移矩阵
+    M = np.float32([[1, 0, x], [0, 1, y]])
+    shifted = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
+
+    # 返回转换后的图像
+    return shifted
 
 
 def resize_rect(rect, w_scale, h_scale):
