@@ -48,6 +48,15 @@ class CnStd(object):
     def __init__(
         self, model_name='mobilenetv3', model_epoch=None, root=data_dir(), context='cpu'
     ):
+        """
+        Args:
+            model_name: 模型名称。可选值为 'mobilenetv3', 'resnet50_v1b'
+            model_epoch: 模型迭代次数。默认为 None，表示使用系统自带的模型对应的迭代次数
+            root: 模型文件所在的根目录。
+            Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/0.1.0/mobilenetv3`。
+            Windows下默认值为 `C:\Users\<username>\AppData\Roaming\cnstd`。
+            context: 'cpu', or 'gpu'。表明预测时是使用CPU还是GPU。默认为CPU。
+        """
         check_model_name(model_name)
         self._model_name = model_name
         self._model_epoch = model_epoch or AVAILABLE_MODELS[model_name][0]
