@@ -21,4 +21,12 @@ evaluate:
 	-i examples -o outputs-$(BACKBONE)-size$(MAX_SIZE)-thrsh$(PSE_THRSH)-area$(PSE_MIN_AREA) \
 	--max_size $(MAX_SIZE) --pse_threshold $(PSE_THRSH) --pse_min_area $(PSE_MIN_AREA)
 
-.PHONY: train evaluate
+package:
+	python setup.py sdist bdist_wheel
+
+VERSION = 0.1.0
+upload:
+	python -m twine upload  dist/cnstd-$(VERSION)* --verbose
+
+
+.PHONY: train evaluate package upload
