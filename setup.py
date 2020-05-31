@@ -3,7 +3,7 @@ import os
 from setuptools import find_packages, setup
 from pathlib import Path
 
-PACKAGE_NAME = "cnstr"
+PACKAGE_NAME = "cnstd"
 
 here = Path(__file__).parent
 
@@ -36,7 +36,7 @@ extras_require = {
 
 entry_points = """
 [console_scripts]
-cnstr = cnstr.cli:cli
+cnstd = cnstd.cli:cli
 """
 
 setup(
@@ -48,7 +48,7 @@ setup(
     author='breezedeus',
     author_email='breezedeus@163.com',
     license='Apache 2.0',
-    url='https://github.com/breezedeus/cnstr',
+    url='https://github.com/breezedeus/cnstd',
     platforms=["Mac", "Linux", "Windows"],
     packages=find_packages(),
     entry_points=entry_points,

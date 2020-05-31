@@ -24,9 +24,9 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 
-class CnStr(object):
+class CnStd(object):
     """
-    场景文字识别器（Scene Text Recognition）。虽然名字中有个"Cn"（Chinese），但其实也可以轻松识别英文的。
+    场景文字检测器（Scene Text Detection）。虽然名字中有个"Cn"（Chinese），但其实也可以轻松识别英文的。
     """
 
     def __init__(
@@ -48,7 +48,7 @@ class CnStr(object):
             self._context = mx.gpu() if context.lower() == 'gpu' else mx.cpu()
         else:
             self._context = mx.cpu()
-        logger.info('CnStr is initialized, with context {}'.format(self._context))
+        logger.info('CnStd is initialized, with context {}'.format(self._context))
 
         self._model = restore_model(
             self._model_name, model_fp, n_kernel=3, ctx=self._context
@@ -72,7 +72,7 @@ class CnStr(object):
 
         get_model_file(model_dir)
 
-    def recognize(self, img_fp, max_size=768, pse_threshold=0.45, pse_min_area=100):
+    def detect(self, img_fp, max_size=768, pse_threshold=0.45, pse_min_area=100):
         if isinstance(img_fp, str):
             if not os.path.isfile(img_fp):
                 raise FileNotFoundError(img_fp)

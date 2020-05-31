@@ -61,7 +61,7 @@ def set_logger(log_file=None, log_level=logging.INFO, log_file_level=logging.NOT
 
 
 def model_fn_prefix(backbone, epoch):
-    return 'cnstr-v%s-%s-%04d.params' % (MODEL_VERSION, backbone, epoch)
+    return 'cnstd-v%s-%s-%04d.params' % (MODEL_VERSION, backbone, epoch)
 
 
 def gen_context(num_gpu):
@@ -102,9 +102,9 @@ def data_dir_default():
     """
     system = platform.system()
     if system == 'Windows':
-        return os.path.join(os.environ.get('APPDATA'), 'cnstr')
+        return os.path.join(os.environ.get('APPDATA'), 'cnstd')
     else:
-        return os.path.join(os.path.expanduser("~"), '.cnstr')
+        return os.path.join(os.path.expanduser("~"), '.cnstd')
 
 
 def data_dir():

@@ -6,9 +6,9 @@ import logging
 import cv2
 import numpy as np
 
-from .cn_str import sort_poly
+from .cn_std import sort_poly
 from .utils import imread
-from .cn_str import CnStr
+from .cn_std import CnStd
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def evaluate(
     ctx=None,
 ):
     # restore model
-    cn_str = CnStr(
+    cn_str = CnStd(
         model_name=backbone, model_epoch=model_epoch, root=model_root_dir, context=ctx
     )
 
@@ -52,7 +52,7 @@ def evaluate(
         if os.path.exists(out_fusion_img_name):
             continue
         logger.info("processing image {}".format(item))
-        box_info_list = cn_str.recognize(im_name, max_size, pse_threshold, pse_min_area)
+        box_info_list = cn_str.detect(im_name, max_size, pse_threshold, pse_min_area)
 
         img = imread(im_name)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
