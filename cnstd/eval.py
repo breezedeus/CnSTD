@@ -22,7 +22,6 @@ import logging
 import cv2
 import numpy as np
 
-from .cn_std import sort_poly
 from .utils import imread
 from .cn_std import CnStd
 
@@ -55,15 +54,25 @@ def evaluate(
     pse_min_area,
     ctx=None,
 ):
+    # process image
+    if os.path.isfile(image_dir):
+        imglst = [image_dir]
+    elif os.path.isdir(image_dir):
+        imglst = glob.glob1(image_dir, "*g")
+        imglst = [os.path.join(image_dir, fn) for fn in imglst]
+    else:
+        logger.error('param "image_dir": %s is neither a file or a dir' % image_dir)
+        raise TypeError(
+            'param "image_dir": %s is neither a file or a dir' % image_dir
+        )
+
     # restore model
     cn_str = CnStd(
         model_name=backbone, model_epoch=model_epoch, root=model_root_dir, context=ctx
     )
 
-    # process image
-    imglst = glob.glob1(image_dir, "*g")
-    for item in imglst:
-        im_name = os.path.join(image_dir, item)
+    for im_name in imglst:
+        item = os.path.basename(im_name)
         out_fusion_img_name = os.path.join(output_dir, "fusion_" + item)
         if os.path.exists(out_fusion_img_name):
             continue
@@ -78,7 +87,6 @@ def evaluate(
             with open(out_text_name, 'w') as f:
                 for idx, box_info in enumerate(box_info_list):
                     box = box_info['box']
-                    box = sort_poly(box.astype(np.int32))
                     if (
                         np.linalg.norm(box[0] - box[1]) < 5
                         or np.linalg.norm(box[3] - box[0]) < 5
