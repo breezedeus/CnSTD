@@ -1,6 +1,10 @@
 # cnstd
 
-**cnstd**是**Python 3**下的场景文字检测（STD）工具包，自带了多个训练好的检测模型，安装后即可直接使用。当前的文字检测模型使用的是[PSENet](https://github.com/whai362/PSENet)，目前支持两种backbone模型：`mobilenetv3` 和 `resnet50_v1b`。它们都是在ICPR和ICDAR15训练数据上训练得到的。
+**cnstd** 是 **Python 3** 下的场景文字检测（STD）工具包，自带了多个训练好的检测模型，安装后即可直接使用。当前的文字检测模型使用的是[PSENet](https://github.com/whai362/PSENet)，目前支持两种backbone模型：`mobilenetv3` 和 `resnet50_v1b`。它们都是在ICPR和ICDAR15训练数据上训练得到的。
+
+
+
+如需要识别文本框中的文字，可以结合 **OCR** 工具包 **[cnocr](https://github.com/breezedeus/cnocr)** 一起使用。
 
 
 
@@ -47,7 +51,7 @@ pip install cnstd
 
 ## 使用方法
 
-首次使用**cnstd**时，系统会自动下载zip格式的模型压缩文件，并存放于 `~/.cnstd`目录（Windows下默认路径为 `C:\Users\<username>\AppData\Roaming\cnstd`）。
+首次使用 **cnstd** 时，系统会自动下载zip格式的模型压缩文件，并存放于 `~/.cnstd`目录（Windows下默认路径为 `C:\Users\<username>\AppData\Roaming\cnstd`）。
 下载后的zip文件代码会自动对其解压，然后把解压后的模型相关目录放于`~/.cnstd/0.1.0`目录中。
 
 如果系统无法自动成功下载zip文件，则需要手动从 [百度云盘](https://pan.baidu.com/s/1baAbek7gJ8ScYctB-oCu9w)（提取码为 ` 4ndj`）下载对应的zip文件并把它存放于 `~/.cnstd/0.1.0`（Windows下为 `C:\Users\<username>\AppData\Roaming\cnstd\0.1.0`）目录中。放置好zip文件后，后面的事代码就会自动执行了。
@@ -56,7 +60,7 @@ pip install cnstd
 
 ### 图片预测
 
-使用类`CnStd`进行场景文字的检测。类`CnStd`的初始化函数如下：
+使用类 `CnStd` 进行场景文字的检测。类 `CnStd` 的初始化函数如下：
 
 ```python
 class CnStd(object):
