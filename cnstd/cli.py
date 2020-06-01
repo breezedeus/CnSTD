@@ -125,7 +125,7 @@ def train_model(
     '--pse_min_area', type=int, default=100, help='min area for pse [Default: 100]'
 )
 @click.option('--gpu', type=int, default=-1, help='使用的GPU数量。默认值为-1，表示自动判断')
-@click.option('-o', '--output_dir', default='outputs', help='模型输出的目录')
+@click.option('-o', '--output_dir', default='outputs', help='输出结果存放的目录')
 def evaluate_model(
     backbone,
     model_root_dir,
