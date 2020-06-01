@@ -31,16 +31,16 @@ logger = logging.getLogger(__name__)
 def weighted_fusion(seg_maps, image):
     h, w, _ = image.shape
     seg_maps = np.squeeze(seg_maps)
+    save_img_list = []
     for i, seg_map in enumerate(seg_maps):
-        # check file exits
         seg_map = np.expand_dims(seg_map, axis=2)
         seg_map_3c = np.repeat(seg_map, 3, 2) * 255
         seg_map_3c = cv2.resize(
             seg_map_3c, dsize=(w, h), interpolation=cv2.INTER_LINEAR
         )
         att_im = cv2.addWeighted(seg_map_3c.astype(np.uint8), 0.5, image, 0.5, 0.0)
-        save_img = att_im if i == 0 else np.concatenate((save_img, att_im), 1)
-    return save_img
+        save_img_list.append(att_im)
+    return save_img_list
 
 
 def evaluate(
@@ -88,17 +88,11 @@ def evaluate(
                 for idx, box_info in enumerate(box_info_list):
                     box = box_info['box']
                     if (
-                        np.linalg.norm(box[0] - box[1]) < 5
-                        or np.linalg.norm(box[3] - box[0]) < 5
+                        np.linalg.norm(box[0] - box[1]) < 10
+                        or np.linalg.norm(box[3] - box[0]) < 10
                     ):
                         continue
-                    cv2.polylines(
-                        img,
-                        [box.astype(np.int32).reshape((-1, 1, 2))],
-                        True,
-                        color=(0, 0, 255),
-                        thickness=1,
-                    )
+                    cv2.drawContours(img, [box], 0, (0, 0, 255), 2)
                     f.write(
                         '{},{},{},{},{},{},{},{}\r\n'.format(
                             box[0, 0],
@@ -119,16 +113,16 @@ def evaluate(
                         cropped_img_name, cv2.cvtColor(cropped_img, cv2.COLOR_RGB2BGR)
                     )
 
-            fusion_img = weighted_fusion(cn_str.seg_maps, img)
-            fusion_img = np.concatenate((fusion_img, img), 1)
-            cv2.imwrite(out_fusion_img_name, fusion_img)
+            fusion_imgs = weighted_fusion(cn_str.seg_maps, img)
+            _imwrite(out_fusion_img_name, fusion_imgs, img)
+            # cv2.imwrite(out_fusion_img_name, img)
 
 
-if __name__ == "__main__":
-    image_dir = sys.argv[1]
-    ckpt_path = sys.argv[2]
-    output_dir = sys.argv[3]
-    gpu_list = sys.argv[4]
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-    evaluate(image_dir, ckpt_path, output_dir, gpu_list)
+def _imwrite(out_fusion_img_name, fusion_imgs, img):
+    fusion_imgs.insert(0, img)
+    assert len(fusion_imgs) % 2 == 0
+    new_imgs = []
+    for i in range(len(fusion_imgs) // 2):
+        new_imgs.append(np.concatenate(fusion_imgs[i*2:i*2+2], 1))
+    final_img = np.concatenate(new_imgs, 0)
+    cv2.imwrite(out_fusion_img_name, final_img)
