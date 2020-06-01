@@ -54,7 +54,7 @@ class CnStd(object):
             model_epoch: 模型迭代次数。默认为 None，表示使用系统自带的模型对应的迭代次数
             root: 模型文件所在的根目录。
             Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/0.1.0/mobilenetv3`。
-            Windows下默认值为 `C:\Users\<username>\AppData\Roaming\cnstd`。
+            Windows下默认值为 `C:/Users/<username>/AppData/Roaming/cnstd`。
             context: 'cpu', or 'gpu'。表明预测时是使用CPU还是GPU。默认为CPU。
         """
         check_model_name(model_name)
@@ -296,12 +296,15 @@ def crop_rect(img, rect, alph=0.05):
     从图片中按框截取出图片patch。
     """
     center, sizes, angle = rect[0], rect[1], rect[2]
-    sizes = (int(sizes[0] * (1 + alph)), int(sizes[1] + sizes[0] * alph))
+    sizes = (int(sizes[0] * (1 + alph)), int(sizes[1]))
     center = (int(center[0]), int(center[1]))
 
     if 1.5 * sizes[0] < sizes[1]:
         sizes = (sizes[1], sizes[0])
         angle += 90
+    elif angle < - 45 and (0.66 < sizes[0] / (1e-6 + sizes[1]) < 1.5):
+        sizes = (sizes[1], sizes[0])
+        angle -= 270
 
     height, width = img.shape[0], img.shape[1]
     # 先把中心点平移到图片中心，然后再旋转就不会截断图片了
