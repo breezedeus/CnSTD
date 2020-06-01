@@ -129,7 +129,7 @@ class CnStd(object):
 		                                 [11, 11, 13]]], dtype=uint8)},
 		         ...
 		        ]
-		```
+		  ```
 	
 
 
