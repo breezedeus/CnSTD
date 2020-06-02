@@ -1,6 +1,6 @@
 # cnstd
 
-**cnstd** 是 **Python 3** 下的**场景文字检测（Scene Text Detection，简称STD）**工具包，自带了多个训练好的检测模型，安装后即可直接使用。当前的文字检测模型使用的是 [PSENet](https://github.com/whai362/PSENet)，目前支持两种backbone模型：`mobilenetv3` 和 `resnet50_v1b`。它们都是在 **ICPR** 和 **ICDAR15** 的 `11000` 张训练集图片上训练得到的。
+**cnstd** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，自带了多个训练好的检测模型，安装后即可直接使用。当前的文字检测模型使用的是 [PSENet](https://github.com/whai362/PSENet)，目前支持两种 backbone 模型：**`mobilenetv3`** 和 **`resnet50_v1b`**。它们都是在 **ICPR** 和 **ICDAR15** 的 `11000` 张训练集图片上训练得到的。
 
 
 
@@ -8,7 +8,7 @@
 
 
 
-本项目初始代码来自 [saicoco/Gluon-PSENet](https://github.com/saicoco/Gluon-PSENet) ，感谢作者。
+本项目初始代码主要来自 [saicoco/Gluon-PSENet](https://github.com/saicoco/Gluon-PSENet) ，感谢作者。
 
 
 
@@ -69,7 +69,11 @@ class CnStd(object):
     """
 
     def __init__(
-        self, model_name='mobilenetv3', model_epoch=None, root=data_dir(), context='cpu'
+        model_name='mobilenetv3',
+        model_epoch=None,
+        root=data_dir(),
+        context='cpu',
+        name=None,
     ):
 ```
 
@@ -81,6 +85,7 @@ class CnStd(object):
   * Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/0.1.0/mobilenetv3`。
   * Windows下默认值为 `C:\Users\<username>\AppData\Roaming\cnstd`。
 * `context`：预测使用的机器资源，可取值为字符串`cpu`、`gpu`，或者 `mx.Context`实例。
+* `name`：正在初始化的这个实例的名称。如果需要同时初始化多个实例，需要为不同的实例指定不同的名称。
 
 
 
@@ -89,7 +94,7 @@ class CnStd(object):
 
 
 
-文本检测使用类`CnOcr`的函数`detect()`，以下是详细说明：
+文本检测使用类`CnOcr`的函数 **`detect()`**，以下是详细说明：
 
 
 
@@ -155,12 +160,14 @@ from cnstd import CnStd
 std = CnStd()
 img_fp = 'examples/taobao.jpg'
 img = mx.image.imread(img_fp, 1)
-box_info_list = std.detect('examples/taobao.jpg')
+box_info_list = std.detect(img)
 ```
 
 
 
-识别结果中"croppped_img"对应的值可以直接交由 [cnocr](https://github.com/breezedeus/cnocr) 中的 `CnOcr` 进行文字识别。如上例可以结合  `CnOcr` 进行文字识别：
+### 识别检测框中的文字（OCR）
+
+上面示例识别结果中"cropped_img"对应的值可以直接交由 **[cnocr](https://github.com/breezedeus/cnocr)** 中的 **`CnOcr`** 进行文字识别。如上例可以结合  **`CnOcr`** 进行文字识别：
 
 ```python
 from cnstd import CnStd
@@ -177,7 +184,7 @@ for box_info in box_info_list:
     print('ocr result: %s' % ''.join(ocr_res))
 ```
 
-注：运行上面示例需要先安装 `cnocr` ：
+注：运行上面示例需要先安装 **`cnocr`** ：
 
 ```bash
 pip install cnocr
@@ -193,7 +200,7 @@ pip install cnocr
 
 #### 预测单个文件或文件夹中所有图片
 
-使用命令 `cnstd evaluate`预测单个文件或文件夹中所有图片，以下是使用说明：
+使用命令 **`cnstd evaluate`** 预测单个文件或文件夹中所有图片，以下是使用说明：
 
 ```bash
 (venv) ➜  cnstd git:(master) ✗ cnstd evaluate -h
@@ -231,7 +238,7 @@ cnstd evaluate -i examples/taobao.jpg -o outputs
 
 #### 模型训练
 
-使用命令 `cnstd train` 训练文本检测模型，以下是使用说明：
+使用命令 **`cnstd train`**  训练文本检测模型，以下是使用说明：
 
 ```bash
 (venv) ➜  cnstd git:(master) ✗ cnstd train -h

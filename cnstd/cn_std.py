@@ -46,7 +46,12 @@ class CnStd(object):
     """
 
     def __init__(
-        self, model_name='mobilenetv3', model_epoch=None, root=data_dir(), context='cpu'
+        self,
+        model_name='mobilenetv3',
+        model_epoch=None,
+        root=data_dir(),
+        context='cpu',
+        name=None,
     ):
         """
         Args:
@@ -56,6 +61,7 @@ class CnStd(object):
             Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/0.1.0/mobilenetv3`。
             Windows下默认值为 `C:/Users/<username>/AppData/Roaming/cnstd`。
             context: 'cpu', or 'gpu'。表明预测时是使用CPU还是GPU。默认为CPU。
+            name: 正在初始化的这个实例名称。如果需要同时初始化多个实例，需要为不同的实例指定不同的名称。
         """
         check_model_name(model_name)
         self._model_name = model_name
@@ -75,8 +81,15 @@ class CnStd(object):
             self._context = mx.cpu()
         logger.info('CnStd is initialized, with context {}'.format(self._context))
 
+        # 传入''的话，也改成传入None
+        self._net_prefix = None if name == '' else name
+
         self._model = restore_model(
-            self._model_name, model_fp, n_kernel=3, ctx=self._context
+            self._model_name,
+            model_fp,
+            n_kernel=3,
+            ctx=self._context,
+            net_prefix=self._net_prefix,
         )
         self._trans = transforms.Compose([transforms.ToTensor(),])
         self.seg_maps = None
@@ -197,15 +210,18 @@ class CnStd(object):
         return final_res
 
 
-def restore_model(backbone, ckpt_path, n_kernel, ctx):
+def restore_model(backbone, ckpt_path, n_kernel, ctx, net_prefix):
     """
     Restore model and get runtime session, input, output
     Args:
         - ckpt_path: the path to checkpoint file
         - n_kernel: [kernel_map, score_map]
+        - net_prefix: prefix for the net
     """
 
-    net = PSENet(base_net_name=backbone, num_kernels=n_kernel, ctx=ctx)
+    net = PSENet(
+        base_net_name=backbone, num_kernels=n_kernel, ctx=ctx, prefix=net_prefix
+    )
     net.load_parameters(ckpt_path)
 
     return net
@@ -302,7 +318,7 @@ def crop_rect(img, rect, alph=0.05):
     if 1.5 * sizes[0] < sizes[1]:
         sizes = (sizes[1], sizes[0])
         angle += 90
-    elif angle < - 45 and (0.66 < sizes[0] / (1e-6 + sizes[1]) < 1.5):
+    elif angle < -45 and (0.66 < sizes[0] / (1e-6 + sizes[1]) < 1.5):
         sizes = (sizes[1], sizes[0])
         angle -= 270
 

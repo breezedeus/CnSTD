@@ -18,10 +18,56 @@
 from collections import namedtuple
 from mxnet.gluon import HybridBlock, nn
 import mxnet as mx
-from gluoncv.model_zoo.resnetv1b import resnet50_v1b
 from gluoncv.model_zoo.mobilenetv3 import mobilenet_v3_small
 from .feature import FPNFeatureExpander
 from mxnet.gluon.contrib.nn import SyncBatchNorm
+
+
+def resnet50_v1b(pretrained=False, root='~/.mxnet/models', ctx=mx.cpu(0), **kwargs):
+    """Constructs a ResNetV1b-50 model.
+
+    Parameters
+    ----------
+    pretrained : bool or str
+        Boolean value controls whether to load the default pretrained weights for model.
+        String value represents the hashtag for a certain version of pretrained weights.
+    root : str, default '~/.mxnet/models'
+        Location for keeping the model parameters.
+    ctx : Context, default CPU
+        The context in which to load the pretrained weights.
+    dilated: bool, default False
+        Whether to apply dilation strategy to ResNetV1b, yielding a stride 8 model.
+    norm_layer : object
+        Normalization layer used (default: :class:`mxnet.gluon.nn.BatchNorm`)
+        Can be :class:`mxnet.gluon.nn.BatchNorm` or :class:`mxnet.gluon.contrib.nn.SyncBatchNorm`.
+    last_gamma : bool, default False
+        Whether to initialize the gamma of the last BatchNorm layer in each bottleneck to zero.
+    use_global_stats : bool, default False
+        Whether forcing BatchNorm to use global statistics instead of minibatch statistics;
+        optionally set to True if finetuning using ImageNet classification pretrained models.
+    """
+    from gluoncv.model_zoo.resnetv1b import ResNetV1b, BottleneckV1b
+
+    name_prefix = 'resnetv1b_'
+    if 'name_prefix' in kwargs:
+        _tmp = kwargs.pop('name_prefix')
+        if _tmp:
+            name_prefix = _tmp + name_prefix
+    model = ResNetV1b(BottleneckV1b, [3, 4, 6, 3], name_prefix=name_prefix, **kwargs)
+    if pretrained:
+        from gluoncv.model_zoo.model_store import get_model_file
+
+        model.load_parameters(
+            get_model_file('resnet%d_v%db' % (50, 1), tag=pretrained, root=root),
+            ctx=ctx,
+        )
+        from gluoncv.data import ImageNet1kAttr
+
+        attrib = ImageNet1kAttr()
+        model.synset = attrib.synset
+        model.classes = attrib.classes
+        model.classes_long = attrib.classes_long
+    return model
 
 
 Config = namedtuple('Config', ('net', 'outputs'))
@@ -57,31 +103,35 @@ class PSENet(HybridBlock):
         pretrained=False,
         **kwargs
     ):
-        super(PSENet, self).__init__()
+        super(PSENet, self).__init__(**kwargs)
         self.num_kernels = num_kernels
 
+        if 'prefix' in kwargs:
+            kwargs['name_prefix'] = kwargs.pop('prefix')
         base_net_params = dict(
-            pretrained=pretrained,
-            norm_layer=nn.BatchNorm,
-            ctx=ctx,
-            **kwargs
+            pretrained=pretrained, norm_layer=nn.BatchNorm, ctx=ctx, **kwargs
         )
         base_net_cls = base_net_configs[base_net_name].net
         base_net_outputs = base_net_configs[base_net_name].outputs
-
         base_network = base_net_cls(**base_net_params)
-        self.features = FPNFeatureExpander(
-            network=base_network,
-            outputs=base_net_outputs,
-            num_filters=[256, 256, 256, 256],
-            use_1x1=True,
-            use_upsample=True,
-            use_elewadd=True,
-            use_p6=False,
-            no_bias=True,
-            pretrained=pretrained,
-            ctx=ctx,
-        )
+
+        prefix = kwargs.get('name_prefix')
+        if base_net_name == 'mobilenetv3' and prefix is None:
+            prefix = base_network._prefix
+
+        with mx.name.Prefix(prefix or ''):
+            self.features = FPNFeatureExpander(
+                network=base_network,
+                outputs=base_net_outputs,
+                num_filters=[256, 256, 256, 256],
+                use_1x1=True,
+                use_upsample=True,
+                use_elewadd=True,
+                use_p6=False,
+                no_bias=True,
+                pretrained=pretrained,
+                ctx=ctx,
+            )
 
         self.scale = scale
         self.extrac_convs = []
