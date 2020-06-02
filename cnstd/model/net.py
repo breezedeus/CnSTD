@@ -185,7 +185,7 @@ if __name__ == '__main__':
     import numpy as np
     import matplotlib.pyplot as plt
 
-    fpn = PSENet(num_kernels=7, pretrained=True)
+    fpn = PSENet(base_net_name='mobilenetv3', num_kernels=7, pretrained=True)
     fpn.initialize(ctx=mx.cpu())
     x = mx.nd.array([np.random.uniform(-2, 4.2, size=(3, 640, 640))])
     x = fpn(x)
