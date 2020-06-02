@@ -1,6 +1,6 @@
 # cnstd
 
-**cnstd** 是 **Python 3** 下的场景文字检测（STD）工具包，自带了多个训练好的检测模型，安装后即可直接使用。当前的文字检测模型使用的是[PSENet](https://github.com/whai362/PSENet)，目前支持两种backbone模型：`mobilenetv3` 和 `resnet50_v1b`。它们都是在ICPR和ICDAR15训练数据上训练得到的。
+**cnstd** 是 **Python 3** 下的**场景文字检测（Scene Text Detection，简称STD）**工具包，自带了多个训练好的检测模型，安装后即可直接使用。当前的文字检测模型使用的是 [PSENet](https://github.com/whai362/PSENet)，目前支持两种backbone模型：`mobilenetv3` 和 `resnet50_v1b`。它们都是在 **ICPR** 和 **ICDAR15** 的 `11000` 张训练集图片上训练得到的。
 
 
 
@@ -177,7 +177,7 @@ for box_info in box_info_list:
     print('ocr result: %s' % ''.join(ocr_res))
 ```
 
-注：需要上面示例需要先安装 `cnocr` ：
+注：运行上面示例需要先安装 `cnocr` ：
 
 ```bash
 pip install cnocr
@@ -196,30 +196,28 @@ pip install cnocr
 使用命令 `cnstd evaluate`预测单个文件或文件夹中所有图片，以下是使用说明：
 
 ```bash
-(venv) ➜  cnstd git:(master) ✗ cnstd train -h
-Usage: cnstd train [OPTIONS]
+(venv) ➜  cnstd git:(master) ✗ cnstd evaluate -h
+Usage: cnstd evaluate [OPTIONS]
 
 Options:
   --backbone [mobilenetv3|resnet50_v1b]
                                   backbone model name
-  --pretrain_model_fp TEXT        初始化模型路径
+  --model_root_dir TEXT           模型所在的根目录
+  --model_epoch INTEGER           model epoch
+  -i, --img_dir TEXT              评估图片所在的目录或者单个图片文件路径
+  --max_size INTEGER              图片预测时的最大尺寸（最好是32的倍数）。超过这个尺寸的图片会被等比例压缩到此尺寸
+                                  [Default: 768]
+
+  --pse_threshold FLOAT           threshold for pse [Default: 0.45]
+  --pse_min_area INTEGER          min area for pse [Default: 100]
   --gpu INTEGER                   使用的GPU数量。默认值为-1，表示自动判断
-  --optimizer TEXT                optimizer for training [Default: Adam]
-  --batch_size INTEGER            batch size for each device [Default: 4]
-  --epoch INTEGER                 train epochs [Default: 50]
-  --lr FLOAT                      learning rate [Default: 0.001]
-  --momentum FLOAT                momentum [Default: 0.9]
-  --wd FLOAT                      weight decay factor [Default: 0.0]
-  --log_step INTEGER              隔多少步打印一次信息 [Default: 5]
-  -r, --root_dir TEXT             数据所在的根目录，它与索引文件中指定的文件路径合并后获得最终的文件路径
-  -i, --train_index_fp TEXT       存放训练数据的索引文件
   -o, --output_dir TEXT           输出结果存放的目录
   -h, --help                      Show this message and exit.
 ```
 
 
 
-例如使用以下命令对图片 `examples/taobao.jpg`进行检测，并把检测结果存放在目录 `outputs`中：
+例如可以使用以下命令对图片 `examples/taobao.jpg`进行检测，并把检测结果存放在目录 `outputs`中：
 
 ```bash
 cnstd evaluate -i examples/taobao.jpg -o outputs
