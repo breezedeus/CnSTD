@@ -113,8 +113,8 @@ class CnStd(object):
 - 输入参数 `pse_min_area`: 面积大小低于此值的框会被去掉。所以此值越小，识别出的框可能越多。
 
 - 输入参数 `kwargs`: 目前会使用到的keys有：
-              "height_border"，裁切图片时在高度上留出的边界比例，最终上下总共留出的边界大小为height * height_border; 默认为0.05；
-              "width_border"，裁切图片时在宽度上留出的边界比例，最终左右总共留出的边界大小为height * width_border; 默认为0.0；
+  - "height_border"，裁切图片时在高度上留出的边界比例，最终上下总共留出的边界大小为height * height_border; 默认为0.05；
+  - "width_border"，裁切图片时在宽度上留出的边界比例，最终左右总共留出的边界大小为height * width_border; 默认为0.0；
 - 返回值：类型为`list`，其中每个元素是一个字典，  存储了检测出的一个框的各种信息。字典包括以下几个值：
 	- "box"：检测出的文字对应的矩形框四个点的坐标（第一列对应宽度方向，第二列对应高度方向）；
 			`np.ndarray`类型，`shape==(4, 2)`；
