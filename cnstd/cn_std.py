@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 from __future__ import absolute_import
+
 import os
 import time
 import logging
@@ -110,7 +111,9 @@ class CnStd(object):
 
         get_model_file(model_dir)
 
-    def detect(self, img_fp, max_size=768, pse_threshold=0.45, pse_min_area=100):
+    def detect(
+        self, img_fp, max_size=768, pse_threshold=0.45, pse_min_area=100, **kwargs
+    ):
         """
         检测图片中的文本。
         Args:
@@ -119,6 +122,9 @@ class CnStd(object):
             max_size: 如果图片的长边超过这个值，就把图片等比例压缩到长边等于这个size
             pse_threshold: pse中的阈值；越低会导致识别出的文本框越大；反之越小
             pse_min_area: 面积大小低于此值的框会被去掉。所以此值越小，识别出的框可能越多
+            kwargs: 目前会使用到的keys有：
+                        'height_border'，裁切图片时在高度上留出的边界比例，最终上下总共留出的边界大小为height * height_border; 默认为0.05；
+                        'width_border'，裁切图片时在宽度上留出的边界比例，最终左右总共留出的边界大小为height * width_border; 默认为0.0；
 
         Returns: List(Dict), 每个元素存储了检测出的一个框的信息，使用词典记录，包括以下几个值：
                     'box'：检测出的文字对应的矩形框四个点的坐标（第一列是宽度方向，第二列是高度方向）；
@@ -165,12 +171,11 @@ class CnStd(object):
         im_res = self._trans(im_res)
 
         t1 = time.time()
-        self.seg_maps = self._model(
-            im_res.expand_dims(axis=0).as_in_context(self._context)
-        ).asnumpy()
+        seg_maps = self._model(im_res.expand_dims(axis=0).as_in_context(self._context))
+        self.seg_maps = seg_maps = seg_maps.asnumpy()
         t2 = time.time()
         boxes, scores, rects = detect_pse(
-            self.seg_maps,
+            seg_maps,
             threshold=pse_threshold,
             threshold_k=pse_threshold,
             boxes_thres=0.01,
@@ -191,13 +196,15 @@ class CnStd(object):
         boxes[:, :, 1] /= ratio_h
         boxes = boxes.astype('int32')
 
+        height_border = kwargs.get('height_border', 0.05)
+        width_border = kwargs.get('width_border', 0.0)
         cropped_imgs = []
         for idx, rect in enumerate(rects):
             # import pdb; pdb.set_trace()
             # cv2.drawContours(img, [np.int0(bboxes[idx])], 0, (0, 0, 255), 3)
             # cv2.imwrite('img_box.jpg', img)
             rect = resize_rect(rect, 1.0 / ratio_w, 1.0 / ratio_h)
-            cropped_img = crop_rect(img, rect, alph=0.05)
+            cropped_img = crop_rect(img, rect, height_border, width_border)
             cropped_imgs.append(cropped_img)
             # cv2.imwrite("img_crop_rot%d.jpg" % idx, cropped_img)
 
@@ -306,13 +313,16 @@ def detect_pse(
     return boxes, scores, rects
 
 
-def crop_rect(img, rect, alph=0.05):
+def crop_rect(img, rect, height_border=0.05, width_border=0.0):
     """
     adapted from https://github.com/ouyanghuiyu/chineseocr_lite/blob/e959b6dbf3/utils.py
     从图片中按框截取出图片patch。
     """
     center, sizes, angle = rect[0], rect[1], rect[2]
-    sizes = (int(sizes[0] * (1 + alph)), int(sizes[1]))
+    sizes = (
+        int(sizes[0] * (1 + height_border)),
+        int(sizes[1] + sizes[0] * width_border),
+    )
     center = (int(center[0]), int(center[1]))
 
     if 1.5 * sizes[0] < sizes[1]:
