@@ -229,8 +229,7 @@ def restore_model(backbone, ckpt_path, n_kernel, ctx, net_prefix):
     net = PSENet(
         base_net_name=backbone, num_kernels=n_kernel, ctx=ctx, prefix=net_prefix
     )
-    net.load_parameters(ckpt_path)
-
+    net.load_parameters(ckpt_path, ctx=ctx)
     return net
 
 
