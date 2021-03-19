@@ -18,7 +18,7 @@ matplotlib==3.2.1         # via gluoncv
 mxnet==1.6.0              # via cnstd (setup.py)
 numpy==1.18.4             # via cnstd (setup.py), gluoncv, matplotlib, mxnet, opencv-python, scipy, tensorboardx
 opencv-python==4.2.0.34   # via cnstd (setup.py)
-pillow==7.1.2             # via cnstd (setup.py), gluoncv
+pillow==8.1.1             # via cnstd (setup.py), gluoncv
 polygon3==3.0.8           # via cnstd (setup.py)
 portalocker==1.7.0        # via gluoncv
 protobuf==3.12.2          # via tensorboardx
