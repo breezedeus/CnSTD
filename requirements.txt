@@ -31,7 +31,7 @@ shapely==1.7.0            # via cnstd (setup.py)
 six==1.15.0               # via cycler, protobuf, python-dateutil, tensorboardx
 tensorboardx==2.0         # via cnstd (setup.py)
 tqdm==4.46.0              # via gluoncv
-urllib3==1.25.9           # via requests
+urllib3==1.26.5           # via requests
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
