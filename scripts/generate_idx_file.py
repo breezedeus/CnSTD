@@ -28,7 +28,7 @@ def main():
     label_prefix_dir = 'icdar2015/train/gts'
     label_prefix_fn = 'gt_'
     idx_pairs = generate_idx_pairs(img_dir, img_prefix_dir, label_prefix_dir, label_prefix_fn)
-    save_idx_file(idx_pairs, 'data/icdar2015/train.txt')
+    save_idx_file(idx_pairs, 'data/icdar2015/train.tsv')
 
 
 if __name__ == '__main__':

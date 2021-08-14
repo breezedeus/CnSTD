@@ -1,5 +1,5 @@
 ROOT_DIR = data
-#TRAIN_IDX_FP = data/train.txt
+#TRAIN_IDX_FP = data/train.tsv
 TRAIN_IDX_FP = data/icdar2015/train.txt
 
 BACKBONE = mobilenetv3
@@ -9,8 +9,9 @@ LR = 3e-4
 NUM_GPU = -1
 
 train:
-	nohup cnstd train --backbone $(BACKBONE) -r $(ROOT_DIR) -i $(TRAIN_IDX_FP) -o ckpt --optimizer $(OPTIMIZER) \
-	--epoch $(EPOCHS) --gpu $(NUM_GPU) --batch_size 4 --lr $(LR) > nohup-$(BACKBONE).out 2>&1 &
+	cnstd train -m $(BACKBONE) --train-config-fp examples/train_config.json -i data/icdar2015
+#	nohup cnstd train --backbone $(BACKBONE) -r $(ROOT_DIR) -i $(TRAIN_IDX_FP) -o ckpt --optimizer $(OPTIMIZER) \
+#	--epoch $(EPOCHS) --gpu $(NUM_GPU) --batch_size 4 --lr $(LR) > nohup-$(BACKBONE).out 2>&1 &
 
 MAX_SIZE = 768# 640
 PSE_THRSH = 0.45

@@ -17,16 +17,25 @@
 # under the License.
 import os
 import click
+import json
+
+import numpy as np
+from torchvision import transforms
+from torchvision.transforms import ColorJitter
 
 from .consts import BACKBONE_NET_NAME, MODEL_VERSION
-from .utils import set_logger, gen_context, data_dir
-from .train import train
+from .utils import set_logger, data_dir, load_model_params, imsave
+from .dataset import StdDataModule
+from .trainer import PlTrainer
+from .transforms import Resize, RandomApply, ColorInversion, NormalizeAug
+
 from .eval import evaluate
 
 
 _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
 
 logger = set_logger(log_level='DEBUG')
+DEFAULT_MODEL_NAME = ''
 
 
 @click.group(context_settings=_CONTEXT_SETTINGS)
@@ -34,69 +43,88 @@ def cli():
     pass
 
 
-@cli.command('train', context_settings=_CONTEXT_SETTINGS)
+@cli.command('train')
+@click.option('-m', '--model-name', type=str, default=DEFAULT_MODEL_NAME, help='模型名称')
 @click.option(
-    '--backbone',
-    type=click.Choice(BACKBONE_NET_NAME),
-    default='mobilenetv3',
-    help='backbone model name',
-)
-@click.option('--pretrain_model_fp', type=str, default=None, help='初始化模型路径')
-@click.option('--gpu', type=int, default=-1, help='使用的GPU数量。默认值为-1，表示自动判断')
-@click.option(
-    "--optimizer",
+    '-i',
+    '--index-dir',
     type=str,
-    default='Adam',
-    help="optimizer for training [Default: Adam]",
+    required=True,
+    help='索引文件所在的文件夹，会读取文件夹中的 train.tsv 和 dev.tsv 文件',
+)
+@click.option('--train-config-fp', type=str, required=True, help='训练使用的json配置文件')
+@click.option(
+    '-r', '--resume-from-checkpoint', type=str, default=None, help='恢复此前中断的训练状态，继续训练'
 )
 @click.option(
-    '--batch_size', type=int, default=4, help='batch size for each device [Default: 4]'
+    '-p',
+    '--pretrained-model-fp',
+    type=str,
+    default=None,
+    help='导入的训练好的模型，作为初始模型。优先级低于"--restore-training-fp"，当传入"--restore-training-fp"时，此传入可能失效',
 )
-@click.option('--epoch', type=int, default=50, help='train epochs [Default: 50]')
-@click.option('--lr', type=float, default=0.001, help='learning rate [Default: 0.001]')
-@click.option('--momentum', type=float, default=0.99, help='momentum [Default: 0.9]')
-@click.option(
-    '--wd', type=float, default=5e-4, help='weight decay factor [Default: 0.0]'
-)
-@click.option('--log_step', type=int, default=5, help='隔多少步打印一次信息 [Default: 5]')
-@click.option('-r', '--root_dir', type=str, help='数据所在的根目录，它与索引文件中指定的文件路径合并后获得最终的文件路径')
-@click.option('-i', '--train_index_fp', type=str, help='存放训练数据的索引文件')
-@click.option('-o', '--output_dir', default=data_dir(), help='模型输出的根目录')
-def train_model(
-    backbone,
-    pretrain_model_fp,
-    gpu,
-    optimizer,
-    batch_size,
-    epoch,
-    lr,
-    momentum,
-    wd,
-    log_step,
-    root_dir,
-    train_index_fp,
-    output_dir,
+def train(
+    model_name, index_dir, train_config_fp, resume_from_checkpoint, pretrained_model_fp
 ):
-    devices = gen_context(gpu)
-    output_dir = os.path.join(output_dir, MODEL_VERSION)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    train_config = json.load(open(train_config_fp))
 
-    train(
-        backbone=backbone,
-        root_dir=root_dir,
-        train_index_fp=train_index_fp,
-        pretrain_model=pretrain_model_fp,
-        optimizer=optimizer,
-        batch_size=batch_size,
-        epochs=epoch,
-        lr=lr,
-        momentum=momentum,
-        wd=wd,
-        verbose_step=log_step,
-        output_dir=output_dir,
-        ctx=devices,
+    train_transform = transforms.Compose(
+        [
+            Resize((train_config['input_size'], train_config['input_size'])),
+            # # Augmentations
+            # RandomApply(ColorInversion(), .1),
+            # ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.02),
+            # NormalizeAug(),
+        ]
     )
+    val_transform = transforms.Compose(
+        [
+            Resize((train_config['input_size'], train_config['input_size'])),
+            # NormalizeAug(),
+        ]
+    )
+
+    data_mod = StdDataModule(
+        index_dir=index_dir,
+        vocab_fp=train_config['vocab_fp'],
+        data_root_dir=train_config['data_root_dir'],
+        train_transforms=train_transform,
+        val_transforms=val_transform,
+        batch_size=train_config['batch_size'],
+        num_workers=train_config['num_workers'],
+        pin_memory=train_config['pin_memory'],
+    )
+
+    train_ds = data_mod.train
+    # x = train_ds[0]
+    # print(x)
+    visualize_example(train_ds[19])
+    # breakpoint()
+
+    # trainer = PlTrainer(
+    #     train_config, ckpt_fn=['cnstd', 'v%s' % MODEL_VERSION, model_name]
+    # )
+    # model = gen_model(model_name, data_mod.vocab)
+    # logger.info(model)
+    #
+    # if pretrained_model_fp is not None:
+    #     load_model_params(model, pretrained_model_fp)
+    #
+    # trainer.fit(model, datamodule=data_mod, resume_from_checkpoint=resume_from_checkpoint)
+
+
+def visualize_example(example):
+    image = example['image']
+    imsave(image, 'debug-image.jpg', normalized=True)
+
+    def _vis_bool(img, fp):
+        img *= 255
+        imsave(img, fp, normalized=False)
+
+    _vis_bool(example['gt'].transpose(1, 2, 0), 'debug-gt.jpg')
+    _vis_bool(np.expand_dims(example['mask'], -1), 'debug-mask.jpg')
+    _vis_bool(np.expand_dims(example['thresh_map'], -1), 'debug-thresh-map.jpg')
+    _vis_bool(np.expand_dims(example['thresh_mask'], -1), 'debug-thresh-mask.jpg')
 
 
 @cli.command('evaluate', context_settings=_CONTEXT_SETTINGS)
