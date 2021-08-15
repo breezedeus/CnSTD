@@ -3,6 +3,7 @@
 # This program is licensed under the Apache License version 2.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
 
+import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -42,7 +43,7 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         'backbone_submodule': None,
         'fpn_layers': ['layer1', 'layer2', 'layer3', 'layer4'],
         'fpn_channels': [64, 128, 256, 512],
-        'input_shape': (3, 1024, 1024),
+        'input_shape': (3, 512, 512),
         'mean': (0.5, 0.5, 0.5),
         'std': (1.0, 1.0, 1.0),
         'url': None,
@@ -231,7 +232,7 @@ class DBNet(_DBNet, nn.Module):
         if seg_target is None or return_preds:
             # Post-process boxes
             out["preds"] = self.postprocessor(
-                prob_map.squeeze(1).detach().cpu().numpy()
+                prob_map.squeeze(1).detach().cpu().numpy().astype(np.float32)
             )
 
         if seg_target is not None:
