@@ -132,11 +132,11 @@ class WrapperLightningModule(pl.LightningModule):
             val_metrics, on_step=True, on_epoch=True, prog_bar=True, logger=True,
         )
 
-        pred_boxes = np.concatenate(res['preds'][0], 0)[:, :-1]  # 最后一列是分数，去掉不用
-        recall, precision, mean_iou = self.val_metric.update(
+        pred_boxes = [boxes[:, :-1] for boxes in res['preds'][0]]  # 最后一列是分数，去掉不用
+        match, mean_iou = self.val_metric.update(
             batch['polygons'], pred_boxes
         )
-        val_metrics = dict(recall=recall, precision=precision, mean_iou=mean_iou)
+        val_metrics = dict(match=match, mean_iou=mean_iou)
         self.log_dict(
             val_metrics, on_step=True, on_epoch=False, prog_bar=True, logger=True,
         )
@@ -144,8 +144,8 @@ class WrapperLightningModule(pl.LightningModule):
         return losses
 
     def validation_epoch_end(self, losses_list) -> None:
-        recall, precision, mean_iou = self.val_metric.summary()
-        val_metrics = dict(recall=recall, precision=precision, mean_iou=mean_iou)
+        match, mean_iou = self.val_metric.summary()
+        val_metrics = dict(match=match, mean_iou=mean_iou)
         self.log_dict(
             val_metrics, on_step=False, on_epoch=True, prog_bar=True, logger=True,
         )
@@ -184,7 +184,7 @@ class PlTrainer(object):
         self.pl_trainer = pl.Trainer(
             limit_train_batches=self.config.get('limit_train_batches', 1.0),
             limit_val_batches=self.config.get('limit_val_batches', 1.0),
-            num_sanity_val_steps=1,
+            num_sanity_val_steps=2,
             gpus=self.config.get('gpus'),
             max_epochs=self.config.get('epochs', 20),
             precision=self.config.get('precision', 32),

@@ -185,48 +185,49 @@ def mask_iou(masks_1: np.ndarray, masks_2: np.ndarray) -> np.ndarray:
         the IoU matrix of shape (N, M)
     """
 
-    if masks_1.shape[1:] != masks_2.shape[1:]:
+    if masks_1.shape != masks_2.shape:
         raise AssertionError("both boolean masks should have the same spatial shape")
 
-    iou_mat = np.zeros((masks_1.shape[0], masks_2.shape[0]), dtype=np.float32)
+    iou_mat = np.zeros((masks_1.shape[0], ), dtype=np.float32)
 
     if masks_1.shape[0] > 0 and masks_2.shape[0] > 0:
-        intersection = np.logical_and(masks_1[:, None, ...], masks_2[None, ...])
-        union = np.logical_or(masks_1[:, None, ...], masks_2[None, ...])
-        axes = tuple(range(2, masks_1.ndim + 1))
-        iou_mat = intersection.sum(axis=axes) / union.sum(axis=axes)
+        intersection = np.logical_and(masks_1, masks_2)
+        union = np.logical_or(masks_1, masks_2)
+        iou_mat = intersection.sum(axis=(1, 2)) / union.sum(axis=(1, 2))
 
     return iou_mat
 
 
-def rbox_to_mask(boxes: np.ndarray, shape: Tuple[int, int]) -> np.ndarray:
+def rbox_to_mask(boxes_list: List[np.ndarray], shape: Tuple[int, int]) -> np.ndarray:
     """Convert boxes to masks
 
     Args:
-        boxes: rotated bounding boxes of shape (N, 5) in format (x, y, w, h, alpha)
+        boxes_list: list of rotated bounding boxes of shape (M, 5) in format (x, y, w, h, alpha)
         shape: spatial shapes of the output masks
 
     Returns:
         the boolean masks of shape (N, H, W)
     """
 
-    masks = np.zeros((boxes.shape[0], *shape), dtype=np.uint8)
+    batch_size = len(boxes_list)
+    masks = np.zeros((batch_size, *shape), dtype=np.uint8)
 
-    if boxes.shape[0] > 0:
-        # Get absolute coordinates
-        if boxes.dtype != np.int:
-            abs_boxes = boxes.copy()
-            abs_boxes[:, [0, 2]] = abs_boxes[:, [0, 2]] * shape[1]
-            abs_boxes[:, [1, 3]] = abs_boxes[:, [1, 3]] * shape[0]
-            abs_boxes = abs_boxes.round().astype(np.int)
-        else:
-            abs_boxes = boxes
-            abs_boxes[:, 2:] = abs_boxes[:, 2:] + 1
+    for idx, boxes in enumerate(boxes_list):
+        if boxes.shape[0] > 0:
+            # Get absolute coordinates
+            if boxes.dtype != np.int:
+                abs_boxes = boxes.copy()
+                abs_boxes[:, [0, 2]] = abs_boxes[:, [0, 2]] * shape[1]
+                abs_boxes[:, [1, 3]] = abs_boxes[:, [1, 3]] * shape[0]
+                abs_boxes = abs_boxes.round().astype(np.int)
+            else:
+                abs_boxes = boxes
+                abs_boxes[:, 2:] = abs_boxes[:, 2:] + 1
 
-        # TODO: optimize slicing to improve vectorization
-        for idx, _box in enumerate(abs_boxes):
-            box = rbbox_to_polygon(_box)
-            cv2.fillPoly(masks[idx], [np.array(box, np.int32)], 1)
+            # TODO: optimize slicing to improve vectorization
+            for _box in abs_boxes:
+                box = rbbox_to_polygon(_box)
+                cv2.fillPoly(masks[idx], [np.array(box, np.int32)], 1)
 
     return masks.astype(bool)
 
@@ -316,75 +317,70 @@ class LocalizationConfusion:
         self.mask_shape = mask_shape
         self.reset()
 
-    def update(self, gt_boxes: List[List[np.ndarray]], preds: np.ndarray) -> Tuple[float, float, float]:
+    def update(self, gt_boxes: List[List[np.ndarray]], preds: List[np.ndarray]) -> Tuple[float, float]:
         gts = self._transform_gt_polygons(gt_boxes)
         cur_iou, cur_matches = 0.0, 0.0
-        batch_size = preds.shape[0]
+        batch_size = len(preds)
         if batch_size > 0:
             # Compute IoU
             if self.rotated_bbox:
                 mask_gts = rbox_to_mask(gts, shape=self.mask_shape)
-                if mask_gts.shape[0] > batch_size * 5:  # 避免出现过多的框，内存消耗爆炸💥💥💥
-                    mask_gts = mask_gts[:batch_size * 5]
                 mask_preds = rbox_to_mask(preds, shape=self.mask_shape)
-                if mask_preds.shape[0] > mask_gts.shape[0]:  # 避免出现过多的框，内存消耗爆炸💥💥💥
-                    mask_preds = mask_preds[:mask_gts.shape[0]]
-                iou_mat = mask_iou(mask_gts, mask_preds)
+                iou_vec = mask_iou(mask_gts, mask_preds)
+                cur_iou = iou_vec.sum()
+                cur_matches = int((iou_vec >= self.iou_thresh).sum())
             else:
                 iou_mat = box_iou(gts, preds)
-            cur_iou = float(iou_mat.max(axis=1).sum())
+                cur_iou = float(iou_mat.max(axis=1).sum())
 
-            # Assign pairs
-            gt_indices, pred_indices = linear_sum_assignment(-iou_mat)
-            cur_matches = int((iou_mat[gt_indices, pred_indices] >= self.iou_thresh).sum())
+                # Assign pairs
+                gt_indices, pred_indices = linear_sum_assignment(-iou_mat)
+                cur_matches = int((iou_mat[gt_indices, pred_indices] >= self.iou_thresh).sum())
 
         self.tot_iou += cur_iou
         self.matches += cur_matches
         # Update counts
-        self.num_gts += gts.shape[0]
-        self.num_preds += preds.shape[0]
+        self.num_gts += batch_size
 
-        cur_recall = cur_matches / (1e-6 + gts.shape[0])
-        cur_precision = cur_matches / (1e-6 + preds.shape[0])
-        cur_iou = cur_iou / (1e-6 + preds.shape[0])
-        return cur_recall, cur_precision, cur_iou
+        cur_match = cur_matches / (1e-6 + batch_size)
+        cur_iou = cur_iou / (1e-6 + batch_size)
+        return cur_match, cur_iou
 
-    def _transform_gt_polygons(self, polgons: List[List[np.ndarray]]):
+    def _transform_gt_polygons(self, polgons: List[List[np.ndarray]]) -> List[np.ndarray]:
         """
 
         Args:
             polgons: 最里层每个 np.ndarray 是个 [4, 2] 的矩阵，表示一个box的4个点的坐标。
 
         Returns:
-            rotated bounding boxes of shape (N, 5) in format (x, y, w, h, alpha)
+            list of rotated bounding boxes of shape (M, 5) in format (x, y, w, h, alpha)
 
         """
         out = []
-        for box in chain(*polgons):
-            box = box.astype(np.uint)
-            out.append(fit_rbbox(box) if self.rotated_bbox else cv2.boundingRect(box))
-        return np.asarray(out)
+        for boxes in polgons:
+            new_boxes = []
+            for box in boxes:
+                box = box.astype(np.uint)
+                new_boxes.append(fit_rbbox(box) if self.rotated_bbox else cv2.boundingRect(box))
+            out.append(np.asarray(new_boxes))
+        return out
 
-    def summary(self) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+    def summary(self) -> Tuple[Optional[float], Optional[float]]:
         """Computes the aggregated metrics
 
         Returns:
             a tuple with the recall, precision and meanIoU scores
         """
 
-        # Recall
-        recall = self.matches / (1e-6 + self.num_gts)
-
-        # Precision
-        precision = self.matches / (1e-6 + self.num_preds)
+        # match
+        match = self.matches / (1e-6 + self.num_gts)
 
         # mean IoU
-        mean_iou = self.tot_iou / (1e-6 + self.num_preds)
+        mean_iou = self.tot_iou / (1e-6 + self.num_gts)
 
-        return recall, precision, mean_iou
+        return match, mean_iou
 
     def reset(self) -> None:
         self.num_gts = 0
-        self.num_preds = 0
         self.matches = 0
         self.tot_iou = 0.
