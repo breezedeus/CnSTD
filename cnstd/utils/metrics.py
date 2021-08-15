@@ -319,10 +319,13 @@ class LocalizationConfusion:
     def update(self, gt_boxes: List[List[np.ndarray]], preds: np.ndarray) -> Tuple[float, float, float]:
         gts = self._transform_gt_polygons(gt_boxes)
         cur_iou, cur_matches = 0.0, 0.0
-        if preds.shape[0] > 0:
+        batch_size = preds.shape[0]
+        if batch_size > 0:
             # Compute IoU
             if self.rotated_bbox:
                 mask_gts = rbox_to_mask(gts, shape=self.mask_shape)
+                if mask_gts.shape[0] > batch_size * 5:  # 避免出现过多的框，内存消耗爆炸💥💥💥
+                    mask_gts = mask_gts[batch_size * 5]
                 mask_preds = rbox_to_mask(preds, shape=self.mask_shape)
                 if mask_preds.shape[0] > mask_gts.shape[0]:  # 避免出现过多的框，内存消耗爆炸💥💥💥
                     mask_preds = mask_preds[:mask_gts.shape[0]]
