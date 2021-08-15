@@ -19,6 +19,8 @@ from torch.optim.lr_scheduler import (
 )
 from torch.utils.data import DataLoader
 
+from .utils import LocalizationConfusion
+
 logger = logging.getLogger(__name__)
 
 
@@ -80,31 +82,6 @@ def get_lr_scheduler(config, optimizer):
     return StepLR(optimizer, step_size, gamma=gamma)
 
 
-class Accuracy(object):
-    @classmethod
-    def complete_match(cls, labels: List[List[str]], preds: List[List[str]]):
-        assert len(labels) == len(preds)
-        total_num = len(labels)
-        hit_num = 0
-        for label, pred in zip(labels, preds):
-            if label == pred:
-                hit_num += 1
-
-        return hit_num / (total_num + 1e-6)
-
-    @classmethod
-    def label_match(cls, labels: List[List[str]], preds: List[List[str]]):
-        assert len(labels) == len(preds)
-        total_num = 0
-        hit_num = 0
-        for label, pred in zip(labels, preds):
-            total_num += max(len(label), len(pred))
-            min_len = min(len(label), len(pred))
-            hit_num += sum([l == p for l, p in zip(label[:min_len], pred[:min_len])])
-
-        return hit_num / (total_num + 1e-6)
-
-
 class WrapperLightningModule(pl.LightningModule):
     def __init__(self, config, model):
         super().__init__()
@@ -115,6 +92,11 @@ class WrapperLightningModule(pl.LightningModule):
             self.model,
             config['learning_rate'],
             config.get('weight_decay', 0),
+        )
+
+        expected_img_shape = model.cfg['input_shape']
+        self.val_metric = LocalizationConfusion(
+            rotated_bbox=self.model.rotated_bbox, mask_shape=expected_img_shape[1:]
         )
 
     def forward(self, x):
@@ -145,19 +127,29 @@ class WrapperLightningModule(pl.LightningModule):
             batch, return_model_output=True, return_preds=True
         )
         losses = res['loss']
-        preds, _ = zip(*res['preds'])
         val_metrics = {'val_loss': losses.item()}
-
-        labels_list = batch[2]
-        val_metrics['complete_match'] = Accuracy.complete_match(labels_list, preds)
-        val_metrics['label_match'] = Accuracy.label_match(labels_list, preds)
-
-        # 过滤掉NaN的指标。有些指标在某些batch数据上会出现结果NaN，比如batch只有正样本或负样本时，AUC=NaN
-        val_metrics = {k: v for k, v in val_metrics.items() if not np.isnan(v)}
         self.log_dict(
             val_metrics, on_step=True, on_epoch=True, prog_bar=True, logger=True,
         )
+
+        pred_boxes = np.concatenate(res['preds'][0], 0)[:, :-1]  # 最后一列是分数，去掉不用
+        recall, precision, mean_iou = self.val_metric.update(
+            batch['polygons'], pred_boxes
+        )
+        val_metrics = dict(recall=recall, precision=precision, mean_iou=mean_iou)
+        self.log_dict(
+            val_metrics, on_step=True, on_epoch=False, prog_bar=True, logger=True,
+        )
+
         return losses
+
+    def validation_epoch_end(self, losses_list) -> None:
+        recall, precision, mean_iou = self.val_metric.summary()
+        val_metrics = dict(recall=recall, precision=precision, mean_iou=mean_iou)
+        self.log_dict(
+            val_metrics, on_step=False, on_epoch=True, prog_bar=True, logger=True,
+        )
+        self.val_metric.reset()
 
     def configure_optimizers(self):
         return [self._optimizer], [get_lr_scheduler(self.config, self._optimizer)]

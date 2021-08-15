@@ -4,11 +4,11 @@
     "vocab_fp": "label_cn.txt",
     "data_root_dir": "data",
 
-    "input_size": 400,
+    "rotated_bbox": true,
 
     "gpus": 0,
     "epochs": 2,
-    "batch_size": 64,
+    "batch_size": 4,
     "num_workers": 0,
     "pin_memory": false,
     "optimizer": "adam",

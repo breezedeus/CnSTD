@@ -8,7 +8,7 @@ import cv2
 from typing import List, Any, Optional, Dict, Tuple
 
 from ..utils.repr import NestedObject
-from .._utils import rotate_page, get_bitmap_angle
+from .._utils import rotate_page, get_bitmap_angle, extract_crops, extract_rcrops
 from ..preprocessor import PreProcessor
 
 
@@ -151,3 +151,53 @@ class DetectionPredictor(NestedObject):
             for batch in processed_batches
         ]
         return [pred for batch in predicted_batches for pred in zip(*batch)]
+
+
+class OCRPredictor(NestedObject):
+    """Implements an object able to localize and identify text elements in a set of documents
+
+    Args:
+        det_predictor: detection module
+        reco_predictor: recognition module
+    """
+
+    _children_names: List[str] = ['det_predictor', 'reco_predictor', 'doc_builder']
+
+    def __init__(
+            self,
+            det_predictor: DetectionPredictor,
+            # reco_predictor: RecognitionPredictor,
+            rotated_bbox: bool = False
+    ) -> None:
+
+        self.det_predictor = det_predictor
+        # self.reco_predictor = reco_predictor
+        # self.doc_builder = DocumentBuilder(rotated_bbox=rotated_bbox)
+        self.extract_crops_fn = extract_rcrops if rotated_bbox else extract_crops
+
+    def __call__(
+            self,
+            pages: List[np.ndarray],
+            **kwargs: Any,
+    ):
+
+        # Dimension check
+        if any(page.ndim != 3 for page in pages):
+            raise ValueError("incorrect input shape: all pages are expected to be multi-channel 2D images.")
+
+        # Localize text elements
+        boxes = self.det_predictor(pages, **kwargs)
+        # Crop images, rotate page if necessary
+        crops = [crop for page, (_boxes, angle) in zip(pages, boxes) for crop in
+                 self.extract_crops_fn(rotate_page(page, -angle), _boxes[:, :-1])]  # type: ignore[operator]
+        return crops
+        # # Identify character sequences
+        # word_preds = self.reco_predictor(crops, **kwargs)
+        #
+        # # Rotate back boxes if necessary
+        # boxes, angles = zip(*boxes)
+        # boxes = [rotate_boxes(boxes_page, angle) for boxes_page, angle in zip(boxes, angles)]
+        # out = self.doc_builder(boxes, word_preds, [page.shape[:2] for page in pages])
+        # return out
+
+

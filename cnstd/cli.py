@@ -28,6 +28,7 @@ from .utils import set_logger, data_dir, load_model_params, imsave
 from .dataset import StdDataModule
 from .trainer import PlTrainer
 from .transforms import Resize, RandomApply, ColorInversion, NormalizeAug
+from .model import gen_model
 
 from .eval import evaluate
 
@@ -35,7 +36,7 @@ from .eval import evaluate
 _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
 
 logger = set_logger(log_level='DEBUG')
-DEFAULT_MODEL_NAME = ''
+DEFAULT_MODEL_NAME = 'db_resnet18'
 
 
 @click.group(context_settings=_CONTEXT_SETTINGS)
@@ -67,10 +68,14 @@ def train(
     model_name, index_dir, train_config_fp, resume_from_checkpoint, pretrained_model_fp
 ):
     train_config = json.load(open(train_config_fp))
+    model = gen_model(model_name, rotated_bbox=train_config['rotated_bbox'])
+    logger.info(model)
+    logger.info(model.cfg)
+    expected_img_shape = model.cfg['input_shape']
 
     train_transform = transforms.Compose(
         [
-            Resize((train_config['input_size'], train_config['input_size'])),
+            Resize(expected_img_shape[1:]),
             # # Augmentations
             # RandomApply(ColorInversion(), .1),
             # ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.02),
@@ -79,7 +84,7 @@ def train(
     )
     val_transform = transforms.Compose(
         [
-            Resize((train_config['input_size'], train_config['input_size'])),
+            Resize(expected_img_shape[1:]),
             # NormalizeAug(),
         ]
     )
@@ -95,22 +100,17 @@ def train(
         pin_memory=train_config['pin_memory'],
     )
 
-    train_ds = data_mod.train
-    # x = train_ds[0]
-    # print(x)
-    visualize_example(train_ds[19])
-    # breakpoint()
+    # train_ds = data_mod.train
+    # visualize_example(train_ds[19])
 
-    # trainer = PlTrainer(
-    #     train_config, ckpt_fn=['cnstd', 'v%s' % MODEL_VERSION, model_name]
-    # )
-    # model = gen_model(model_name, data_mod.vocab)
-    # logger.info(model)
-    #
-    # if pretrained_model_fp is not None:
-    #     load_model_params(model, pretrained_model_fp)
-    #
-    # trainer.fit(model, datamodule=data_mod, resume_from_checkpoint=resume_from_checkpoint)
+    trainer = PlTrainer(
+        train_config, ckpt_fn=['cnstd', 'v%s' % MODEL_VERSION, model_name]
+    )
+
+    if pretrained_model_fp is not None:
+        load_model_params(model, pretrained_model_fp)
+
+    trainer.fit(model, datamodule=data_mod, resume_from_checkpoint=resume_from_checkpoint)
 
 
 def visualize_example(example):

@@ -246,7 +246,10 @@ RGB_MEAN = np.array([122.67891434, 116.66876762, 104.00698793])
 
 
 def normalize_img_array(img, dtype='float32'):
-    """ rescale to [-1.0, 1.0] """
+    """ rescale to [-1.0, 1.0]
+    :param img: RGB style
+    :param dtype: resulting dtype
+    """
 
     img = img.astype(dtype)
     img -= RGB_MEAN

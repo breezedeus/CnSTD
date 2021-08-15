@@ -2,16 +2,17 @@
 
 # This program is licensed under the Apache License version 2.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+from itertools import chain
 
 import numpy as np
 import cv2
 from typing import List, Tuple, Dict, Optional
 from unidecode import unidecode
 from scipy.optimize import linear_sum_assignment
-from .geometry import rbbox_to_polygon
+from .geometry import rbbox_to_polygon, fit_rbbox
 
 __all__ = ['TextMatch', 'box_iou', 'box_ioa', 'mask_iou', 'rbox_to_mask',
-           'nms', 'LocalizationConfusion', 'OCRMetric']
+           'nms', 'LocalizationConfusion']
 
 
 def string_match(word1: str, word2: str) -> Tuple[bool, bool, bool, bool]:
@@ -59,7 +60,6 @@ class TextMatch:
     :math:`N` is a strictly positive integer.
 
     Example::
-        >>> from doctr.utils import TextMatch
         >>> metric = TextMatch()
         >>> metric.update(['Hello', 'world'], ['hello', 'world'])
         >>> metric.summary()
@@ -296,7 +296,6 @@ class LocalizationConfusion:
 
     Example::
         >>> import numpy as np
-        >>> from doctr.utils import LocalizationConfusion
         >>> metric = LocalizationConfusion(iou_thresh=0.5)
         >>> metric.update(np.asarray([[0, 0, 100, 100]]), np.asarray([[0, 0, 70, 70], [110, 95, 200, 150]]))
         >>> metric.summary()
@@ -316,8 +315,9 @@ class LocalizationConfusion:
         self.mask_shape = mask_shape
         self.reset()
 
-    def update(self, gts: np.ndarray, preds: np.ndarray) -> None:
-
+    def update(self, gt_boxes: List[List[np.ndarray]], preds: np.ndarray) -> Tuple[float, float, float]:
+        gts = self._transform_gt_polygons(gt_boxes)
+        cur_iou, cur_matches = 0.0, 0.0
         if preds.shape[0] > 0:
             # Compute IoU
             if self.rotated_bbox:
@@ -326,15 +326,37 @@ class LocalizationConfusion:
                 iou_mat = mask_iou(mask_gts, mask_preds)
             else:
                 iou_mat = box_iou(gts, preds)
-            self.tot_iou += float(iou_mat.max(axis=1).sum())
+            cur_iou = float(iou_mat.max(axis=1).sum())
 
             # Assign pairs
             gt_indices, pred_indices = linear_sum_assignment(-iou_mat)
-            self.matches += int((iou_mat[gt_indices, pred_indices] >= self.iou_thresh).sum())
+            cur_matches = int((iou_mat[gt_indices, pred_indices] >= self.iou_thresh).sum())
 
+        self.tot_iou += cur_iou
+        self.matches += cur_matches
         # Update counts
         self.num_gts += gts.shape[0]
         self.num_preds += preds.shape[0]
+
+        cur_recall = cur_matches / (1e-6 + gts.shape[0])
+        cur_precision = cur_matches / (1e-6 + preds.shape[0])
+        cur_iou = cur_iou / (1e-6 + preds.shape[0])
+        return cur_recall, cur_precision, cur_iou
+
+    def _transform_gt_polygons(self, polgons: List[List[np.ndarray]]):
+        """
+
+        Args:
+            polgons: 最里层每个 np.ndarray 是个 [4, 2] 的矩阵，表示一个box的4个点的坐标。
+
+        Returns:
+
+        """
+        out = []
+        for box in chain(*polgons):
+            box = box.astype(np.uint)
+            out.append(fit_rbbox(box) if self.rotated_bbox else cv2.boundingRect(box))
+        return np.asarray(out)
 
     def summary(self) -> Tuple[Optional[float], Optional[float], Optional[float]]:
         """Computes the aggregated metrics
@@ -344,13 +366,13 @@ class LocalizationConfusion:
         """
 
         # Recall
-        recall = self.matches / self.num_gts if self.num_gts > 0 else None
+        recall = self.matches / (1e-6 + self.num_gts)
 
         # Precision
-        precision = self.matches / self.num_preds if self.num_preds > 0 else None
+        precision = self.matches / (1e-6 + self.num_preds)
 
         # mean IoU
-        mean_iou = self.tot_iou / self.num_preds if self.num_preds > 0 else None
+        mean_iou = self.tot_iou / (1e-6 + self.num_preds)
 
         return recall, precision, mean_iou
 
@@ -359,130 +381,3 @@ class LocalizationConfusion:
         self.num_preds = 0
         self.matches = 0
         self.tot_iou = 0.
-
-
-class OCRMetric:
-    """Implements end-to-end OCR metric.
-
-    The aggregated metrics are computed as follows:
-
-    .. math::
-        \\forall (B, L) \\in \\mathcal{B}^N \\times \\mathcal{L}^N,
-        \\forall (\\hat{B}, \\hat{L}) \\in \\mathcal{B}^M \\times \\mathcal{L}^M, \\\\
-        Recall(B, \\hat{B}, L, \\hat{L}) = \\frac{1}{N} \\sum\\limits_{i=1}^N h_{B,L}(\\hat{B}_i, \\hat{L}_i) \\\\
-        Precision(B, \\hat{B}, L, \\hat{L}) = \\frac{1}{M} \\sum\\limits_{i=1}^N h_{B,L}(\\hat{B}_i, \\hat{L}_i) \\\\
-        meanIoU(B, \\hat{B}) = \\frac{1}{M} \\sum\\limits_{i=1}^M \\max\\limits_{j \\in [1, N]}  IoU(\\hat{B}_i, B_j)
-
-    with the function :math:`IoU(x, y)` being the Intersection over Union between bounding boxes :math:`x` and
-    :math:`y`, and the function :math:`h_{B, L}` defined as:
-
-    .. math::
-        \\forall (b, l) \\in \\mathcal{B} \\times \\mathcal{L},
-        h_{B,L}(b, l) = \\left\\{
-            \\begin{array}{ll}
-                1 & \\mbox{if } b\\mbox{ has been assigned to a given }B_j\\mbox{ with an } \\\\
-                & IoU \\geq 0.5 \\mbox{ and that for this assignment, } l = L_j\\\\
-                0 & \\mbox{otherwise.}
-            \\end{array}
-        \\right.
-
-    where :math:`\\mathcal{B}` is the set of possible bounding boxes,
-    :math:`\\mathcal{L}` is the set of possible character sequences,
-    :math:`N` (number of ground truths) and :math:`M` (number of predictions) are strictly positive integers.
-
-    Example::
-        >>> import numpy as np
-        >>> from doctr.utils import OCRMetric
-        >>> metric = OCRMetric(iou_thresh=0.5)
-        >>> metric.update(np.asarray([[0, 0, 100, 100]]), np.asarray([[0, 0, 70, 70], [110, 95, 200, 150]]),
-        ['hello'], ['hello', 'world'])
-        >>> metric.summary()
-
-    Args:
-        iou_thresh: minimum IoU to consider a pair of prediction and ground truth as a match
-    """
-
-    def __init__(
-        self,
-        iou_thresh: float = 0.5,
-        rotated_bbox: bool = False,
-        mask_shape: Tuple[int, int] = (1024, 1024),
-    ) -> None:
-        self.iou_thresh = iou_thresh
-        self.rotated_bbox = rotated_bbox
-        self.mask_shape = mask_shape
-        self.reset()
-
-    def update(
-        self,
-        gt_boxes: np.ndarray,
-        pred_boxes: np.ndarray,
-        gt_labels: List[str],
-        pred_labels: List[str],
-    ) -> None:
-
-        if gt_boxes.shape[0] != len(gt_labels) or pred_boxes.shape[0] != len(pred_labels):
-            raise AssertionError("there should be the same number of boxes and string both for the ground truth "
-                                 "and the predictions")
-
-        # Compute IoU
-        if pred_boxes.shape[0] > 0:
-            if self.rotated_bbox:
-                mask_gts = rbox_to_mask(gt_boxes, shape=self.mask_shape)
-                mask_preds = rbox_to_mask(pred_boxes, shape=self.mask_shape)
-                iou_mat = mask_iou(mask_gts, mask_preds)
-            else:
-                iou_mat = box_iou(gt_boxes, pred_boxes)
-
-            self.tot_iou += float(iou_mat.max(axis=1).sum())
-
-            # Assign pairs
-            gt_indices, pred_indices = linear_sum_assignment(-iou_mat)
-            is_kept = iou_mat[gt_indices, pred_indices] >= self.iou_thresh
-            # String comparison
-            for gt_idx, pred_idx in zip(gt_indices[is_kept], pred_indices[is_kept]):
-                _raw, _caseless, _unidecode, _unicase = string_match(gt_labels[gt_idx], pred_labels[pred_idx])
-                self.raw_matches += int(_raw)
-                self.caseless_matches += int(_caseless)
-                self.unidecode_matches += int(_unidecode)
-                self.unicase_matches += int(_unicase)
-
-        self.num_gts += gt_boxes.shape[0]
-        self.num_preds += pred_boxes.shape[0]
-
-    def summary(self) -> Tuple[Dict[str, Optional[float]], Dict[str, Optional[float]], Optional[float]]:
-        """Computes the aggregated metrics
-
-        Returns:
-            a tuple with the recall & precision for each string comparison flexibility and the mean IoU
-        """
-
-        # Recall
-        recall = dict(
-            raw=self.raw_matches / self.num_gts if self.num_gts > 0 else None,
-            caseless=self.caseless_matches / self.num_gts if self.num_gts > 0 else None,
-            unidecode=self.unidecode_matches / self.num_gts if self.num_gts > 0 else None,
-            unicase=self.unicase_matches / self.num_gts if self.num_gts > 0 else None,
-        )
-
-        # Precision
-        precision = dict(
-            raw=self.raw_matches / self.num_preds if self.num_preds > 0 else None,
-            caseless=self.caseless_matches / self.num_preds if self.num_preds > 0 else None,
-            unidecode=self.unidecode_matches / self.num_preds if self.num_preds > 0 else None,
-            unicase=self.unicase_matches / self.num_preds if self.num_preds > 0 else None,
-        )
-
-        # mean IoU (overall detected boxes)
-        mean_iou = self.tot_iou / self.num_preds if self.num_preds > 0 else None
-
-        return recall, precision, mean_iou
-
-    def reset(self) -> None:
-        self.num_gts = 0
-        self.num_preds = 0
-        self.tot_iou = 0.
-        self.raw_matches = 0
-        self.caseless_matches = 0
-        self.unidecode_matches = 0
-        self.unicase_matches = 0

@@ -17,7 +17,7 @@
 # under the License.
 import os
 from pathlib import Path
-from typing import Optional, Union, List, Tuple, Callable
+from typing import Optional, Union, List, Tuple, Callable, Dict, Any
 
 import numpy as np
 import pytorch_lightning as pt
@@ -41,10 +41,15 @@ class StdDataset(Dataset):
     def __init__(self, index_fp, transforms, data_root_dir=None, mode='train'):
         super().__init__()
         img_gt_paths = read_idx_file(index_fp)
-        self.img_paths, gt_paths = zip(*[
-            (os.path.join(data_root_dir, img_fp), os.path.join(data_root_dir, gt_fp))
-            for img_fp, gt_fp in img_gt_paths
-        ])
+        self.img_paths, gt_paths = zip(
+            *[
+                (
+                    os.path.join(data_root_dir, img_fp),
+                    os.path.join(data_root_dir, gt_fp),
+                )
+                for img_fp, gt_fp in img_gt_paths
+            ]
+        )
         self.transforms = transforms
 
         self.length = len(self.img_paths)
@@ -63,7 +68,9 @@ class StdDataset(Dataset):
                 parts = line.strip().split(',')
                 label = parts[-1]
                 line = [i.strip('\ufeff').strip('\xef\xbb\xbf') for i in parts]
-                poly = np.array(list(map(float, line[:8])), dtype=np.float32).reshape((-1, 2))  # [4, 2]
+                poly = np.array(list(map(float, line[:8])), dtype=np.float32).reshape(
+                    (-1, 2)
+                )  # [4, 2]
                 item['poly'] = poly
                 item['text'] = label
                 lines.append(item)
@@ -92,11 +99,13 @@ class StdDataset(Dataset):
             line_polys = []
             for line in data['lines']:
                 new_poly = [(p[0], p[1]) for p in line['poly'].tolist()]
-                line_polys.append({
-                    'points': new_poly,
-                    'ignore': line['text'] == '###',
-                    'text': line['text'],
-                })
+                line_polys.append(
+                    {
+                        'points': new_poly,
+                        'ignore': line['text'] == '###',
+                        'text': line['text'],
+                    }
+                )
 
             data['polys'] = line_polys
             data['is_training'] = True
@@ -108,20 +117,32 @@ class StdDataset(Dataset):
         return data
 
 
-def collate_fn(img_labels: List[Tuple[str, str]], transformers: Callable = None):
-    test_mode = len(img_labels[0]) == 1
-    if test_mode:
-        img_list = zip(*img_labels)
-        labels_list, label_lengths = None, None
-    else:
-        img_list, labels_list = zip(*img_labels)
-        label_lengths = torch.tensor([len(labels) for labels in labels_list])
+def collate_fn(img_labels: List[Dict[str, Any]]):
+    test_mode = 'gt' not in img_labels[0]
+    keys = {'image', 'polygons'}
+    if not test_mode:
+        keys.update({'gt', 'mask', 'thresh_map', 'thresh_mask'})
 
-    img_lengths = torch.tensor([img.size(2) for img in img_list])
-    if transformers is not None:
-        img_list = [transformers(img) for img in img_list]
-    imgs = pad_img_seq(img_list)
-    return imgs, img_lengths, labels_list, label_lengths
+    out = dict()
+    for key in keys:
+        res_list = []
+
+        for example in img_labels:
+            ele = torch.from_numpy(example[key]) if key != 'polygons' else example[key]
+            if 'mask' in key:
+                ele = ele.to(dtype=torch.bool)
+            if key == 'image':
+                res_list.append(ele.permute((2, 0, 1)))  # res: [C, H, W]
+            elif key == 'gt':
+                res_list.append(ele.squeeze(0))
+            else:
+                res_list.append(ele)
+        if key == 'polygons':
+            out[key] = res_list
+        else:
+            out[key] = torch.stack(res_list, dim=0)
+
+    return out
 
 
 class StdDataModule(pt.LightningDataModule):
@@ -147,9 +168,17 @@ class StdDataModule(pt.LightningDataModule):
         self.pin_memory = pin_memory
 
         self.train = StdDataset(
-            self.index_dir / 'train.tsv', self.train_transforms, self.data_root_dir, mode='train'
+            self.index_dir / 'train.tsv',
+            self.train_transforms,
+            self.data_root_dir,
+            mode='train',
         )
-        self.val = StdDataset(self.index_dir / 'dev.tsv', self.val_transforms, self.data_root_dir, mode='train')
+        self.val = StdDataset(
+            self.index_dir / 'dev.tsv',
+            self.val_transforms,
+            self.data_root_dir,
+            mode='train',
+        )
 
     @property
     def vocab_size(self):
@@ -168,7 +197,7 @@ class StdDataModule(pt.LightningDataModule):
             self.train,
             batch_size=self.batch_size,
             shuffle=True,
-            collate_fn=lambda x: collate_fn(x, self.train_transforms),
+            collate_fn=collate_fn,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
         )
@@ -178,7 +207,7 @@ class StdDataModule(pt.LightningDataModule):
             self.val,
             batch_size=self.batch_size,
             shuffle=False,
-            collate_fn=lambda x: collate_fn(x, self.val_transforms),
+            collate_fn=collate_fn,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
         )

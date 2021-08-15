@@ -2,7 +2,7 @@ ROOT_DIR = data
 #TRAIN_IDX_FP = data/train.tsv
 TRAIN_IDX_FP = data/icdar2015/train.txt
 
-BACKBONE = mobilenetv3
+BACKBONE = db_resnet18
 EPOCHS = 50
 OPTIMIZER = adam
 LR = 3e-4
