@@ -325,7 +325,7 @@ class LocalizationConfusion:
             if self.rotated_bbox:
                 mask_gts = rbox_to_mask(gts, shape=self.mask_shape)
                 if mask_gts.shape[0] > batch_size * 5:  # 避免出现过多的框，内存消耗爆炸💥💥💥
-                    mask_gts = mask_gts[batch_size * 5]
+                    mask_gts = mask_gts[:batch_size * 5]
                 mask_preds = rbox_to_mask(preds, shape=self.mask_shape)
                 if mask_preds.shape[0] > mask_gts.shape[0]:  # 避免出现过多的框，内存消耗爆炸💥💥💥
                     mask_preds = mask_preds[:mask_gts.shape[0]]
