@@ -184,6 +184,7 @@ class PlTrainer(object):
         self.pl_trainer = pl.Trainer(
             limit_train_batches=self.config.get('limit_train_batches', 1.0),
             limit_val_batches=self.config.get('limit_val_batches', 1.0),
+            num_sanity_val_steps=1,
             gpus=self.config.get('gpus'),
             max_epochs=self.config.get('epochs', 20),
             precision=self.config.get('precision', 32),
