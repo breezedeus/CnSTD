@@ -85,7 +85,7 @@ class StdDataset(Dataset):
         img = imread(img_fp)
         c, h, w = img.shape
 
-        new_img = self.transforms(torch.from_numpy(img))  # return: [C, H, W]
+        new_img = self.transforms(torch.from_numpy(img.copy()))  # return: [C, H, W]
         data = {'image': new_img.permute(1, 2, 0).numpy(), 'shape': (h, w)}
         new_h, new_w = data['image'].shape[:2]
 
