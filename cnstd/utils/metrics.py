@@ -193,7 +193,7 @@ def mask_iou(masks_1: np.ndarray, masks_2: np.ndarray) -> np.ndarray:
     if masks_1.shape[0] > 0 and masks_2.shape[0] > 0:
         intersection = np.logical_and(masks_1, masks_2)
         union = np.logical_or(masks_1, masks_2)
-        iou_mat = intersection.sum(axis=(1, 2)) / union.sum(axis=(1, 2))
+        iou_mat = intersection.sum(axis=(1, 2)) / (union.sum(axis=(1, 2)) + 1e-6)
 
     return iou_mat
 
