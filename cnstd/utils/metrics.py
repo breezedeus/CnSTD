@@ -1,3 +1,4 @@
+# coding: utf-8
 # Copyright (C) 2021, Mindee.
 
 # This program is licensed under the Apache License version 2.
@@ -323,6 +324,8 @@ class LocalizationConfusion:
             if self.rotated_bbox:
                 mask_gts = rbox_to_mask(gts, shape=self.mask_shape)
                 mask_preds = rbox_to_mask(preds, shape=self.mask_shape)
+                if mask_preds.shape[0] > mask_gts.shape[0]:  # 避免出现过多的框，内存消耗爆炸💥💥💥
+                    mask_preds = mask_preds[:mask_gts.shape[0]]
                 iou_mat = mask_iou(mask_gts, mask_preds)
             else:
                 iou_mat = box_iou(gts, preds)
@@ -350,6 +353,7 @@ class LocalizationConfusion:
             polgons: 最里层每个 np.ndarray 是个 [4, 2] 的矩阵，表示一个box的4个点的坐标。
 
         Returns:
+            rotated bounding boxes of shape (N, 5) in format (x, y, w, h, alpha)
 
         """
         out = []
