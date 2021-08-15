@@ -282,11 +282,11 @@ def imread(img_fp) -> np.ndarray:
         RGB format ndarray: [C, H, W]
 
     """
-    im = cv2.imread(img_fp, cv2.IMREAD_COLOR).astype('float32')  # res: color BGR, shape: [H, W, C]
+    im = cv2.imread(img_fp, cv2.IMREAD_COLOR)  # res: color BGR, shape: [H, W, C]
     if im is None:
         im = np.asarray(Image.open(img_fp).convert('RGB'))
     else:
-        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        im = cv2.cvtColor(im.astype('float32'), cv2.COLOR_BGR2RGB)
     return im.transpose((2, 0, 1))
 
 
