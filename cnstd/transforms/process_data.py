@@ -249,7 +249,7 @@ class MakeBorderMap(object):
             point_1[0] - point_2[0]) + np.square(point_1[1] - point_2[1])
 
         cosin = (square_distance - square_distance_1 - square_distance_2) / \
-                (2 * np.sqrt(square_distance_1 * square_distance_2))
+                (2 * np.sqrt(square_distance_1 * square_distance_2) + 1e-6)
         square_sin = 1 - np.square(cosin)
         square_sin = np.nan_to_num(square_sin)
         result = np.sqrt(square_distance_1 * square_distance_2 *
