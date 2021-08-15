@@ -136,7 +136,7 @@ class WrapperLightningModule(pl.LightningModule):
         match, mean_iou = self.val_metric.update(
             batch['polygons'], pred_boxes
         )
-        val_metrics = dict(match=match, mean_iou=mean_iou)
+        val_metrics = dict(match_step=match, mean_iou_step=mean_iou)
         self.log_dict(
             val_metrics, on_step=True, on_epoch=False, prog_bar=True, logger=True,
         )
@@ -145,7 +145,7 @@ class WrapperLightningModule(pl.LightningModule):
 
     def validation_epoch_end(self, losses_list) -> None:
         match, mean_iou = self.val_metric.summary()
-        val_metrics = dict(match=match, mean_iou=mean_iou)
+        val_metrics = dict(match_epoch=match, mean_iou_epoch=mean_iou)
         self.log_dict(
             val_metrics, on_step=False, on_epoch=True, prog_bar=True, logger=True,
         )
