@@ -187,14 +187,13 @@ class DBNet(_DBNet, nn.Module):
     def forward(
         self,
         x: torch.Tensor,  # [N, C, H, W]
-        seg_target: Optional[torch.Tensor],  # [N, H, W]
-        seg_mask: Optional[torch.Tensor],  # [N, H, W]
-        thresh_target: Optional[torch.Tensor],  # [N, H, W]
-        thresh_mask: Optional[torch.Tensor],  # [N, H, W]
-        # target: Optional[List[Dict[str, Any]]] = None,
+        seg_target: Optional[torch.Tensor] = None,  # [N, H, W]
+        seg_mask: Optional[torch.Tensor] = None,  # [N, H, W]
+        thresh_target: Optional[torch.Tensor] = None,  # [N, H, W]
+        thresh_mask: Optional[torch.Tensor] = None,  # [N, H, W]
         return_model_output: bool = False,
         return_preds: bool = False,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> Dict[str, Any]:
         """
 
         Args:
@@ -208,7 +207,7 @@ class DBNet(_DBNet, nn.Module):
 
         Returns: dict;
             "out_map": prob tensor
-            "preds": list; [boxes tensor, angles tensor]
+            "preds": list; [List[boxes tensor], List[angles tensor]]
                 boxes tensor: 5 (rotated_bbox==False) or 6 (rotated_bbox==True) columns;
                     containing [x, y, w, h, (angle,) score] for the box
                 angles tensor: N angles (page orientations, each for one page or image).
@@ -337,7 +336,7 @@ def _dbnet(
         feat_extractor,
         default_cfgs[arch]['fpn_channels'],
         cfg=default_cfgs[arch],
-        **kwargs
+        **kwargs,
     )
     # Load pretrained parameters
     if pretrained:
