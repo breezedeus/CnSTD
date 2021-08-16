@@ -248,8 +248,7 @@ class MakeBorderMap(object):
                 (2 * np.sqrt(square_distance_1 * square_distance_2) + 1e-6)
         square_sin = 1 - np.square(cosin)
         square_sin = np.nan_to_num(square_sin)
-        result = np.sqrt(square_distance_1 * square_distance_2 *
-                         square_sin / square_distance)
+        result = np.sqrt(square_distance_1 * square_distance_2 * square_sin / (square_distance + 1e-6))
 
         result[cosin < 0] = np.sqrt(np.fmin(
             square_distance_1, square_distance_2))[cosin < 0]
