@@ -20,12 +20,12 @@ from .__version__ import __version__
 
 
 # 模型版本只对应到第二层，第三层的改动表示模型兼容。
-# 如: __version__ = '1.2.*'，对应的 MODEL_VERSION 都是 '1.2.0'
-MODEL_VERSION = '.'.join(__version__.split('.', maxsplit=2)[:2]) + '.0'
+# 如: __version__ = '1.0.*'，对应的 MODEL_VERSION 都是 '1.0'
+MODEL_VERSION = '.'.join(__version__.split('.', maxsplit=2)[:2])
 VOCAB_FP = Path(__file__).parent.parent / 'label_cn.txt'
 BACKBONE_NET_NAME = ['mobilenetv3', 'resnet50_v1b']
 BACKBONE_CONFIGS = {
-    
+
 }
 
 root_url = (

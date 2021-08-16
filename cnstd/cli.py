@@ -20,20 +20,22 @@ import click
 import json
 
 import numpy as np
+import torch
 import torchvision.transforms as T
 
 from .consts import BACKBONE_NET_NAME, MODEL_VERSION
-from .utils import set_logger, data_dir, load_model_params, imsave
+from .utils import set_logger, data_dir, load_model_params, imsave, read_img, pil_to_numpy, normalize_img_array
 from .dataset import StdDataModule
 from .trainer import PlTrainer
 from .model import gen_model
+from .model.core import DetectionPredictor
 
 # from .eval import evaluate
 
 
 _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
 
-logger = set_logger(log_level='DEBUG')
+logger = set_logger(log_level='INFO')
 DEFAULT_MODEL_NAME = 'db_resnet18'
 
 
@@ -108,6 +110,36 @@ def train(
         load_model_params(model, pretrained_model_fp)
 
     trainer.fit(model, datamodule=data_mod, resume_from_checkpoint=resume_from_checkpoint)
+
+
+@cli.command('predict')
+@click.option('-m', '--model-name', type=str, default=DEFAULT_MODEL_NAME, help='模型名称')
+@click.option("--model-epoch", type=int, default=None, help="model epoch")
+@click.option("--rotated-bbox", is_flag=True, help="是否考虑旋转box")
+@click.option(
+    '-p',
+    '--pretrained-model-fp',
+    type=str,
+    default=None,
+    help='导入的训练好的模型，作为初始模型。优先级低于"--restore-training-fp"，当传入"--restore-training-fp"时，此传入可能失效',
+)
+@click.option(
+    "--context",
+    help="使用cpu还是gpu运行代码。默认为cpu",
+    type=click.Choice(['cpu', 'gpu']),
+    default='cpu',
+)
+@click.option("-f", "--file", help="Path to the image file or dir")
+@torch.no_grad()
+def predict(model_name, model_epoch, rotated_bbox, pretrained_model_fp, context, file):
+    model = gen_model(model_name, rotated_bbox=rotated_bbox)
+    model.eval()
+    if pretrained_model_fp is not None:
+        load_model_params(model, pretrained_model_fp)
+
+    predictor = DetectionPredictor(model, debug=True)
+    pil_img = read_img(file)
+    predictor([pil_img])
 
 
 def visualize_example(example):

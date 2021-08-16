@@ -245,14 +245,15 @@ def read_charset(charset_fp):
 RGB_MEAN = np.array([122.67891434, 116.66876762, 104.00698793])
 
 
-def normalize_img_array(img, dtype='float32'):
+def normalize_img_array(img: np.ndarray, dtype='float32'):
     """ rescale to [-1.0, 1.0]
-    :param img: RGB style
+    :param img: RGB style, [H, W, 3] or [3, H, W]
     :param dtype: resulting dtype
     """
 
     img = img.astype(dtype)
-    img -= RGB_MEAN
+    img_mean = RGB_MEAN.reshape(3, 1, 1) if img.shape[0] == 3 else RGB_MEAN
+    img -= img_mean
     img = img / 255.0
     # img -= np.array((0.485, 0.456, 0.406))
     # img /= np.array((0.229, 0.224, 0.225))
@@ -263,12 +264,13 @@ def restore_img(img):
     """
 
     Args:
-        img: [H, W, C]
+        img: [H, W, 3] or [3, H, W]
 
-    Returns: [H, W, C]
+    Returns: [H, W, 3] or [3, H ,W]
 
     """
-    img = img * 255 + RGB_MEAN
+    img_mean = RGB_MEAN.reshape(3, 1, 1) if img.shape[0] == 3 else RGB_MEAN
+    img = img * 255 + img_mean
     return img.clip(0, 255).astype(np.uint8)
 
 
