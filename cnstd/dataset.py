@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 import os
+import logging
 from pathlib import Path
 from typing import Optional, Union, List, Dict, Any
 
@@ -26,6 +27,8 @@ from torch.utils.data import DataLoader, Dataset
 
 from .utils import read_img, pil_to_numpy, normalize_img_array
 from .transforms.process_data import PROCESSOR_CLS
+
+logger = logging.getLogger(__name__)
 
 
 def read_idx_file(idx_fp):
@@ -87,8 +90,11 @@ class StdDataset(Dataset):
         img_fp = self.img_paths[item]
         img = read_img(img_fp)
         c, h, w = pil_to_numpy(img).shape
-
-        pil_img = self.transforms(img)
+        try:
+            pil_img = self.transforms(img)
+        except:
+            logger.debug('bad image for transformation: %s' % img_fp)
+            return {}
         new_img = pil_to_numpy(pil_img)
 
         data = {'image': new_img.transpose(1, 2, 0), 'shape': (h, w)}
@@ -123,6 +129,7 @@ class StdDataset(Dataset):
 
 
 def collate_fn(img_labels: List[Dict[str, Any]]):
+    img_labels = [example for example in img_labels if len(example) > 0]
     test_mode = 'gt' not in img_labels[0]
     keys = {'image', 'polygons'}
     if not test_mode:
