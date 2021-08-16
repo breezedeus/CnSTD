@@ -17,15 +17,15 @@
 # under the License.
 import os
 from pathlib import Path
-from typing import Optional, Union, List, Tuple, Callable, Dict, Any
+from typing import Optional, Union, List, Dict, Any
 
 import numpy as np
 import pytorch_lightning as pt
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from .utils import read_charset, imread, normalize_img_array, imsave
-from .transforms.process_data import PROCESSORS
+from .utils import read_img, pil_to_numpy, normalize_img_array
+from .transforms.process_data import PROCESSOR_CLS
 
 
 def read_idx_file(idx_fp):
@@ -38,7 +38,9 @@ def read_idx_file(idx_fp):
 
 
 class StdDataset(Dataset):
-    def __init__(self, index_fp, transforms, data_root_dir=None, mode='train'):
+    def __init__(
+        self, index_fp, transforms, data_root_dir=None, mode='train', debug=False
+    ):
         super().__init__()
         img_gt_paths = read_idx_file(index_fp)
         self.img_paths, gt_paths = zip(
@@ -51,6 +53,7 @@ class StdDataset(Dataset):
             ]
         )
         self.transforms = transforms
+        self.data_processors = [kls(debug=debug) for kls in PROCESSOR_CLS]
 
         self.length = len(self.img_paths)
         self.mode = mode
@@ -82,11 +85,13 @@ class StdDataset(Dataset):
 
     def __getitem__(self, item):
         img_fp = self.img_paths[item]
-        img = imread(img_fp)
-        c, h, w = img.shape
+        img = read_img(img_fp)
+        c, h, w = pil_to_numpy(img).shape
 
-        new_img = self.transforms(torch.from_numpy(img.copy()))  # return: [C, H, W]
-        data = {'image': new_img.permute(1, 2, 0).numpy(), 'shape': (h, w)}
+        pil_img = self.transforms(img)
+        new_img = pil_to_numpy(pil_img)
+
+        data = {'image': new_img.transpose(1, 2, 0), 'shape': (h, w)}
         new_h, new_w = data['image'].shape[:2]
 
         if self.mode != 'test':
@@ -110,7 +115,7 @@ class StdDataset(Dataset):
             data['polys'] = line_polys
             data['is_training'] = True
 
-            for processor in PROCESSORS:
+            for processor in self.data_processors:
                 data = processor(data)
 
             data['image'] = normalize_img_array(data['image'])
@@ -149,18 +154,17 @@ class StdDataModule(pt.LightningDataModule):
     def __init__(
         self,
         index_dir: Union[str, Path],
-        vocab_fp: Union[str, Path],
         data_root_dir: Union[str, Path, None] = None,
         train_transforms=None,
         val_transforms=None,
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
+        debug=False,
     ):
         super().__init__(
             train_transforms=train_transforms, val_transforms=val_transforms
         )
-        self.vocab, self.letter2id = read_charset(vocab_fp)
         self.index_dir = Path(index_dir)
         self.data_root_dir = data_root_dir
         self.batch_size = batch_size
@@ -172,17 +176,15 @@ class StdDataModule(pt.LightningDataModule):
             self.train_transforms,
             self.data_root_dir,
             mode='train',
+            debug=debug,
         )
         self.val = StdDataset(
             self.index_dir / 'dev.tsv',
             self.val_transforms,
             self.data_root_dir,
             mode='train',
+            debug=debug,
         )
-
-    @property
-    def vocab_size(self):
-        return len(self.vocab)
 
     def prepare_data(self):
         # called only on 1 GPU

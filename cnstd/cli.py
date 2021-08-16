@@ -20,17 +20,15 @@ import click
 import json
 
 import numpy as np
-from torchvision import transforms
-from torchvision.transforms import ColorJitter
+import torchvision.transforms as T
 
 from .consts import BACKBONE_NET_NAME, MODEL_VERSION
 from .utils import set_logger, data_dir, load_model_params, imsave
 from .dataset import StdDataModule
 from .trainer import PlTrainer
-from .transforms import Resize, RandomApply, ColorInversion, NormalizeAug
 from .model import gen_model
 
-from .eval import evaluate
+# from .eval import evaluate
 
 
 _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
@@ -73,35 +71,34 @@ def train(
     logger.info(model.cfg)
     expected_img_shape = model.cfg['input_shape']
 
-    train_transform = transforms.Compose(
+    train_transform = T.Compose(
         [
-            Resize(expected_img_shape[1:]),
-            # # Augmentations
-            # RandomApply(ColorInversion(), .1),
-            # ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.02),
-            # NormalizeAug(),
+            T.Resize(expected_img_shape[1:]),
+            T.ColorJitter(brightness=0.3, contrast=0.2, saturation=0.2, hue=0.2),
+            T.RandomEqualize(p=0.3),
+            T.GaussianBlur(kernel_size=21),
         ]
     )
-    val_transform = transforms.Compose(
+    val_transform = T.Compose(
         [
-            Resize(expected_img_shape[1:]),
-            # NormalizeAug(),
+            T.Resize(expected_img_shape[1:]),
         ]
     )
 
     data_mod = StdDataModule(
         index_dir=index_dir,
-        vocab_fp=train_config['vocab_fp'],
         data_root_dir=train_config['data_root_dir'],
         train_transforms=train_transform,
         val_transforms=val_transform,
         batch_size=train_config['batch_size'],
         num_workers=train_config['num_workers'],
         pin_memory=train_config['pin_memory'],
+        debug=train_config.get('debug', False),
     )
 
     # train_ds = data_mod.train
-    # visualize_example(train_ds[19])
+    # visualize_example(train_ds[0])
+    # return
 
     trainer = PlTrainer(
         train_config, ckpt_fn=['cnstd', 'v%s' % MODEL_VERSION, model_name]

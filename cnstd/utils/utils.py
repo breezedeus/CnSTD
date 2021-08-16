@@ -272,6 +272,22 @@ def restore_img(img):
     return img.clip(0, 255).astype(np.uint8)
 
 
+def read_img(img_fp) -> Image.Image:
+    return Image.open(img_fp)
+
+
+def pil_to_numpy(img: Image.Image) -> np.ndarray:
+    """
+
+    Args:
+        img: an Image.Image from `read_img()`
+
+    Returns: np.ndarray, RGB-style, with shape: [3, H, W], scale: [0, 255], dtype: float32
+
+    """
+    return np.asarray(img.convert('RGB'), dtype='float32').transpose((2, 0, 1))
+
+
 def imread(img_fp) -> np.ndarray:
     """
     返回RGB格式的numpy数组

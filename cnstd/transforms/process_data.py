@@ -14,11 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class MakeICDARData(object):
-    # shrink_ratio = State(default=0.4)
-
     def __init__(self, debug=False, **kwargs):
-        # self.load_all(**kwargs)
-
         self.debug = debug
 
     def __call__(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -32,8 +28,8 @@ class MakeICDARData(object):
         ignore_tags = np.array(ignore_tags, dtype=np.uint8)
         filename = ''#data.get('filename', data['data_id'])
         if self.debug:
-            data['image'] = self.draw_polygons(data['image'], polygons, ignore_tags)
-            imsave(data['image'], 'debug-polygons.jpg', normalized=False)
+            boxed_image = self.draw_polygons(data['image'].copy(), polygons, ignore_tags)
+            imsave(boxed_image, 'debug-polygons.jpg', normalized=False)
         shape = np.array(data['shape'])
         return OrderedDict(image=data['image'],
                            polygons=polygons,
@@ -160,8 +156,8 @@ class MakeBorderMap(object):
     thresh_min = 0.3
     thresh_max = 0.7
 
-    def __init__(self, cmd=None, *args, **kwargs):
-        cmd = cmd or {}
+    def __init__(self, **kwargs):
+        pass
 
     def __call__(self, data: Dict[str, Any]) -> Dict[str, Any]:
         r"""
@@ -272,8 +268,8 @@ class MakeBorderMap(object):
         return ex_point_1, ex_point_2
 
 
-PROCESSORS = [
-    MakeICDARData(debug=True),
-    MakeSegDetectionData(),
-    MakeBorderMap(),
+PROCESSOR_CLS = [
+    MakeICDARData,
+    MakeSegDetectionData,
+    MakeBorderMap,
 ]
