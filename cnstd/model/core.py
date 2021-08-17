@@ -3,19 +3,21 @@
 # This program is licensed under the Apache License version 2.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
 
-import numpy as np
-from typing import List, Any, Optional, Dict, Tuple
+import logging
+from typing import List, Any, Optional, Dict, Tuple, Union
 
+import numpy as np
 import cv2
 from PIL import Image
 import torch
-import torchvision.transforms as T
 
+from ..transforms import Resize
 from ..utils import pil_to_numpy, normalize_img_array, restore_img, imsave
 from ..utils.repr import NestedObject
 from .._utils import rotate_page, get_bitmap_angle, extract_crops, extract_rcrops
-from ..preprocessor import PreProcessor
 
+
+logger = logging.getLogger(__name__)
 
 __all__ = ['DetectionModel', 'DetectionPostProcessor', 'DetectionPredictor']
 
@@ -122,20 +124,33 @@ class DetectionPredictor(NestedObject):
 
     _children_names: List[str] = ['model']
 
-    def __init__(self, model, debug=False,) -> None:
+    def __init__(self, model, *, preserve_aspect_ratio=True, debug=False) -> None:
 
+        self.preserve_aspect_ratio = preserve_aspect_ratio
         self.debug = debug
         self.model = model
         self.model.eval()
-        self.val_transform = T.Resize(self.model.cfg['input_shape'][1:])
+        self.val_transform = Resize(self.model.cfg['input_shape'][1:], preserve_aspect_ratio=self.preserve_aspect_ratio)
         self.extract_crops_fn = (
             extract_rcrops if self.model.rotated_bbox else extract_crops
         )
 
     @torch.no_grad()
     def __call__(
-        self, img_list: List[Image.Image], **kwargs: Any,
-    ) -> Tuple[List[np.ndarray], List[float]]:
+        self, img_list: List[Union[Image.Image, np.ndarray]], box_score_thresh: float=0.5, **kwargs: Any,
+    ) -> Tuple[List[np.ndarray], List[List[float]]]:
+        """
+
+        Args:
+            img_list: list, which element's should be one type of Image.Image and np.ndarray.
+                For Image.Image, it should be generated from read_img;
+                For np.ndarray, it should be RGB-style, with shape [3, H, W]
+            box_score_thresh: score threshold for boxes, boxes with scores lower than this value will be ignored
+            **kwargs:
+
+        Returns:
+
+        """
         batch = self.preprocess(img_list)
 
         out = self.model(batch, return_preds=True, **kwargs)  # type:ignore[operator]
@@ -148,83 +163,58 @@ class DetectionPredictor(NestedObject):
             image = restore_img(image.numpy().transpose((1, 2, 0)))  # res: [H, W, 3]
             rotated_img = np.ascontiguousarray(rotate_page(image, -angle))
             crops = []
-            scores_list.append(_boxes[:, -1].tolist())
-            for crop in self.extract_crops_fn(rotated_img, _boxes[:, :-1]):
+            scores = []
+            for crop, score in zip(self.extract_crops_fn(rotated_img, _boxes[:, :-1]), _boxes[:, -1].tolist()):
+                if score < box_score_thresh:
+                    continue
                 crops.append(crop)
+                scores.append(score)
             crops_list.append(crops)
+            scores_list.append(scores)
 
             if self.debug:
-                if _boxes.dtype != np.int:
-                    _boxes[:, [0, 2]] *= rotated_img.shape[1]
-                    _boxes[:, [1, 3]] *= rotated_img.shape[0]
-                for box in _boxes:
-                    x, y, w, h, alpha, score = box.astype('float32')
-                    if score < 0.5:
-                        continue
-                    box = cv2.boxPoints(((x, y), (w, h), alpha))
-                    box = np.int0(box)
-                    cv2.drawContours(rotated_img, [box], 0, (255, 0, 0), 1)
-                imsave(rotated_img, 'result-%d.png' % idx, normalized=False)
+                self._plot_for_debugging(rotated_img, crops, _boxes, box_score_thresh, idx)
             idx += 1
 
         return crops_list, scores_list
 
-    def preprocess(self, pil_img_list: List[Image.Image]) -> torch.Tensor:
+    def _plot_for_debugging(self, rotated_img, crops, _boxes, box_score_thresh, idx):
+        import matplotlib.pyplot as plt
+        import math
+        logger.info('%d boxes are found' % len(crops))
+        ncols = 3
+        nrows = math.ceil(len(crops) / ncols)
+        fig, ax = plt.subplots(nrows=nrows, ncols=ncols)
+        for i, axi in enumerate(ax.flat):
+            if i >= len(crops):
+                break
+            axi.imshow(crops[i], alpha=0.25)
+        plt.tight_layout(True)
+        plt.savefig('crops-%d.png' % idx)
+
+        if _boxes.dtype != np.int:
+            _boxes[:, [0, 2]] *= rotated_img.shape[1]
+            _boxes[:, [1, 3]] *= rotated_img.shape[0]
+
+        for box in _boxes:
+            if box[-1] < box_score_thresh:  # score < 0.5
+                continue
+            if len(box) == 6:  # rotated_box == True
+                x, y, w, h, alpha, score = box.astype('float32')
+                box = cv2.boxPoints(((x, y), (w, h), alpha))
+                box = np.int0(box)
+                cv2.drawContours(rotated_img, [box], 0, (255, 0, 0), 2)
+            else:  # len(box) == 5, rotated_box == False
+                xmin, ymin, xmax, ymax, score = box.astype('float32')
+                cv2.rectangle(rotated_img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
+        imsave(rotated_img, 'result-%d.png' % idx, normalized=False)
+
+    def preprocess(self, pil_img_list: List[Union[Image.Image, np.ndarray]]) -> torch.Tensor:
         img_list = []
-        for pil_img in pil_img_list:
-            pil_img = self.val_transform(pil_img)
-            img = pil_to_numpy(pil_img)
+        for img in pil_img_list:
+            if isinstance(img, Image.Image):
+                img = pil_to_numpy(img)  # res: np.ndarray, RGB-style, [3, H, W]
+            img = self.val_transform(torch.from_numpy(img)).numpy()
             img = normalize_img_array(img)
             img_list.append(torch.from_numpy(img))
         return torch.stack(img_list, dim=0)
-
-
-class OCRPredictor(NestedObject):
-    """Implements an object able to localize and identify text elements in a set of documents
-
-    Args:
-        det_predictor: detection module
-        reco_predictor: recognition module
-    """
-
-    _children_names: List[str] = ['det_predictor', 'reco_predictor', 'doc_builder']
-
-    def __init__(
-        self,
-        det_predictor: DetectionPredictor,
-        # reco_predictor: RecognitionPredictor,
-        rotated_bbox: bool = False,
-    ) -> None:
-
-        self.det_predictor = det_predictor
-        # self.reco_predictor = reco_predictor
-        # self.doc_builder = DocumentBuilder(rotated_bbox=rotated_bbox)
-        self.extract_crops_fn = extract_rcrops if rotated_bbox else extract_crops
-
-    def __call__(
-        self, pages: List[np.ndarray], **kwargs: Any,
-    ):
-
-        # Dimension check
-        if any(page.ndim != 3 for page in pages):
-            raise ValueError(
-                "incorrect input shape: all pages are expected to be multi-channel 2D images."
-            )
-
-        # Localize text elements
-        boxes = self.det_predictor(pages, **kwargs)
-        # Crop images, rotate page if necessary
-        crops = [
-            crop
-            for page, (_boxes, angle) in zip(pages, boxes)
-            for crop in self.extract_crops_fn(rotate_page(page, -angle), _boxes[:, :-1])
-        ]  # type: ignore[operator]
-        return crops
-        # # Identify character sequences
-        # word_preds = self.reco_predictor(crops, **kwargs)
-        #
-        # # Rotate back boxes if necessary
-        # boxes, angles = zip(*boxes)
-        # boxes = [rotate_boxes(boxes_page, angle) for boxes_page, angle in zip(boxes, angles)]
-        # out = self.doc_builder(boxes, word_preds, [page.shape[:2] for page in pages])
-        # return out
