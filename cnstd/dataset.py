@@ -18,13 +18,14 @@
 import os
 import logging
 from pathlib import Path
-from typing import Optional, Union, List, Dict, Any
+from typing import Optional, Union, List, Dict, Any, Tuple
 
 import numpy as np
 import pytorch_lightning as pt
 import torch
 from torch.utils.data import DataLoader, Dataset
 
+from .transforms import Resize
 from .utils import read_img, pil_to_numpy, normalize_img_array
 from .transforms.process_data import PROCESSOR_CLS
 
@@ -42,7 +43,15 @@ def read_idx_file(idx_fp):
 
 class StdDataset(Dataset):
     def __init__(
-        self, index_fp, transforms, data_root_dir=None, mode='train', debug=False
+        self,
+        index_fp,
+        transforms,
+        *,
+        resized_shape,
+        preserve_aspect_ratio,
+        data_root_dir=None,
+        mode='train',
+        debug=False
     ):
         super().__init__()
         img_gt_paths = read_idx_file(index_fp)
@@ -56,6 +65,11 @@ class StdDataset(Dataset):
             ]
         )
         self.transforms = transforms
+        self.resized_shape = resized_shape
+        self.preserve_aspect_ratio = preserve_aspect_ratio
+        self.resize_transform = Resize(
+            self.resized_shape, preserve_aspect_ratio=self.preserve_aspect_ratio
+        )
         self.data_processors = [kls(debug=debug) for kls in PROCESSOR_CLS]
 
         self.length = len(self.img_paths)
@@ -89,22 +103,26 @@ class StdDataset(Dataset):
     def __getitem__(self, item):
         img_fp = self.img_paths[item]
         img = read_img(img_fp)
-        c, h, w = pil_to_numpy(img).shape
         try:
-            pil_img = self.transforms(img)
+            pil_img = self.transforms(img) if self.transforms is not None else img
         except:
             logger.debug('bad image for transformation: %s' % img_fp)
             return {}
         new_img = pil_to_numpy(pil_img)
+        # c, h, w = new_img.shape
 
-        data = {'image': new_img.transpose(1, 2, 0), 'shape': (h, w)}
-        new_h, new_w = data['image'].shape[:2]
+        new_img, resize_ratios = self._resize(new_img)  # res: [3, H, W]
+
+        data = {
+            'image': new_img.transpose(1, 2, 0),
+            # 'shape': (h, w)
+        }
 
         if self.mode != 'test':
             lines = self.targets[item]
             for item in lines:  # 转化到 0~1 之间的取值，去掉对resize的依赖
-                item['poly'][:, 0] *= new_w / w
-                item['poly'][:, 1] *= new_h / h
+                item['poly'][:, 0] *= resize_ratios[1]
+                item['poly'][:, 1] *= resize_ratios[0]
             data['lines'] = lines
 
             line_polys = []
@@ -126,6 +144,34 @@ class StdDataset(Dataset):
 
             data['image'] = normalize_img_array(data['image'])
         return data
+
+    def _resize(self, img: np.ndarray) -> Tuple[np.ndarray, Tuple[float, float]]:
+        """
+
+        Args:
+            img: [3, H, W]
+
+        Returns:
+            image: [3, H, W]
+            resize_raito: (h_ratio, w_ratio)
+
+        """
+        ori_h, ori_w = img.shape[1:]
+        img = self.resize_transform(torch.from_numpy(img)).numpy()
+        new_h, new_w = img.shape[1:]
+
+        if not self.preserve_aspect_ratio:
+            resize_ratios = (new_h / ori_h, new_w / ori_w)
+        else:
+            target_ratio = new_h / new_w
+            actual_ratio = ori_h / ori_w
+            if actual_ratio > target_ratio:
+                ratio = new_h / ori_h
+            else:
+                ratio = new_w / ori_w
+            resize_ratios = (ratio, ratio)
+
+        return img, resize_ratios
 
 
 def collate_fn(img_labels: List[Dict[str, Any]]):
@@ -161,6 +207,8 @@ class StdDataModule(pt.LightningDataModule):
     def __init__(
         self,
         index_dir: Union[str, Path],
+        resized_shape: Tuple[int, int],
+        preserve_aspect_ratio: bool,
         data_root_dir: Union[str, Path, None] = None,
         train_transforms=None,
         val_transforms=None,
@@ -181,14 +229,18 @@ class StdDataModule(pt.LightningDataModule):
         self.train = StdDataset(
             self.index_dir / 'train.tsv',
             self.train_transforms,
-            self.data_root_dir,
+            resized_shape=resized_shape,
+            preserve_aspect_ratio=preserve_aspect_ratio,
+            data_root_dir=self.data_root_dir,
             mode='train',
             debug=debug,
         )
         self.val = StdDataset(
             self.index_dir / 'dev.tsv',
             self.val_transforms,
-            self.data_root_dir,
+            resized_shape=resized_shape,
+            preserve_aspect_ratio=preserve_aspect_ratio,
+            data_root_dir=self.data_root_dir,
             mode='train',
             debug=debug,
         )

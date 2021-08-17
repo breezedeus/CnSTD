@@ -32,12 +32,12 @@ class MakeICDARData(object):
                 data['image'].copy(), polygons, ignore_tags
             )
             imsave(boxed_image, 'debug-polygons.jpg', normalized=False)
-        shape = np.array(data['shape'])
+        # shape = np.array(data['shape'])
         return OrderedDict(
             image=data['image'],
             polygons=polygons,
             ignore_tags=ignore_tags,
-            shape=shape,
+            # shape=shape,
             filename=filename,
             is_training=data['is_training'],
         )

@@ -78,18 +78,21 @@ def train(
     logger.info(model.cfg)
     expected_img_shape = model.cfg['input_shape']
 
-    train_transform = T.Compose(
+    train_transform = T.Compose(  # MUST NOT include `Resize`
         [
-            T.Resize(expected_img_shape[1:]),
+            # T.Resize(expected_img_shape[1:]),
             T.ColorJitter(brightness=0.3, contrast=0.2, saturation=0.2, hue=0.2),
             T.RandomEqualize(p=0.3),
             T.GaussianBlur(kernel_size=21),
         ]
     )
-    val_transform = T.Resize(expected_img_shape[1:])
+    # val_transform = T.Resize(expected_img_shape[1:])
+    val_transform = None
 
     data_mod = StdDataModule(
         index_dir=index_dir,
+        resized_shape=expected_img_shape[1:],
+        preserve_aspect_ratio=train_config['preserve_aspect_ratio'],
         data_root_dir=train_config['data_root_dir'],
         train_transforms=train_transform,
         val_transforms=val_transform,
