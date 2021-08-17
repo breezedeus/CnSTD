@@ -14,51 +14,7 @@ from typing import List, Dict, Any, Optional
 
 from .base import DBPostProcessor, _DBNet
 
-__all__ = ['DBNet', 'db_resnet50', 'db_resnet34', 'db_resnet18', 'db_mobilenet_v3']
-
-
-default_cfgs: Dict[str, Dict[str, Any]] = {
-    'db_resnet50': {
-        'backbone': resnet50,
-        'backbone_submodule': None,
-        'fpn_layers': ['layer1', 'layer2', 'layer3', 'layer4'],
-        'fpn_channels': [256, 512, 1024, 2048],
-        'input_shape': (3, 1024, 1024),  # 期望的输入图片大小
-        'mean': (0.5, 0.5, 0.5),
-        'std': (1.0, 1.0, 1.0),
-        'url': None,
-    },
-    'db_resnet34': {
-        'backbone': resnet34,
-        'backbone_submodule': None,
-        'fpn_layers': ['layer1', 'layer2', 'layer3', 'layer4'],
-        'fpn_channels': [64, 128, 256, 512],
-        'input_shape': (3, 1024, 1024),
-        'mean': (0.5, 0.5, 0.5),
-        'std': (1.0, 1.0, 1.0),
-        'url': None,
-    },
-    'db_resnet18': {
-        'backbone': resnet18,
-        'backbone_submodule': None,
-        'fpn_layers': ['layer1', 'layer2', 'layer3', 'layer4'],
-        'fpn_channels': [64, 128, 256, 512],
-        'input_shape': (3, 512, 512),
-        'mean': (0.5, 0.5, 0.5),
-        'std': (1.0, 1.0, 1.0),
-        'url': None,
-    },
-    'db_mobilenet_v3': {
-        'backbone': mobilenet_v3_large,
-        'backbone_submodule': 'features',
-        'fpn_layers': ['3', '6', '12', '16'],
-        'fpn_channels': [24, 40, 112, 960],
-        'input_shape': (3, 1024, 1024),
-        'mean': (0.5, 0.5, 0.5),
-        'std': (1.0, 1.0, 1.0),
-        'url': None,
-    },
-}
+__all__ = ['DBNet', 'gen_dbnet']
 
 
 class FeaturePyramidNetwork(nn.Module):
@@ -161,7 +117,7 @@ class DBNet(_DBNet, nn.Module):
             nn.ConvTranspose2d(head_chans // 4, num_classes, 2, stride=2),
         )
 
-        self.postprocessor = DBPostProcessor(rotated_bbox=rotated_bbox)
+        self.postprocessor = DBPostProcessor(rotated_bbox=self.rotated_bbox)
 
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, DeformConv2d)):
@@ -313,113 +269,28 @@ class DBNet(_DBNet, nn.Module):
         return l1_scale * l1_loss + bce_scale * balanced_bce_loss + dice_loss
 
 
-def _dbnet(
-    arch: str, pretrained: bool, pretrained_backbone: bool = False, **kwargs: Any
+def gen_dbnet(
+    config: Dict[str, Any],
+    pretrained: bool = False,
+    pretrained_backbone: bool = True,
+    **kwargs: Any
 ) -> DBNet:
 
     pretrained_backbone = pretrained_backbone and not pretrained
 
     # Feature extractor
-    backbone = default_cfgs[arch]['backbone'](pretrained=pretrained_backbone)
-    if isinstance(default_cfgs[arch]['backbone_submodule'], str):
-        backbone = getattr(backbone, default_cfgs[arch]['backbone_submodule'])
+    backbone = config['backbone'](pretrained=pretrained_backbone)
+    if isinstance(config['backbone_submodule'], str):
+        backbone = getattr(backbone, config['backbone_submodule'])
     feat_extractor = IntermediateLayerGetter(
         backbone,
-        {
-            layer_name: str(idx)
-            for idx, layer_name in enumerate(default_cfgs[arch]['fpn_layers'])
-        },
+        {layer_name: str(idx) for idx, layer_name in enumerate(config['fpn_layers'])},
     )
 
     # Build the model
-    model = DBNet(
-        feat_extractor,
-        default_cfgs[arch]['fpn_channels'],
-        cfg=default_cfgs[arch],
-        **kwargs,
-    )
+    model = DBNet(feat_extractor, config['fpn_channels'], cfg=config, **kwargs)
     # Load pretrained parameters
     if pretrained:
         raise NotImplementedError
 
     return model
-
-
-def db_resnet18(pretrained: bool = False, **kwargs: Any) -> DBNet:
-    """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
-    <https://arxiv.org/pdf/1911.08947.pdf>`_, using a ResNet-34 backbone.
-
-    Example::
-        >>> import torch
-        >>> model = db_resnet18(pretrained=True)
-        >>> input_tensor = torch.rand((1, 3, 1024, 1024), dtype=torch.float32)
-        >>> out = model(input_tensor)
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on our text detection dataset
-
-    Returns:
-        text detection architecture
-    """
-
-    return _dbnet('db_resnet18', pretrained, **kwargs)
-
-
-def db_resnet34(pretrained: bool = False, **kwargs: Any) -> DBNet:
-    """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
-    <https://arxiv.org/pdf/1911.08947.pdf>`_, using a ResNet-34 backbone.
-
-    Example::
-        >>> import torch
-        >>> model = db_resnet34(pretrained=True)
-        >>> input_tensor = torch.rand((1, 3, 1024, 1024), dtype=torch.float32)
-        >>> out = model(input_tensor)
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on our text detection dataset
-
-    Returns:
-        text detection architecture
-    """
-
-    return _dbnet('db_resnet34', pretrained, **kwargs)
-
-
-def db_resnet50(pretrained: bool = False, **kwargs: Any) -> DBNet:
-    """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
-    <https://arxiv.org/pdf/1911.08947.pdf>`_, using a ResNet-50 backbone.
-
-    Example::
-        >>> import torch
-        >>> model = db_resnet50(pretrained=True)
-        >>> input_tensor = torch.rand((1, 3, 1024, 1024), dtype=torch.float32)
-        >>> out = model(input_tensor)
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on our text detection dataset
-
-    Returns:
-        text detection architecture
-    """
-
-    return _dbnet('db_resnet50', pretrained, **kwargs)
-
-
-def db_mobilenet_v3(pretrained: bool = False, **kwargs: Any) -> DBNet:
-    """DBNet as described in `"Real-time Scene Text Detection with Differentiable Binarization"
-    <https://arxiv.org/pdf/1911.08947.pdf>`_, using a MobileNet V3 backbone.
-
-    Example::
-        >>> import torch
-        >>> model = db_mobilenet_v3(pretrained=True)
-        >>> input_tensor = torch.rand((1, 3, 1024, 1024), dtype=torch.float32)
-        >>> out = model(input_tensor)
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on our text detection dataset
-
-    Returns:
-        text detection architecture
-    """
-
-    return _dbnet('db_mobilenet_v3', pretrained, **kwargs)
