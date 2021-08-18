@@ -62,36 +62,87 @@ def extract_rcrops(img: np.ndarray, boxes: np.ndarray, dtype=np.float32) -> List
         _boxes[:, [1, 3]] *= img.shape[0]
 
     crops = []
-    # Determine rotation direction (clockwise/counterclockwise)
-    # Angle coverage: [-90°, +90°], half of the quadrant
-    clockwise = False
-    if np.sum(boxes[:, 2]) > np.sum(boxes[:, 3]):
-        clockwise = True
-
     for box in _boxes:
         x, y, w, h, alpha = box.astype(dtype)
-        src_pts = cv2.boxPoints(((x, y), (w, h), alpha))[1:, :]
-        # Preserve size
-        if clockwise:
-            dst_pts = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1]], dtype=dtype)
-        else:
-            dst_pts = np.array([[h - 1, 0], [h - 1, w - 1], [0, w - 1]], dtype=dtype)
-        # The transformation matrix
-        M = cv2.getAffineTransform(src_pts, dst_pts)
-        # Warp the rotated rectangle
-        if clockwise:
-            crop = cv2.warpAffine(img, M, (int(w), int(h)))
-        else:
-            crop = cv2.warpAffine(img, M, (int(h), int(w)))
+        vertical_box = False
+        if (abs(alpha) < 3 and w * 1.3 < h) or (90 - abs(alpha) < 3 and w > h * 1.3):
+            vertical_box = True
+
+        process_func = _process_vertical_box if vertical_box else _process_horizontal_box
+        crop = process_func(img, box, dtype)
+
         crops.append(crop)
 
     return crops
 
 
+def _process_horizontal_box(img, box, dtype):
+    x, y, w, h, alpha = box.astype(dtype)
+    clockwise = False
+    if w > h:
+        clockwise = True
+    if clockwise:
+        #  1 -------- 2
+        #  |          |
+        #  * -------- 3
+        dst_pts = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1]], dtype=dtype)
+    else:
+        #  * -------- 1
+        #  |          |
+        #  3 -------- 2
+        # dst_pts = np.array([[h - 1, 0], [h - 1, w - 1], [0, w - 1]], dtype=dtype)
+        #  2 -------- 3
+        #  |          |
+        #  1 -------- *
+        dst_pts = np.array([[0, w - 1], [0, 0], [h - 1, 0]], dtype=dtype)
+    # The transformation matrix
+    src_pts = cv2.boxPoints(((x, y), (w, h), alpha))
+    M = cv2.getAffineTransform(src_pts[1:, :], dst_pts)
+    # Warp the rotated rectangle
+    if clockwise:
+        crop = cv2.warpAffine(img, M, (int(w), int(h)))
+    else:
+        crop = cv2.warpAffine(img, M, (int(h), int(w)))
+    return crop
+
+
+def _process_vertical_box(img, box, dtype):
+    x, y, w, h, alpha = box.astype(dtype)
+    clockwise = False
+    if w > h:
+        clockwise = True
+    if clockwise:
+        #  2 ------- 3
+        #  |         |
+        #  |         |
+        #  |         |
+        #  |         |
+        #  1 ------- *
+        dst_pts = np.array([[0, w - 1], [0, 0], [h - 1, 0]], dtype=dtype)
+        # dst_pts = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1]], dtype=dtype)
+    else:
+        #  1 ------- 2
+        #  |         |
+        #  |         |
+        #  |         |
+        #  |         |
+        #  * ------- 3
+        dst_pts = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1]], dtype=dtype)
+    # The transformation matrix
+    src_pts = cv2.boxPoints(((x, y), (w, h), alpha))
+    M = cv2.getAffineTransform(src_pts[1:, :], dst_pts)
+    # Warp the rotated rectangle
+    if clockwise:
+        crop = cv2.warpAffine(img, M, (int(h), int(w)))
+    else:
+        crop = cv2.warpAffine(img, M, (int(w), int(h)))
+    return crop
+
+
 def rotate_page(
-    image: np.ndarray,
-    angle: float = 0.,
-    min_angle: float = 1.
+        image: np.ndarray,
+        angle: float = 0.,
+        min_angle: float = 1.
 ) -> np.ndarray:
     """Rotate an image counterclockwise by an ange alpha (negative angle to go clockwise).
 
