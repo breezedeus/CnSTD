@@ -123,9 +123,9 @@ class StdDataset(Dataset):
 
         if self.mode != 'test':
             lines = self.targets[item]
-            for item in lines:  # 转化到 0~1 之间的取值，去掉对resize的依赖
-                item['poly'][:, 0] *= pre_resize_ratio * resize_ratios[1]
-                item['poly'][:, 1] *= pre_resize_ratio * resize_ratios[0]
+            for line in lines:  # 转化到 0~1 之间的取值，去掉对resize的依赖
+                line['poly'][:, 0] *= pre_resize_ratio * resize_ratios[1]
+                line['poly'][:, 1] *= pre_resize_ratio * resize_ratios[0]
             data['lines'] = lines
 
             line_polys = []

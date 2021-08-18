@@ -217,8 +217,6 @@ def rbox_to_mask(boxes_list: List[np.ndarray], shape: Tuple[int, int]) -> np.nda
             # Get absolute coordinates
             if boxes.dtype != np.int:
                 abs_boxes = boxes.copy()
-                abs_boxes[:, [0, 2]] = abs_boxes[:, [0, 2]] * shape[1]
-                abs_boxes[:, [1, 3]] = abs_boxes[:, [1, 3]] * shape[0]
                 abs_boxes = abs_boxes.round().astype(np.int)
             else:
                 abs_boxes = boxes
@@ -297,10 +295,6 @@ class LocalizationConfusion:
     :math:`N` (number of ground truths) and :math:`M` (number of predictions) are strictly positive integers.
 
     Example::
-        >>> import numpy as np
-        >>> metric = LocalizationConfusion(iou_thresh=0.5)
-        >>> metric.update(np.asarray([[0, 0, 100, 100]]), np.asarray([[0, 0, 70, 70], [110, 95, 200, 150]]))
-        >>> metric.summary()
 
     Args:
         iou_thresh: minimum IoU to consider a pair of prediction and ground truth as a match
@@ -317,8 +311,24 @@ class LocalizationConfusion:
         self.mask_shape = mask_shape
         self.reset()
 
-    def update(self, gt_boxes: List[List[np.ndarray]], preds: List[np.ndarray]) -> Tuple[float, float]:
+    def update(self, gt_boxes: List[List[np.ndarray]], norm_preds: List[np.ndarray]) -> Tuple[float, float]:
+        """
+
+        Args:
+            gt_boxes: 这里面的值是未归一化到 [0, 1] 的
+            norm_preds: 这里面的值是归一化到 [0, 1] 的
+
+        Returns:
+
+        """
         gts = self._transform_gt_polygons(gt_boxes)
+        preds = []
+        for n_pred in norm_preds:
+            pred = n_pred.copy()
+            pred[:, [0, 2]] *= self.mask_shape[1]
+            pred[:, [1, 3]] *= self.mask_shape[0]
+            preds.append(pred)
+
         cur_iou, cur_matches = 0.0, 0.0
         batch_size = len(preds)
         if batch_size > 0:

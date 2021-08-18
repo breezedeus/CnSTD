@@ -165,7 +165,8 @@ class DBNet(_DBNet, nn.Module):
             "out_map": prob tensor
             "preds": list; [List[boxes tensor], List[angles tensor]]
                 boxes tensor: 5 (rotated_bbox==False) or 6 (rotated_bbox==True) columns;
-                    containing [x, y, w, h, (angle,) score] for the box
+                    * containing [xmin, ymin, xmax, ymax, score] for the box (rotated_bbox==False);
+                    * containing [x, y, w, h, angle, score] for the box (rotated_bbox==True)
                 angles tensor: N angles (page orientations, each for one page or image).
             "loss": scalar tensor
 
