@@ -201,7 +201,7 @@ class DetectionPredictor(NestedObject):
         for i, axi in enumerate(ax.flat):
             if i >= len(crops):
                 break
-            axi.imshow(crops[i], alpha=0.25)
+            axi.imshow(crops[i])
         plt.tight_layout(True)
         plt.savefig('crops-%d.png' % idx)
 
