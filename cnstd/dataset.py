@@ -108,7 +108,8 @@ class StdDataset(Dataset):
         pil_img, pre_resize_ratio = self._pre_resize(pil_img, self.resized_shape)
         try:
             pil_img = self.transforms(pil_img) if self.transforms is not None else pil_img
-        except:
+        except Exception as e:
+            logger.debug(e)
             logger.debug('bad image for transformation: %s' % img_fp)
             return {}
         new_img = pil_to_numpy(pil_img)

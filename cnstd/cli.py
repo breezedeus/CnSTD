@@ -18,6 +18,7 @@
 import os
 import click
 import json
+import time
 
 import numpy as np
 import torchvision.transforms as T
@@ -80,13 +81,11 @@ def train(
 
     train_transform = T.Compose(  # MUST NOT include `Resize`
         [
-            # T.Resize(expected_img_shape[1:]),
             T.ColorJitter(brightness=0.3, contrast=0.2, saturation=0.2, hue=0.2),
             T.RandomEqualize(p=0.3),
-            T.GaussianBlur(kernel_size=21),
+            T.RandomApply([T.GaussianBlur(kernel_size=3)], p=0.5),
         ]
     )
-    # val_transform = T.Resize(expected_img_shape[1:])
     val_transform = None
 
     data_mod = StdDataModule(
@@ -103,7 +102,7 @@ def train(
     )
 
     # train_ds = data_mod.train
-    # visualize_example(train_ds[0])
+    # visualize_example(train_ds[8])
     # return
 
     trainer = PlTrainer(
@@ -184,7 +183,9 @@ def predict(
         debug=True,
     )
     pil_img = read_img(file)
+    start_time = time.time()
     predictor([pil_img], box_score_thresh=box_score_thresh)
+    logger.info('time cost of prediction: %f' % (time.time() - start_time))
 
 
 @cli.command('evaluate', context_settings=_CONTEXT_SETTINGS)
