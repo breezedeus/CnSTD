@@ -124,20 +124,27 @@ class DetectionPredictor(NestedObject):
 
     _children_names: List[str] = ['model']
 
-    def __init__(self, model, *, preserve_aspect_ratio=True, debug=False) -> None:
+    def __init__(
+        self, model, *, resized_shape, preserve_aspect_ratio=True, debug=False
+    ) -> None:
 
         self.preserve_aspect_ratio = preserve_aspect_ratio
         self.debug = debug
         self.model = model
         self.model.eval()
-        self.val_transform = Resize(self.model.cfg['input_shape'][1:], preserve_aspect_ratio=self.preserve_aspect_ratio)
+        self.val_transform = Resize(
+            resized_shape, preserve_aspect_ratio=self.preserve_aspect_ratio
+        )
         self.extract_crops_fn = (
             extract_rcrops if self.model.rotated_bbox else extract_crops
         )
 
     @torch.no_grad()
     def __call__(
-        self, img_list: List[Union[Image.Image, np.ndarray]], box_score_thresh: float=0.5, **kwargs: Any,
+        self,
+        img_list: List[Union[Image.Image, np.ndarray]],
+        box_score_thresh: float = 0.5,
+        **kwargs: Any,
     ) -> Tuple[List[np.ndarray], List[List[float]]]:
         """
 
@@ -164,7 +171,10 @@ class DetectionPredictor(NestedObject):
             rotated_img = np.ascontiguousarray(rotate_page(image, -angle))
             crops = []
             scores = []
-            for crop, score in zip(self.extract_crops_fn(rotated_img, _boxes[:, :-1]), _boxes[:, -1].tolist()):
+            for crop, score in zip(
+                self.extract_crops_fn(rotated_img, _boxes[:, :-1]),
+                _boxes[:, -1].tolist(),
+            ):
                 if score < box_score_thresh:
                     continue
                 crops.append(crop)
@@ -173,7 +183,9 @@ class DetectionPredictor(NestedObject):
             scores_list.append(scores)
 
             if self.debug:
-                self._plot_for_debugging(rotated_img, crops, _boxes, box_score_thresh, idx)
+                self._plot_for_debugging(
+                    rotated_img, crops, _boxes, box_score_thresh, idx
+                )
             idx += 1
 
         return crops_list, scores_list
@@ -181,6 +193,7 @@ class DetectionPredictor(NestedObject):
     def _plot_for_debugging(self, rotated_img, crops, _boxes, box_score_thresh, idx):
         import matplotlib.pyplot as plt
         import math
+
         logger.info('%d boxes are found' % len(crops))
         ncols = 3
         nrows = math.ceil(len(crops) / ncols)
@@ -209,7 +222,9 @@ class DetectionPredictor(NestedObject):
                 cv2.rectangle(rotated_img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
         imsave(rotated_img, 'result-%d.png' % idx, normalized=False)
 
-    def preprocess(self, pil_img_list: List[Union[Image.Image, np.ndarray]]) -> torch.Tensor:
+    def preprocess(
+        self, pil_img_list: List[Union[Image.Image, np.ndarray]]
+    ) -> torch.Tensor:
         img_list = []
         for img in pil_img_list:
             if isinstance(img, Image.Image):

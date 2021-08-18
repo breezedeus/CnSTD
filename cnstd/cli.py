@@ -41,7 +41,7 @@ from .model.core import DetectionPredictor
 _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
 
 logger = set_logger(log_level='INFO')
-DEFAULT_MODEL_NAME = 'db_resnet18_small'
+DEFAULT_MODEL_NAME = 'db_resnet18'
 
 
 @click.group(context_settings=_CONTEXT_SETTINGS)
@@ -142,7 +142,13 @@ def visualize_example(example):
     default=None,
     help='导入的训练好的模型，作为初始模型。优先级低于"--restore-training-fp"，当传入"--restore-training-fp"时，此传入可能失效',
 )
-@click.option("--rotated-bbox", is_flag=True, help="是否考虑旋转box")
+@click.option("-r", "--rotated-bbox", is_flag=True, help="是否考虑旋转box")
+@click.option(
+    "--resized-shape",
+    type=str,
+    default='768,768',
+    help='格式："height,width"; 预测时把图片resize到此大小再进行预测。两个值都需要是32的倍数',
+)
 @click.option("--box-score-thresh", type=float, default=0.3, help="只考虑分数大于此值的boxes")
 @click.option(
     "--preserve-aspect-ratio", type=bool, default=True, help="resize时是否保留图片原始比例"
@@ -159,6 +165,7 @@ def predict(
     model_epoch,
     pretrained_model_fp,
     rotated_bbox,
+    resized_shape,
     box_score_thresh,
     preserve_aspect_ratio,
     context,
@@ -169,8 +176,12 @@ def predict(
     if pretrained_model_fp is not None:
         load_model_params(model, pretrained_model_fp)
 
+    resized_shape = tuple(map(int, resized_shape.split(',')))  # [H, W]
     predictor = DetectionPredictor(
-        model, preserve_aspect_ratio=preserve_aspect_ratio, debug=True
+        model,
+        resized_shape=resized_shape,
+        preserve_aspect_ratio=preserve_aspect_ratio,
+        debug=True,
     )
     pil_img = read_img(file)
     predictor([pil_img], box_score_thresh=box_score_thresh)
