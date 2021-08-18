@@ -20,6 +20,7 @@ import logging
 from pathlib import Path
 from typing import Optional, Union, List, Dict, Any, Tuple
 
+from PIL import Image
 import numpy as np
 import pytorch_lightning as pt
 import torch
@@ -102,14 +103,15 @@ class StdDataset(Dataset):
 
     def __getitem__(self, item):
         img_fp = self.img_paths[item]
-        img = read_img(img_fp)
+        pil_img = read_img(img_fp)
+        # 等比例缩放，主要是为了避免后续transforms处理大图片时很耗时的问题
+        pil_img, pre_resize_ratio = self._pre_resize(pil_img, self.resized_shape)
         try:
-            pil_img = self.transforms(img) if self.transforms is not None else img
+            pil_img = self.transforms(pil_img) if self.transforms is not None else pil_img
         except:
             logger.debug('bad image for transformation: %s' % img_fp)
             return {}
         new_img = pil_to_numpy(pil_img)
-        # c, h, w = new_img.shape
 
         new_img, resize_ratios = self._resize(new_img)  # res: [3, H, W]
 
@@ -121,8 +123,8 @@ class StdDataset(Dataset):
         if self.mode != 'test':
             lines = self.targets[item]
             for item in lines:  # 转化到 0~1 之间的取值，去掉对resize的依赖
-                item['poly'][:, 0] *= resize_ratios[1]
-                item['poly'][:, 1] *= resize_ratios[0]
+                item['poly'][:, 0] *= pre_resize_ratio * resize_ratios[1]
+                item['poly'][:, 1] *= pre_resize_ratio * resize_ratios[0]
             data['lines'] = lines
 
             line_polys = []
@@ -144,6 +146,21 @@ class StdDataset(Dataset):
 
             data['image'] = normalize_img_array(data['image'])
         return data
+
+    def _pre_resize(self, img: Image.Image, target_size) -> Tuple[Image.Image, float]:
+        """等比例缩放，主要是为了避免后续transforms处理大图片时很耗时的问题"""
+        ori_w, ori_h = img.size
+        new_h, new_w = target_size
+
+        target_ratio = new_h / new_w
+        actual_ratio = ori_h / ori_w
+        if actual_ratio > target_ratio:
+            ratio = new_h / ori_h
+            new_size = (int(ori_h / actual_ratio), new_h)  # W, H
+        else:
+            ratio = new_w / ori_w
+            new_size = (new_w, int(new_w * actual_ratio))  # W, H
+        return img.resize(new_size, Image.BILINEAR), ratio
 
     def _resize(self, img: np.ndarray) -> Tuple[np.ndarray, Tuple[float, float]]:
         """

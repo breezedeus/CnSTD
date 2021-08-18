@@ -39,7 +39,8 @@ class Resize(T.Resize):
                 tmp_size = (int(self.size[1] * actual_ratio), self.size[1])
 
             # Scale image
-            img = F.resize(img, tmp_size, self.interpolation)
+            if tuple(img.shape[1:]) != tmp_size:
+                img = F.resize(img, tmp_size, self.interpolation)
             # Pad (inverted in pytorch)
             _pad = (0, self.size[1] - img.shape[-1], 0, self.size[0] - img.shape[-2])
             if self.symmetric_pad:
