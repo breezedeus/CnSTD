@@ -52,6 +52,7 @@ def gen_model(model_name: str, pretrained_backbone: bool = True, **kwargs) -> DB
         **kwargs:
             'rotated_bbox': bool, 是否考虑非水平的boxes
             'pretrained': bool, 是否使用预训练好的模型
+            'input_shape': Tuple[int, int, int], resize后输入模型的图片大小：[C, H, W]
 
     Returns: a DBNet model
 

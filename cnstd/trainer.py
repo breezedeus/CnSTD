@@ -133,9 +133,11 @@ class WrapperLightningModule(pl.LightningModule):
         )
 
         pred_boxes = [boxes[:, :-1] for boxes in res['preds'][0]]  # 最后一列是分数，去掉不用
-        match, mean_iou = self.val_metric.update(
-            batch['polygons'], pred_boxes
-        )
+        gt_boxes = []
+        for boxes, ignores in zip(batch['polygons'], batch['ignore_tags']):
+            boxes = [box for idx, box in enumerate(boxes) if not ignores[idx]]
+            gt_boxes.append(boxes)
+        match, mean_iou = self.val_metric.update(gt_boxes, pred_boxes)
         val_metrics = dict(match_step=match, mean_iou_step=mean_iou)
         self.log_dict(
             val_metrics, on_step=True, on_epoch=False, prog_bar=True, logger=True,

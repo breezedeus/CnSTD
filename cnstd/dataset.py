@@ -195,7 +195,7 @@ class StdDataset(Dataset):
 def collate_fn(img_labels: List[Dict[str, Any]]):
     img_labels = [example for example in img_labels if len(example) > 0]
     test_mode = 'gt' not in img_labels[0]
-    keys = {'image', 'polygons'}
+    keys = {'image', 'polygons', 'ignore_tags'}
     if not test_mode:
         keys.update({'gt', 'mask', 'thresh_map', 'thresh_mask'})
 
@@ -204,7 +204,10 @@ def collate_fn(img_labels: List[Dict[str, Any]]):
         res_list = []
 
         for example in img_labels:
-            ele = torch.from_numpy(example[key]) if key != 'polygons' else example[key]
+            if key in ('polygons', 'ignore_tags'):
+                ele = example[key]
+            else:
+                ele = torch.from_numpy(example[key])
             if 'mask' in key:
                 ele = ele.to(dtype=torch.bool)
             if key == 'image':
@@ -213,7 +216,7 @@ def collate_fn(img_labels: List[Dict[str, Any]]):
                 res_list.append(ele.squeeze(0))
             else:
                 res_list.append(ele)
-        if key == 'polygons':
+        if key in ('polygons', 'ignore_tags'):
             out[key] = res_list
         else:
             out[key] = torch.stack(res_list, dim=0)
@@ -259,7 +262,7 @@ class StdDataModule(pt.LightningDataModule):
             resized_shape=resized_shape,
             preserve_aspect_ratio=preserve_aspect_ratio,
             data_root_dir=self.data_root_dir,
-            mode='train',
+            mode='val',
             debug=debug,
         )
 
