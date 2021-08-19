@@ -19,6 +19,7 @@ import os
 import hashlib
 import requests
 from pathlib import Path
+from typing import Tuple
 import logging
 import platform
 import zipfile
@@ -154,9 +155,9 @@ def download(url, path=None, overwrite=False, sha1_hash=None):
             fname = path
 
     if (
-            overwrite
-            or not os.path.exists(fname)
-            or (sha1_hash and not check_sha1(fname, sha1_hash))
+        overwrite
+        or not os.path.exists(fname)
+        or (sha1_hash and not check_sha1(fname, sha1_hash))
     ):
         dirname = os.path.dirname(os.path.abspath(os.path.expanduser(fname)))
         if not os.path.exists(dirname):
@@ -175,11 +176,11 @@ def download(url, path=None, overwrite=False, sha1_hash=None):
             else:
                 total_length = int(total_length)
                 for chunk in tqdm(
-                        r.iter_content(chunk_size=1024),
-                        total=int(total_length / 1024.0 + 0.5),
-                        unit='KB',
-                        unit_scale=False,
-                        dynamic_ncols=True,
+                    r.iter_content(chunk_size=1024),
+                    total=int(total_length / 1024.0 + 0.5),
+                    unit='KB',
+                    unit_scale=False,
+                    dynamic_ncols=True,
                 ):
                     f.write(chunk)
 
@@ -218,7 +219,9 @@ def get_model_file(model_dir):
     if not os.path.exists(zip_file_path):
         model_name = os.path.basename(model_dir)
         if model_name not in AVAILABLE_MODELS:
-            raise NotImplementedError('%s is not an available downloaded model' % model_name)
+            raise NotImplementedError(
+                '%s is not an available downloaded model' % model_name
+            )
         url = AVAILABLE_MODELS[model_name][1]
         download(url, path=zip_file_path, overwrite=True)
     with zipfile.ZipFile(zip_file_path) as zf:
@@ -236,6 +239,7 @@ def read_charset(charset_fp):
     inv_alph_dict = {_char: idx for idx, _char in enumerate(alphabet)}
     if len(alphabet) != len(inv_alph_dict):
         from collections import Counter
+
         repeated = Counter(alphabet).most_common(len(alphabet) - len(inv_alph_dict))
         raise ValueError('repeated chars in vocab: %s' % repeated)
 
@@ -324,6 +328,34 @@ def imsave(image, fp, normalized=True):
         image = image.clip(0, 255).astype(np.uint8)
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     cv2.imwrite(fp, image)
+
+
+def get_resized_ratio(
+    ori_hw: Tuple[int, int], target_hw: Tuple[int, int], preserve_aspect_ratio: bool
+) -> Tuple[float, float]:
+    """
+    get height and weight ratios when resizing an image from original height and weight to target height and weight
+    Args:
+        ori_hw:
+        target_hw:
+        preserve_aspect_ratio:
+
+    Returns:
+
+    """
+    ori_h, ori_w = ori_hw
+    new_h, new_w = target_hw
+
+    if preserve_aspect_ratio:
+        target_ratio = new_h / new_w
+        actual_ratio = ori_h / ori_w
+        if actual_ratio > target_ratio:
+            ratio = new_h / ori_h
+        else:
+            ratio = new_w / ori_w
+        return ratio, ratio
+    else:
+        return new_h / ori_h, new_w / ori_w
 
 
 def load_model_params(model, param_fp, device='cpu'):

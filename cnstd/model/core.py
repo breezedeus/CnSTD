@@ -12,7 +12,13 @@ from PIL import Image
 import torch
 
 from ..transforms import Resize
-from ..utils import pil_to_numpy, normalize_img_array, restore_img, imsave
+from ..utils import (
+    pil_to_numpy,
+    normalize_img_array,
+    restore_img,
+    imsave,
+    get_resized_ratio,
+)
 from ..utils.repr import NestedObject
 from .._utils import rotate_page, get_bitmap_angle, extract_crops, extract_rcrops
 
@@ -129,11 +135,12 @@ class DetectionPredictor(NestedObject):
     ) -> None:
 
         self.preserve_aspect_ratio = preserve_aspect_ratio
+        self.resized_shape = resized_shape
         self.debug = debug
         self.model = model
         self.model.eval()
         self.val_transform = Resize(
-            resized_shape, preserve_aspect_ratio=self.preserve_aspect_ratio
+            self.resized_shape, preserve_aspect_ratio=self.preserve_aspect_ratio
         )
         self.extract_crops_fn = (
             extract_rcrops if self.model.rotated_bbox else extract_crops
@@ -151,46 +158,60 @@ class DetectionPredictor(NestedObject):
         Args:
             img_list: list, which element's should be one type of Image.Image and np.ndarray.
                 For Image.Image, it should be generated from read_img;
-                For np.ndarray, it should be RGB-style, with shape [3, H, W]
+                For np.ndarray, it should be RGB-style, with shape [3, H, W], scale [0, 255]
             box_score_thresh: score threshold for boxes, boxes with scores lower than this value will be ignored
             **kwargs:
 
         Returns:
 
         """
-        batch = self.preprocess(img_list)
+        ori_imgs, batch, compress_ratios = self.preprocess(img_list)
 
         out = self.model(batch, return_preds=True, **kwargs)  # type:ignore[operator]
         boxes, angles = out['preds']
-        # FIXME resize back for boxes and images
         crops_list = []
         scores_list = []
+        boxes_list = []
         idx = 0
-        for image, _boxes, angle in zip(batch, boxes, angles):
-            image = restore_img(image.numpy().transpose((1, 2, 0)))  # res: [H, W, 3]
+        for image, _boxes, compress_ratio, angle in zip(
+            ori_imgs, boxes, compress_ratios, angles
+        ):
+            # image = restore_img(image.numpy().transpose((1, 2, 0)))  # res: [H, W, 3]
+            image = image.transpose((1, 2, 0)).astype(np.uint8)  # res: [H, W, 3]
             rotated_img = np.ascontiguousarray(rotate_page(image, -angle))
             crops = []
             scores = []
-            for crop, score in zip(
-                self.extract_crops_fn(rotated_img, _boxes[:, :-1]),
-                _boxes[:, -1].tolist(),
+            clean_boxes = []
+
+            _scores = _boxes[:, -1].tolist()
+            _boxes = _boxes[:, :-1]
+            # resize back
+            _boxes[:, [0, 2]] /= compress_ratio[1]
+            _boxes[:, [1, 3]] /= compress_ratio[0]
+
+            for crop, score, box in zip(
+                self.extract_crops_fn(rotated_img, _boxes), _scores, _boxes
             ):
                 if score < box_score_thresh:
                     continue
                 crops.append(crop)
                 scores.append(score)
+                clean_boxes.append(box)
             crops_list.append(crops)
             scores_list.append(scores)
+            boxes_list.append(clean_boxes)
 
             if self.debug:
                 self._plot_for_debugging(
-                    rotated_img, crops, _boxes, box_score_thresh, idx
+                    rotated_img, crops, _boxes, _scores, box_score_thresh, idx
                 )
             idx += 1
 
-        return crops_list, scores_list
+        return crops_list, scores_list, boxes_list
 
-    def _plot_for_debugging(self, rotated_img, crops, _boxes, box_score_thresh, idx):
+    def _plot_for_debugging(
+        self, rotated_img, crops, _boxes, _scores, box_score_thresh, idx
+    ):
         import matplotlib.pyplot as plt
         import math
 
@@ -209,27 +230,42 @@ class DetectionPredictor(NestedObject):
             _boxes[:, [0, 2]] *= rotated_img.shape[1]
             _boxes[:, [1, 3]] *= rotated_img.shape[0]
 
-        for box in _boxes:
-            if box[-1] < box_score_thresh:  # score < 0.5
+        for box, score in zip(_boxes, _scores):
+            if score < box_score_thresh:  # score < 0.5
                 continue
-            if len(box) == 6:  # rotated_box == True
-                x, y, w, h, alpha, score = box.astype('float32')
+            if len(box) == 5:  # rotated_box == True
+                x, y, w, h, alpha = box.astype('float32')
                 box = cv2.boxPoints(((x, y), (w, h), alpha))
                 box = np.int0(box)
                 cv2.drawContours(rotated_img, [box], 0, (255, 0, 0), 2)
-            else:  # len(box) == 5, rotated_box == False
-                xmin, ymin, xmax, ymax, score = box.astype('float32')
+            else:  # len(box) == 4, rotated_box == False
+                xmin, ymin, xmax, ymax = box.astype('float32')
                 cv2.rectangle(rotated_img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
         imsave(rotated_img, 'result-%d.png' % idx, normalized=False)
 
     def preprocess(
         self, pil_img_list: List[Union[Image.Image, np.ndarray]]
-    ) -> torch.Tensor:
+    ) -> Tuple[List[np.ndarray], torch.Tensor, List[Tuple[float, float]]]:
+        ori_img_list = []
         img_list = []
+        compress_ratios_list = []
         for img in pil_img_list:
             if isinstance(img, Image.Image):
                 img = pil_to_numpy(img)  # res: np.ndarray, RGB-style, [3, H, W]
+                ori_img_list.append(img)
+            compress_ratio = self._compress_ratio(img.shape[1:], self.resized_shape)
+            compress_ratios_list.append(compress_ratio)
             img = self.val_transform(torch.from_numpy(img)).numpy()
             img = normalize_img_array(img)
             img_list.append(torch.from_numpy(img))
-        return torch.stack(img_list, dim=0)
+        return ori_img_list, torch.stack(img_list, dim=0), compress_ratios_list
+
+    def _compress_ratio(self, ori_hw, target_hw):
+        if not self.preserve_aspect_ratio:
+            return 1.0, 1.0
+
+        resized_ratios = get_resized_ratio(ori_hw, target_hw, True)
+        ratio = resized_ratios[0]
+        ori_h, ori_w = ori_hw
+        target_h, target_w = target_hw
+        return ratio * ori_h / target_h, ratio * ori_w / target_w

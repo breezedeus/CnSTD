@@ -63,6 +63,7 @@ def get_lr_scheduler(config, optimizer):
             gamma=lr_sch_config['gamma'],
         )
     elif lr_sch_name == 'cos_anneal':
+        # 5 个 epochs, 一个循环
         return CosineAnnealingWarmRestarts(
             optimizer, T_0=5, T_mult=1, eta_min=orig_lr / 10.0
         )
@@ -71,7 +72,7 @@ def get_lr_scheduler(config, optimizer):
             optimizer,
             base_lr=orig_lr / 10.0,
             max_lr=orig_lr,
-            step_size_up=5 * config['steps_per_epoch'],
+            step_size_up=5,  # 5 个 epochs, 从最小base_lr上升到最大max_lr
             cycle_momentum=False,
         )
     elif lr_sch_name == 'one_cycle':
@@ -79,7 +80,7 @@ def get_lr_scheduler(config, optimizer):
             optimizer,
             max_lr=orig_lr,
             epochs=config['epochs'],
-            steps_per_epoch=config['steps_per_epoch'],
+            steps_per_epoch=1,
         )
 
     step_size = lr_sch_config['step_size']
@@ -253,9 +254,9 @@ class PlTrainer(object):
         self.saved_model_file = output_model_fp
 
 
-def resave_model(module_fp, output_model_fp):
+def resave_model(module_fp, output_model_fp, map_location=None):
     """PlTrainer存储的文件对应其 `pl_module` 模块，需利用此函数转存为 `model` 对应的模型文件。"""
-    checkpoint = torch.load(module_fp)
+    checkpoint = torch.load(module_fp, map_location=map_location)
     state_dict = {}
     for k, v in checkpoint['state_dict'].items():
         state_dict[k.split('.', maxsplit=1)[1]] = v

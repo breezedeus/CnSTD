@@ -27,7 +27,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 
 from .transforms import Resize
-from .utils import read_img, pil_to_numpy, normalize_img_array
+from .utils import read_img, pil_to_numpy, normalize_img_array, get_resized_ratio
 from .transforms.process_data import PROCESSOR_CLS
 
 logger = logging.getLogger(__name__)
@@ -107,7 +107,9 @@ class StdDataset(Dataset):
         # 等比例缩放，主要是为了避免后续transforms处理大图片时很耗时的问题
         pil_img, pre_resize_ratio = self._pre_resize(pil_img, self.resized_shape)
         try:
-            pil_img = self.transforms(pil_img) if self.transforms is not None else pil_img
+            pil_img = (
+                self.transforms(pil_img) if self.transforms is not None else pil_img
+            )
         except Exception as e:
             logger.debug(e)
             logger.debug('bad image for transformation: %s' % img_fp)
@@ -178,16 +180,9 @@ class StdDataset(Dataset):
         img = self.resize_transform(torch.from_numpy(img)).numpy()
         new_h, new_w = img.shape[1:]
 
-        if not self.preserve_aspect_ratio:
-            resize_ratios = (new_h / ori_h, new_w / ori_w)
-        else:
-            target_ratio = new_h / new_w
-            actual_ratio = ori_h / ori_w
-            if actual_ratio > target_ratio:
-                ratio = new_h / ori_h
-            else:
-                ratio = new_w / ori_w
-            resize_ratios = (ratio, ratio)
+        resize_ratios = get_resized_ratio(
+            (ori_h, ori_w), (new_h, new_w), self.preserve_aspect_ratio
+        )
 
         return img, resize_ratios
 
