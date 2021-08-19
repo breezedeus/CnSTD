@@ -32,7 +32,7 @@ from .utils import (
     read_img,
 )
 from .dataset import StdDataModule
-from .trainer import PlTrainer
+from .trainer import PlTrainer, resave_model
 from .model import gen_model
 from .model.core import DetectionPredictor
 
@@ -190,6 +190,16 @@ def predict(
     start_time = time.time()
     predictor([pil_img], box_score_thresh=box_score_thresh)
     logger.info('time cost of prediction: %f' % (time.time() - start_time))
+
+
+@cli.command('resave')
+@click.option('-i', '--input-model-fp', type=str, required=True, help='输入的模型文件路径')
+@click.option('-o', '--output-model-fp', type=str, required=True, help='输出的模型文件路径')
+def resave_model_file(
+        input_model_fp,
+        output_model_fp,
+):
+    resave_model(input_model_fp, output_model_fp, map_location='cpu')
 
 
 @cli.command('evaluate', context_settings=_CONTEXT_SETTINGS)
