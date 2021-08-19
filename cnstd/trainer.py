@@ -4,7 +4,6 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Optional, Union, List
 
-import numpy as np
 import torch
 import torch.optim as optim
 from torch import nn
@@ -16,6 +15,7 @@ from torch.optim.lr_scheduler import (
     CyclicLR,
     CosineAnnealingWarmRestarts,
     MultiStepLR,
+    OneCycleLR,
 )
 from torch.utils.data import DataLoader
 
@@ -64,15 +64,22 @@ def get_lr_scheduler(config, optimizer):
         )
     elif lr_sch_name == 'cos_anneal':
         return CosineAnnealingWarmRestarts(
-            optimizer, T_0=4, T_mult=1, eta_min=orig_lr / 10.0
+            optimizer, T_0=5, T_mult=1, eta_min=orig_lr / 10.0
         )
     elif lr_sch_name == 'cyclic':
         return CyclicLR(
             optimizer,
             base_lr=orig_lr / 10.0,
             max_lr=orig_lr,
-            step_size_up=2,
+            step_size_up=5 * config['steps_per_epoch'],
             cycle_momentum=False,
+        )
+    elif lr_sch_name == 'one_cycle':
+        return OneCycleLR(
+            optimizer,
+            max_lr=orig_lr,
+            epochs=config['epochs'],
+            steps_per_epoch=config['steps_per_epoch'],
         )
 
     step_size = lr_sch_config['step_size']
@@ -219,6 +226,12 @@ class PlTrainer(object):
                 no checkpoint file at the path, start from scratch. If resuming from mid-epoch checkpoint,
                 training will start from the beginning of the next epoch.
         """
+        steps_per_epoch = (
+            len(train_dataloader)
+            if train_dataloader is not None
+            else len(datamodule.train_dataloader())
+        )
+        self.config['steps_per_epoch'] = steps_per_epoch
         if resume_from_checkpoint is not None:
             pl_module = WrapperLightningModule.load_from_checkpoint(
                 resume_from_checkpoint, config=self.config, model=model
