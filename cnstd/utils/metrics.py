@@ -188,14 +188,14 @@ def mask_iou(masks_1: np.ndarray, masks_2: np.ndarray) -> np.ndarray:
     if masks_1.shape != masks_2.shape:
         raise AssertionError("both boolean masks should have the same spatial shape")
 
-    iou_mat = np.zeros((masks_1.shape[0], ), dtype=np.float32)
+    iou_vec = np.zeros((masks_1.shape[0], ), dtype=np.float32)
 
     if masks_1.shape[0] > 0 and masks_2.shape[0] > 0:
         intersection = np.logical_and(masks_1, masks_2)
         union = np.logical_or(masks_1, masks_2)
-        iou_mat = intersection.sum(axis=(1, 2)) / (union.sum(axis=(1, 2)) + 1e-6)
+        iou_vec = intersection.sum(axis=(1, 2)) / (union.sum(axis=(1, 2)) + 1e-6)
 
-    return iou_mat
+    return iou_vec
 
 
 def rbox_to_mask(boxes_list: List[np.ndarray], shape: Tuple[int, int]) -> np.ndarray:
@@ -340,7 +340,7 @@ class LocalizationConfusion:
                 cur_iou = iou_vec.sum()
                 cur_matches = int((iou_vec >= self.iou_thresh).sum())
             else:
-                iou_mat = box_iou(gts, preds)
+                iou_mat = box_iou(np.concatenate(gts), np.concatenate(preds))
                 cur_iou = float(iou_mat.max(axis=1).sum())
 
                 # Assign pairs

@@ -1,5 +1,6 @@
 # coding: utf-8
 from typing import Dict, Any
+from copy import deepcopy
 
 from torchvision.models import resnet18, resnet34, resnet50, mobilenet_v3_large
 
@@ -12,9 +13,7 @@ MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
         'backbone_submodule': None,
         'fpn_layers': ['layer1', 'layer2', 'layer3', 'layer4'],
         'fpn_channels': [256, 512, 1024, 2048],
-        'input_shape': (3, 768, 768),  # 期望的输入图片大小
-        'mean': (0.5, 0.5, 0.5),
-        'std': (1.0, 1.0, 1.0),
+        'input_shape': (3, 768, 768),  # resize后输入模型的图片大小, 即 `resized_shape`
         'url': None,
     },
     'db_resnet34': {
@@ -23,8 +22,6 @@ MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
         'fpn_layers': ['layer1', 'layer2', 'layer3', 'layer4'],
         'fpn_channels': [64, 128, 256, 512],
         'input_shape': (3, 768, 768),
-        'mean': (0.5, 0.5, 0.5),
-        'std': (1.0, 1.0, 1.0),
         'url': None,
     },
     'db_resnet18': {
@@ -33,8 +30,6 @@ MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
         'fpn_layers': ['layer1', 'layer2', 'layer3', 'layer4'],
         'fpn_channels': [64, 128, 256, 512],
         'input_shape': (3, 768, 768),
-        'mean': (0.5, 0.5, 0.5),
-        'std': (1.0, 1.0, 1.0),
         'url': None,
     },
     'db_mobilenet_v3': {
@@ -43,8 +38,6 @@ MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
         'fpn_layers': ['3', '6', '12', '16'],
         'fpn_channels': [24, 40, 112, 960],
         'input_shape': (3, 768, 768),
-        'mean': (0.5, 0.5, 0.5),
-        'std': (1.0, 1.0, 1.0),
         'url': None,
     },
 }
@@ -66,6 +59,8 @@ def gen_model(model_name: str, pretrained_backbone: bool = True, **kwargs) -> DB
     if model_name not in MODEL_CONFIGS:
         raise KeyError('got unsupported model name: %s' % model_name)
 
+    config = deepcopy(MODEL_CONFIGS[model_name])
+    config.update(**kwargs)
     return gen_dbnet(
-        MODEL_CONFIGS[model_name], pretrained_backbone=pretrained_backbone, **kwargs
+        config, pretrained_backbone=pretrained_backbone, **kwargs
     )

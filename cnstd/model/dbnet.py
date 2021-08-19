@@ -3,18 +3,22 @@
 # This program is licensed under the Apache License version 2.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
 
+import logging
+from typing import List, Dict, Any, Optional
+
 import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
 from torchvision.models._utils import IntermediateLayerGetter
 from torchvision.ops.deform_conv import DeformConv2d
-from torchvision.models import resnet18, resnet34, resnet50, mobilenet_v3_large
-from typing import List, Dict, Any, Optional
 
 from .base import DBPostProcessor, _DBNet
 
 __all__ = ['DBNet', 'gen_dbnet']
+
+
+logger = logging.getLogger(__name__)
 
 
 class FeaturePyramidNetwork(nn.Module):
@@ -78,6 +82,7 @@ class DBNet(_DBNet, nn.Module):
         num_classes: int = 1,
         rotated_bbox: bool = False,
         cfg: Optional[Dict[str, Any]] = None,
+        **kwargs,
     ) -> None:
 
         super().__init__()
@@ -278,6 +283,7 @@ def gen_dbnet(
 ) -> DBNet:
 
     pretrained_backbone = pretrained_backbone and not pretrained
+    logger.info('config for "gen_dbnet": %s' % config)
 
     # Feature extractor
     backbone = config['backbone'](pretrained=pretrained_backbone)

@@ -74,7 +74,11 @@ def train(
     model_name, index_dir, train_config_fp, resume_from_checkpoint, pretrained_model_fp
 ):
     train_config = json.load(open(train_config_fp))
-    model = gen_model(model_name, rotated_bbox=train_config['rotated_bbox'])
+
+    kwargs = dict(rotated_bbox=train_config['rotated_bbox'])
+    if 'resized_shape' in train_config:
+        kwargs['input_shape'] = train_config['resized_shape']
+    model = gen_model(model_name, **kwargs)
     logger.info(model)
     logger.info(model.cfg)
     expected_img_shape = model.cfg['input_shape']
