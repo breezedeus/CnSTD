@@ -12,8 +12,15 @@ from unidecode import unidecode
 from scipy.optimize import linear_sum_assignment
 from .geometry import rbbox_to_polygon, fit_rbbox
 
-__all__ = ['TextMatch', 'box_iou', 'box_ioa', 'mask_iou', 'rbox_to_mask',
-           'nms', 'LocalizationConfusion']
+__all__ = [
+    'TextMatch',
+    'box_iou',
+    'box_ioa',
+    'mask_iou',
+    'rbox_to_mask',
+    'nms',
+    'LocalizationConfusion',
+]
 
 
 def string_match(word1: str, word2: str) -> Tuple[bool, bool, bool, bool]:
@@ -27,12 +34,12 @@ def string_match(word1: str, word2: str) -> Tuple[bool, bool, bool, bool]:
         a tuple with booleans specifying respectively whether the raw strings, their lower-case counterparts, their
             unidecode counterparts and their lower-case unidecode counterparts match
     """
-    raw_match = (word1 == word2)
-    caseless_match = (word1.lower() == word2.lower())
-    unidecode_match = (unidecode(word1) == unidecode(word2))
+    raw_match = word1 == word2
+    caseless_match = word1.lower() == word2.lower()
+    unidecode_match = unidecode(word1) == unidecode(word2)
 
     # Warning: the order is important here otherwise the pair ("EUR", "€") cannot be matched
-    unicase_match = (unidecode(word1).lower() == unidecode(word2).lower())
+    unicase_match = unidecode(word1).lower() == unidecode(word2).lower()
 
     return raw_match, caseless_match, unidecode_match, unicase_match
 
@@ -69,11 +76,7 @@ class TextMatch:
     def __init__(self) -> None:
         self.reset()
 
-    def update(
-        self,
-        gt: List[str],
-        pred: List[str],
-    ) -> None:
+    def update(self, gt: List[str], pred: List[str],) -> None:
         """Update the state of the metric with new predictions
 
         Args:
@@ -81,7 +84,9 @@ class TextMatch:
             pred: list of predicted character sequences"""
 
         if len(gt) != len(pred):
-            raise AssertionError("prediction size does not match with ground-truth labels size")
+            raise AssertionError(
+                "prediction size does not match with ground-truth labels size"
+            )
 
         for gt_word, pred_word in zip(gt, pred):
             _raw, _caseless, _unidecode, _unicase = string_match(gt_word, pred_word)
@@ -100,7 +105,9 @@ class TextMatch:
             counterpart and its lower-case unidecode counterpart
         """
         if self.total == 0:
-            raise AssertionError("you need to update the metric before getting the summary")
+            raise AssertionError(
+                "you need to update the metric before getting the summary"
+            )
 
         return dict(
             raw=self.raw / self.total,
@@ -117,21 +124,24 @@ class TextMatch:
         self.total = 0
 
 
-def box_iou(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
+def box_iou(gt_boxes: np.ndarray, pred_boxes: np.ndarray) -> np.ndarray:
     """Compute the IoU between two sets of bounding boxes
 
     Args:
-        boxes_1: bounding boxes of shape (N, 4) in format (xmin, ymin, xmax, ymax)
-        boxes_2: bounding boxes of shape (M, 4) in format (xmin, ymin, xmax, ymax)
+        gt_boxes: bounding boxes of shape (N, 4) in format (xmin, ymin, xmax, ymax)
+        pred_boxes: bounding boxes of shape (M, 4) in format (xmin, ymin, xmax, ymax)
     Returns:
         the IoU matrix of shape (N, M)
     """
 
-    iou_mat = np.zeros((boxes_1.shape[0], boxes_2.shape[0]), dtype=np.float32)
+    num_gts, num_preds = gt_boxes.shape[0], pred_boxes.shape[0]
+    iou_mat = np.zeros((num_gts, num_preds), dtype=np.float32)
+    prec_mat = np.zeros((num_gts, num_preds), dtype=np.float32)
+    recall_mat = np.zeros((num_gts, num_preds), dtype=np.float32)
 
-    if boxes_1.shape[0] > 0 and boxes_2.shape[0] > 0:
-        l1, t1, r1, b1 = np.split(boxes_1, 4, axis=1)
-        l2, t2, r2, b2 = np.split(boxes_2, 4, axis=1)
+    if gt_boxes.shape[0] > 0 and pred_boxes.shape[0] > 0:
+        l1, t1, r1, b1 = np.split(gt_boxes, 4, axis=1)
+        l2, t2, r2, b2 = np.split(pred_boxes, 4, axis=1)
 
         left = np.maximum(l1, l2.T)
         top = np.maximum(t1, t2.T)
@@ -140,9 +150,11 @@ def box_iou(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
 
         intersection = np.clip(right - left, 0, np.Inf) * np.clip(bot - top, 0, np.Inf)
         union = (r1 - l1) * (b1 - t1) + ((r2 - l2) * (b2 - t2)).T - intersection
-        iou_mat = intersection / union
+        iou_mat = intersection / (union + 1e-6)
+        prec_mat = intersection / (np.zeros(num_gts) + ((r2 - l2) * (b2 - t2)).T + 1e-6)
+        recall_mat = intersection / ((r1 - l1) * (b1 - t1) + np.zeros(num_preds).T + 1e-6)
 
-    return iou_mat
+    return iou_mat, prec_mat, recall_mat
 
 
 def box_ioa(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
@@ -174,28 +186,39 @@ def box_ioa(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
     return ioa_mat
 
 
-def mask_iou(masks_1: np.ndarray, masks_2: np.ndarray) -> np.ndarray:
+def mask_iou(
+    gt_masks: np.ndarray, pred_masks: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute the IoU between two sets of boolean masks
 
     Args:
-        masks_1: boolean masks of shape (N, H, W)
-        masks_2: boolean masks of shape (M, H, W)
+        gt_masks: boolean masks of shape (N, H, W)
+        pred_masks: boolean masks of shape (N, H, W)
 
     Returns:
-        the IoU matrix of shape (N, M)
+        the IoU vector of shape [N]
+        the precision vector of shape [N]
+        the recall vector of shape [N]
     """
 
-    if masks_1.shape != masks_2.shape:
+    if gt_masks.shape != pred_masks.shape:
         raise AssertionError("both boolean masks should have the same spatial shape")
 
-    iou_vec = np.zeros((masks_1.shape[0], ), dtype=np.float32)
+    iou_vec = np.zeros((gt_masks.shape[0],), dtype=np.float32)
+    precision = np.zeros((gt_masks.shape[0],), dtype=np.float32)
+    recall = np.zeros((gt_masks.shape[0],), dtype=np.float32)
 
-    if masks_1.shape[0] > 0 and masks_2.shape[0] > 0:
-        intersection = np.logical_and(masks_1, masks_2)
-        union = np.logical_or(masks_1, masks_2)
-        iou_vec = intersection.sum(axis=(1, 2)) / (union.sum(axis=(1, 2)) + 1e-6)
+    if gt_masks.shape[0] > 0 and pred_masks.shape[0] > 0:
+        intersection = np.logical_and(gt_masks, pred_masks).sum(axis=(1, 2))
+        union = np.logical_or(gt_masks, pred_masks).sum(axis=(1, 2))
+        prec_deno = pred_masks.sum(axis=(1, 2))
+        gt_deno = gt_masks.sum(axis=(1, 2))
 
-    return iou_vec
+        iou_vec = intersection / (union + 1e-6)
+        precision = intersection / (prec_deno + 1e-6)
+        recall = intersection / (gt_deno + 1e-6)
+
+    return iou_vec, precision, recall
 
 
 def rbox_to_mask(boxes_list: List[np.ndarray], shape: Tuple[int, int]) -> np.ndarray:
@@ -230,7 +253,7 @@ def rbox_to_mask(boxes_list: List[np.ndarray], shape: Tuple[int, int]) -> np.nda
     return masks.astype(bool)
 
 
-def nms(boxes: np.ndarray, thresh: float = .5) -> List[int]:
+def nms(boxes: np.ndarray, thresh: float = 0.5) -> List[int]:
     """Perform non-max suppression, borrowed from <https://github.com/rbgirshick/fast-rcnn>`_.
 
     Args:
@@ -311,7 +334,9 @@ class LocalizationConfusion:
         self.mask_shape = mask_shape
         self.reset()
 
-    def update(self, gt_boxes: List[List[np.ndarray]], norm_preds: List[np.ndarray]) -> Tuple[float, float]:
+    def update(
+        self, gt_boxes: List[List[np.ndarray]], norm_preds: List[np.ndarray]
+    ) -> Dict[str, float]:
         """
 
         Args:
@@ -336,27 +361,36 @@ class LocalizationConfusion:
             if self.rotated_bbox:
                 mask_gts = rbox_to_mask(gts, shape=self.mask_shape)
                 mask_preds = rbox_to_mask(preds, shape=self.mask_shape)
-                iou_vec = mask_iou(mask_gts, mask_preds)
+                iou_vec, prec_vec, recall_vec = mask_iou(mask_gts, mask_preds)
                 cur_iou = iou_vec.sum()
+                cur_prec = prec_vec.sum()
+                cur_recall = recall_vec.sum()
                 cur_matches = int((iou_vec >= self.iou_thresh).sum())
             else:
-                iou_mat = box_iou(np.concatenate(gts), np.concatenate(preds))
+                iou_mat, prec_mat, recall_mat = box_iou(np.concatenate(gts), np.concatenate(preds))
                 cur_iou = float(iou_mat.max(axis=1).sum())
+                cur_prec = float(prec_mat.max(axis=1).sum())
+                cur_recall = float(recall_mat.max(axis=1).sum())
 
                 # Assign pairs
                 gt_indices, pred_indices = linear_sum_assignment(-iou_mat)
-                cur_matches = int((iou_mat[gt_indices, pred_indices] >= self.iou_thresh).sum())
+                cur_matches = int(
+                    (iou_mat[gt_indices, pred_indices] >= self.iou_thresh).sum()
+                )
 
-        self.tot_iou += cur_iou
-        self.matches += cur_matches
+        batch_res = {'iou': cur_iou, 'match': cur_matches, 'precision': cur_prec, 'recall': cur_recall}
+        cur_res = dict()
+        for name, val in batch_res.items():
+            self.total_res[name] += val
+            cur_res[name] = val / (1e-6 + batch_size)
         # Update counts
         self.num_gts += batch_size
 
-        cur_match = cur_matches / (1e-6 + batch_size)
-        cur_iou = cur_iou / (1e-6 + batch_size)
-        return cur_match, cur_iou
+        return cur_res
 
-    def _transform_gt_polygons(self, polgons: List[List[np.ndarray]]) -> List[np.ndarray]:
+    def _transform_gt_polygons(
+        self, polgons: List[List[np.ndarray]]
+    ) -> List[np.ndarray]:
         """
 
         Args:
@@ -371,7 +405,9 @@ class LocalizationConfusion:
             new_boxes = []
             for box in boxes:
                 box = box.astype(np.uint)
-                new_boxes.append(fit_rbbox(box) if self.rotated_bbox else cv2.boundingRect(box))
+                new_boxes.append(
+                    fit_rbbox(box) if self.rotated_bbox else cv2.boundingRect(box)
+                )
             out.append(np.asarray(new_boxes))
         return out
 
@@ -381,16 +417,11 @@ class LocalizationConfusion:
         Returns:
             a tuple with the recall, precision and meanIoU scores
         """
+        num_gts = 1e-6 + self.num_gts
+        out_res = {name: val / num_gts for name, val in self.total_res.items()}
 
-        # match
-        match = self.matches / (1e-6 + self.num_gts)
-
-        # mean IoU
-        mean_iou = self.tot_iou / (1e-6 + self.num_gts)
-
-        return match, mean_iou
+        return out_res
 
     def reset(self) -> None:
         self.num_gts = 0
-        self.matches = 0
-        self.tot_iou = 0.
+        self.total_res = {'iou': 0.0, 'match': 0.0, 'precision': 0.0, 'recall': 0.0}

@@ -145,8 +145,8 @@ class WrapperLightningModule(pl.LightningModule):
         for boxes, ignores in zip(batch['polygons'], batch['ignore_tags']):
             boxes = [box for idx, box in enumerate(boxes) if not ignores[idx]]
             gt_boxes.append(boxes)
-        match, mean_iou = self.val_metric.update(gt_boxes, pred_boxes)
-        val_metrics = dict(match_step=match, mean_iou_step=mean_iou)
+        metric_res = self.val_metric.update(gt_boxes, pred_boxes)
+        val_metrics = {name + '_step': val for name, val in metric_res.items()}
         self.log_dict(
             val_metrics, on_step=True, on_epoch=False, prog_bar=True, logger=True,
         )
@@ -154,8 +154,8 @@ class WrapperLightningModule(pl.LightningModule):
         return losses
 
     def validation_epoch_end(self, losses_list) -> None:
-        match, mean_iou = self.val_metric.summary()
-        val_metrics = dict(match_epoch=match, mean_iou_epoch=mean_iou)
+        metric_res = self.val_metric.summary()
+        val_metrics = {name + '_epoch': val for name, val in metric_res.items()}
         self.log_dict(
             val_metrics, on_step=False, on_epoch=True, prog_bar=True, logger=True,
         )
