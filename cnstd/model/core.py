@@ -131,11 +131,18 @@ class DetectionPredictor(NestedObject):
     _children_names: List[str] = ['model']
 
     def __init__(
-        self, model, *, resized_shape, preserve_aspect_ratio=True, debug=False
+        self,
+        model,
+        *,
+        resized_shape,
+        min_box_size=8,
+        preserve_aspect_ratio=True,
+        debug=False,
     ) -> None:
 
-        self.preserve_aspect_ratio = preserve_aspect_ratio
         self.resized_shape = resized_shape
+        self.min_box_size = min_box_size
+        self.preserve_aspect_ratio = preserve_aspect_ratio
         self.debug = debug
         self.model = model
         self.model.eval()
@@ -193,6 +200,8 @@ class DetectionPredictor(NestedObject):
                 self.extract_crops_fn(rotated_img, _boxes), _scores, _boxes
             ):
                 if score < box_score_thresh:
+                    continue
+                if min(crop.shape[:2]) < self.min_box_size:
                     continue
                 crops.append(crop)
                 scores.append(score)
