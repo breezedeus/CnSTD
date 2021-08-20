@@ -93,7 +93,7 @@ def data_dir():
 
     :return: data directory in the filesystem for storage, for example when downloading models
     """
-    return os.getenv('CNOCR_HOME', data_dir_default())
+    return os.getenv('CNSTD_HOME', data_dir_default())
 
 
 def check_model_name(model_name):
@@ -203,7 +203,7 @@ def get_model_file(model_dir):
 
     Parameters
     ----------
-    model_dir : str, default $CNOCR_HOME
+    model_dir : str, default $CNSTD_HOME
         Location for keeping the model parameters.
 
     Returns
@@ -304,11 +304,11 @@ def imread(img_fp) -> np.ndarray:
         RGB format ndarray: [C, H, W]
 
     """
-    im = cv2.imread(img_fp, cv2.IMREAD_COLOR)  # res: color BGR, shape: [H, W, C]
-    if im is None:
-        im = np.asarray(Image.open(img_fp).convert('RGB'))
-    else:
+    try:
+        im = cv2.imread(img_fp, cv2.IMREAD_COLOR)  # res: color BGR, shape: [H, W, C]
         im = cv2.cvtColor(im.astype('float32'), cv2.COLOR_BGR2RGB)
+    except:
+        im = np.asarray(Image.open(img_fp).convert('RGB'))
     return im.transpose((2, 0, 1))
 
 

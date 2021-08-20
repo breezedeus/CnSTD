@@ -159,13 +159,13 @@ class DetectionPredictor(NestedObject):
         img_list: List[Union[Image.Image, np.ndarray]],
         box_score_thresh: float = 0.5,
         **kwargs: Any,
-    ) -> Tuple[List[np.ndarray], List[List[float]]]:
+    ) -> List[List[Dict[str, Any]]]:
         """
 
         Args:
             img_list: list, which element's should be one type of Image.Image and np.ndarray.
                 For Image.Image, it should be generated from read_img;
-                For np.ndarray, it should be RGB-style, with shape [3, H, W], scale [0, 255]
+                For np.ndarray, it should be RGB-style, with shape [H, W, 3], scale [0, 255]
             box_score_thresh: score threshold for boxes, boxes with scores lower than this value will be ignored
             **kwargs:
 
@@ -176,9 +176,7 @@ class DetectionPredictor(NestedObject):
 
         out = self.model(batch, return_preds=True, **kwargs)  # type:ignore[operator]
         boxes, angles = out['preds']
-        crops_list = []
-        scores_list = []
-        boxes_list = []
+        results = []
         idx = 0
         for image, _boxes, compress_ratio, angle in zip(
             ori_imgs, boxes, compress_ratios, angles
@@ -186,9 +184,6 @@ class DetectionPredictor(NestedObject):
             # image = restore_img(image.numpy().transpose((1, 2, 0)))  # res: [H, W, 3]
             image = image.transpose((1, 2, 0)).astype(np.uint8)  # res: [H, W, 3]
             rotated_img = np.ascontiguousarray(rotate_page(image, -angle))
-            crops = []
-            scores = []
-            clean_boxes = []
 
             _scores = _boxes[:, -1].tolist()
             _boxes = _boxes[:, :-1]
@@ -196,34 +191,36 @@ class DetectionPredictor(NestedObject):
             _boxes[:, [0, 2]] /= compress_ratio[1]
             _boxes[:, [1, 3]] /= compress_ratio[0]
 
+            out_boxes = _boxes.copy()
+            out_boxes[:, [0, 2]] *= rotated_img.shape[1]
+            out_boxes[:, [1, 3]] *= rotated_img.shape[0]
+
+            one_out = []
             for crop, score, box in zip(
-                self.extract_crops_fn(rotated_img, _boxes), _scores, _boxes
+                self.extract_crops_fn(rotated_img, _boxes), _scores, out_boxes
             ):
                 if score < box_score_thresh:
                     continue
                 if min(crop.shape[:2]) < self.min_box_size:
                     continue
-                crops.append(crop)
-                scores.append(score)
-                clean_boxes.append(box)
-            crops_list.append(crops)
-            scores_list.append(scores)
-            boxes_list.append(clean_boxes)
+                one_out.append(dict(box=box, score=score, cropped_img=crop))
+            results.append(one_out)
 
             if self.debug:
                 self._plot_for_debugging(
-                    rotated_img, crops, _boxes, _scores, box_score_thresh, idx
+                    rotated_img, one_out, box_score_thresh, idx
                 )
             idx += 1
 
-        return crops_list, scores_list, boxes_list
+        return results
 
     def _plot_for_debugging(
-        self, rotated_img, crops, _boxes, _scores, box_score_thresh, idx
+        self, rotated_img, one_out, box_score_thresh, idx
     ):
         import matplotlib.pyplot as plt
         import math
 
+        crops = [info['cropped_img'] for info in one_out]
         logger.info('%d boxes are found' % len(crops))
         ncols = 3
         nrows = math.ceil(len(crops) / ncols)
@@ -235,11 +232,8 @@ class DetectionPredictor(NestedObject):
         plt.tight_layout(True)
         plt.savefig('crops-%d.png' % idx)
 
-        if _boxes.dtype != np.int:
-            _boxes[:, [0, 2]] *= rotated_img.shape[1]
-            _boxes[:, [1, 3]] *= rotated_img.shape[0]
-
-        for box, score in zip(_boxes, _scores):
+        for info in one_out:
+            box, score = info['box'], info['score']
             if score < box_score_thresh:  # score < 0.5
                 continue
             if len(box) == 5:  # rotated_box == True
@@ -261,7 +255,12 @@ class DetectionPredictor(NestedObject):
         for img in pil_img_list:
             if isinstance(img, Image.Image):
                 img = pil_to_numpy(img)  # res: np.ndarray, RGB-style, [3, H, W]
-                ori_img_list.append(img)
+            elif isinstance(img, np.ndarray) and img.shape[2] == 3:
+                img = img.transpose((2, 0, 1))  # [H, W, 3] to [3, H, W]
+            else:
+                raise ValueError('unsupported image input is found')
+
+            ori_img_list.append(img)
             compress_ratio = self._compress_ratio(img.shape[1:], self.resized_shape)
             compress_ratios_list.append(compress_ratio)
             img = self.val_transform(torch.from_numpy(img)).numpy()
