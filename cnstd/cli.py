@@ -85,6 +85,9 @@ def train(
 
     train_transform = T.Compose(  # MUST NOT include `Resize`
         [
+            T.RandomInvert(p=0.2),
+            T.RandomPosterize(bits=4, p=0.3),
+            T.RandomAdjustSharpness(sharpness_factor=0.5, p=0.3),
             T.ColorJitter(brightness=0.3, contrast=0.2, saturation=0.2, hue=0.2),
             T.RandomEqualize(p=0.3),
             T.RandomApply([T.GaussianBlur(kernel_size=3)], p=0.5),
