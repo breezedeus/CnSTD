@@ -95,7 +95,7 @@ def generate_icpr_2019_lstv_idx_pairs(
 
         if new_info:
             label_fn = f'{fname}.txt'
-            label_fp = os.path.join(out_label_dir, fname)
+            label_fp = os.path.join(out_label_dir, label_fn)
             with open(label_fp, 'w') as f:
                 for line in new_info:
                     f.write(','.join(line) + '\n')
@@ -118,6 +118,7 @@ def icdar_2019_lstv():
     idx_pairs = generate_icpr_2019_lstv_idx_pairs(
         label_json_fp, label_dir, img_prefix_dir, label_prefix_dir
     )
+    print(f'{len(idx_pairs)} pairs are generated')
     save_idx_file(idx_pairs, '/home/ein/jinlong/std_data/ICDAR2019-LSTV/train.tsv')
 
 
