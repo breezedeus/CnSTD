@@ -6,6 +6,7 @@
     "vocab_fp": "label_cn.txt",
     "data_root_dir": "data",
 
+    "auto_rotate_whole_image": false,
     "rotated_bbox": true,
     "resized_shape": [3, 512, 512],
 
@@ -25,6 +26,6 @@
     "precision": 32,
     "limit_train_batches": 1.0,
     "limit_val_batches": 1.0,
-    "pl_checkpoint_monitor": "val_loss_epoch",
-    "pl_checkpoint_mode": "min"
+    "pl_checkpoint_monitor": "iou_epoch",
+    "pl_checkpoint_mode": "max"
 }
