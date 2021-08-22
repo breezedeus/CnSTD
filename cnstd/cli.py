@@ -21,6 +21,7 @@ import os
 import click
 import json
 import time
+import glob
 
 import numpy as np
 import torchvision.transforms as T
@@ -177,7 +178,10 @@ def visualize_example(example):
     type=click.Choice(['cpu', 'gpu']),
     default='cpu',
 )
-@click.option("-f", "--file", help="Path to the image file or dir")
+@click.option("-i", "--img-file-or-dir", help="Path to the image file or dir")
+@click.option(
+    "-o", "--output-dir", default='./predictions', help="Dir to the output results"
+)
 def predict(
     model_name,
     model_epoch,
@@ -187,27 +191,57 @@ def predict(
     box_score_thresh,
     preserve_aspect_ratio,
     context,
-    file,
+    img_file_or_dir,
+    output_dir,
 ):
     std = CnStd(
-        model_name, model_epoch, model_fp=pretrained_model_fp, rotated_bbox=rotated_bbox
+        model_name,
+        model_epoch,
+        model_fp=pretrained_model_fp,
+        rotated_bbox=rotated_bbox,
+        context=context,
     )
 
-    resized_shape = tuple(map(int, resized_shape.split(',')))  # [H, W]
-    pil_img = read_img(file)
+    resized_shape = list(map(int, resized_shape.split(',')))  # [H, W]
+    if len(resized_shape) == 1:
+        resized_shape.append(resized_shape[0])
+
+    # process image
+    if os.path.isfile(img_file_or_dir):
+        img_list = [img_file_or_dir]
+    elif os.path.isdir(img_file_or_dir):
+        fnames = glob.glob1(img_file_or_dir, "*g")
+        img_list = [os.path.join(img_file_or_dir, fn) for fn in fnames]
+    else:
+        raise TypeError(
+            'param "image_dir": %s is neither a file or a dir' % img_file_or_dir
+        )
+
     start_time = time.time()
     std_out = std.detect(
-        pil_img,
-        resized_shape=resized_shape,
+        img_list,
+        resized_shape=tuple(resized_shape),
         preserve_aspect_ratio=preserve_aspect_ratio,
         box_score_thresh=box_score_thresh,
     )
-    logger.info('time cost of prediction: %f' % (time.time() - start_time))
+    logger.info(
+        '%d files are predicted, total time cost: %f'
+        % (len(img_list), time.time() - start_time)
+    )
 
-    angle = std_out['rotated_angle']
-    img = pil_to_numpy(pil_img).transpose((1, 2, 0)).astype(np.uint8)
-    rotated_img = np.ascontiguousarray(rotate_page(img, -angle))
-    plot_for_debugging(rotated_img, std_out['detected_texts'], box_score_thresh, idx=0)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    for idx, img_fp in enumerate(img_list):
+        angle = std_out[idx]['rotated_angle']
+        pil_img = read_img(img_fp)
+        img = pil_to_numpy(pil_img).transpose((1, 2, 0)).astype(np.uint8)
+        rotated_img = np.ascontiguousarray(rotate_page(img, -angle))
+
+        fname = os.path.basename(img_fp).rsplit('.', maxsplit=1)[0]
+        prefix_fp = os.path.join(output_dir, fname)
+        plot_for_debugging(
+            rotated_img, std_out[idx]['detected_texts'], box_score_thresh, prefix_fp
+        )
 
     # from cnocr import CnOcr
     #
@@ -225,63 +259,8 @@ def predict(
 def resave_model_file(
     input_model_fp, output_model_fp,
 ):
+    """训练好的模型会存储训练状态，使用此命令去掉预测时无关的数据，降低模型大小"""
     resave_model(input_model_fp, output_model_fp, map_location='cpu')
-
-
-@cli.command('evaluate', context_settings=_CONTEXT_SETTINGS)
-@click.option(
-    '-m',
-    '--model-name',
-    type=click.Choice(MODEL_CONFIGS.keys()),
-    default=DEFAULT_MODEL_NAME,
-    help='模型名称',
-)
-@click.option('--model_root_dir', default=data_dir(), help='模型所在的根目录')
-@click.option('--model_epoch', type=int, default=None, help='model epoch')
-@click.option('-i', '--img_dir', type=str, help='评估图片所在的目录或者单个图片文件路径')
-@click.option(
-    '--max_size',
-    type=int,
-    default=768,
-    help='图片预测时的最大尺寸（最好是32的倍数）。超过这个尺寸的图片会被等比例压缩到此尺寸 [Default: 768]',
-)
-@click.option(
-    '--pse_threshold',
-    type=float,
-    default=0.45,
-    help='threshold for pse [Default: 0.45]',
-)
-@click.option(
-    '--pse_min_area', type=int, default=100, help='min area for pse [Default: 100]'
-)
-@click.option('--gpu', type=int, default=-1, help='使用的GPU数量。默认值为-1，表示自动判断')
-@click.option('-o', '--output_dir', default='outputs', help='输出结果存放的目录')
-def evaluate_model(
-    model_name,
-    model_root_dir,
-    model_epoch,
-    img_dir,
-    max_size,
-    pse_threshold,
-    pse_min_area,
-    gpu,
-    output_dir,
-):
-    devices = gen_context(gpu)[0]
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    evaluate(
-        backbone,
-        model_root_dir,
-        model_epoch,
-        img_dir,
-        output_dir,
-        max_size,
-        pse_threshold,
-        pse_min_area,
-        devices,
-    )
 
 
 if __name__ == '__main__':

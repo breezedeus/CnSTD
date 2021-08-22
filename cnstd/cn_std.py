@@ -149,6 +149,7 @@ class CnStd(object):
         preserve_aspect_ratio: bool = True,
         min_box_size: int = 8,
         box_score_thresh: float = 0.3,
+        batch_size=20,
         **kwargs,
     ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """
@@ -160,7 +161,8 @@ class CnStd(object):
                 注：其中取值必须都能整除32。这个取值对检测结果的影响较大，可以针对自己的应用多尝试几组值，再选出最优值。
             preserve_aspect_ratio: 对原始图片resize时是否保持高宽比不变。
             min_box_size: 如果检测出的文本框高度或者宽度低于此值，此文本框会被过滤掉。
-            box_score_thresh: 过滤掉得分低于此值的文本框
+            box_score_thresh: 过滤掉得分低于此值的文本框。
+            batch_size: 待处理图片很多时，需要分批处理，每批图片的数量由此参数指定。
             kwargs:
 
         Returns:
@@ -174,7 +176,7 @@ class CnStd(object):
                    'cropped_img'：对应'box'中的图片patch（RGB格式），会把倾斜的图片旋转为水平。
                           np.ndarray类型，shape==(width, height, 3)；
 
-               示例:
+                 示例:
                    [[{'box': array([824.19433594, 712.30371094, 19.98046875, 9.99023438, -0.0]),
                    'score': 0.8, 'cropped_img': array([[[25, 20, 24],
                                                           [26, 21, 25],
@@ -190,17 +192,41 @@ class CnStd(object):
         """
         single = False
         if isinstance(img_list, (list, tuple)):
-            img_list = self._preprocess_images(img_list)
-        elif isinstance(img_list, (str, Path)):
-            img_list = [read_img(img_list)]
-            single = True
-        elif isinstance(img_list, (Image.Image, np.ndarray)):
+            pass
+        elif isinstance(img_list, (str, Path, Image.Image, np.ndarray)):
             img_list = [img_list]
             single = True
         else:
             raise TypeError('type %s is not supported now' % str(type(img_list)))
 
-        out = self._model(
+        idx = 0
+        out = []
+        while idx * batch_size < len(img_list):
+            imgs = img_list[idx * batch_size : (idx + 1) * batch_size]
+            res = self._detect_batch(
+                imgs,
+                resized_shape=resized_shape,
+                preserve_aspect_ratio=preserve_aspect_ratio,
+                min_box_size=min_box_size,
+                box_score_thresh=box_score_thresh,
+                **kwargs,
+            )
+            out.extend(res)
+            idx += 1
+
+        return out[0] if single else out
+
+    def _detect_batch(
+        self,
+        img_list: List[Union[str, Path, Image.Image, np.ndarray]],
+        resized_shape: Tuple[int, int],
+        preserve_aspect_ratio: bool,
+        min_box_size: int,
+        box_score_thresh: float,
+        **kwargs,
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        img_list = self._preprocess_images(img_list)
+        return self._model(
             img_list,
             resized_shape=resized_shape,
             preserve_aspect_ratio=preserve_aspect_ratio,
@@ -208,10 +234,9 @@ class CnStd(object):
             box_score_thresh=box_score_thresh,
         )
 
-        return out[0] if single else out
-
+    @classmethod
     def _preprocess_images(
-        self, img_list: List[Union[str, Path, Image.Image, np.ndarray]]
+        cls, img_list: List[Union[str, Path, Image.Image, np.ndarray]]
     ):
         out_list = []
         for img in img_list:

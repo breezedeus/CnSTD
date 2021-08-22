@@ -371,7 +371,7 @@ def load_model_params(model, param_fp, device='cpu'):
     return model
 
 
-def plot_for_debugging(rotated_img, one_out, box_score_thresh, idx):
+def plot_for_debugging(rotated_img, one_out, box_score_thresh, prefix_fp):
     import matplotlib.pyplot as plt
     import math
 
@@ -385,7 +385,7 @@ def plot_for_debugging(rotated_img, one_out, box_score_thresh, idx):
             break
         axi.imshow(crops[i])
     plt.tight_layout(True)
-    crop_fp = 'crops-%d.png' % idx
+    crop_fp = '%s-crops.png' % prefix_fp
     plt.savefig(crop_fp)
     logger.info('cropped results are save to file %s' % crop_fp)
 
@@ -401,6 +401,6 @@ def plot_for_debugging(rotated_img, one_out, box_score_thresh, idx):
         else:  # len(box) == 4, rotated_box == False
             xmin, ymin, xmax, ymax = box.astype('float32')
             cv2.rectangle(rotated_img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
-    result_fp = 'result-%d.png' % idx
+    result_fp = '%s-result.png' % prefix_fp
     imsave(rotated_img, result_fp, normalized=False)
     logger.info('boxes results are save to file %s' % result_fp)
