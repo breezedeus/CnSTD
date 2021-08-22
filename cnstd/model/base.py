@@ -1,9 +1,22 @@
-# Copyright (C) 2021, Mindee.
-
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
-
-# Credits: post-processing adapted from https://github.com/xuannianz/DifferentiableBinarization
+# coding: utf-8
+# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+# Credits: adapted from https://github.com/mindee/doctr
 
 import cv2
 import numpy as np
@@ -23,30 +36,32 @@ class DBPostProcessor(DetectionPostProcessor):
     <https://github.com/xuannianz/DifferentiableBinarization>`_.
 
     Args:
-        unclip ratio: ratio used to unshrink polygons
-        min_size_box: minimal length (pix) to keep a box
-        max_candidates: maximum boxes to consider in a single page
+        auto_rotate_whole_image: whether to detect the angle of the whold image and calibrate it automatically
         box_thresh: minimal objectness score to consider a box
         bin_thresh: threshold used to binzarized p_map at inference time
+        rotated_bbox: whether to detect non-vertical and non-horizontal boxes
 
     """
+
     def __init__(
         self,
+        *,
+        auto_rotate_whole_image=False,
         box_thresh: float = 0.1,
         bin_thresh: float = 0.3,
         rotated_bbox: bool = False,
     ) -> None:
 
         super().__init__(
-            box_thresh,
-            bin_thresh,
-            rotated_bbox
+            auto_rotate_whole_image=auto_rotate_whole_image,
+            box_thresh=box_thresh,
+            bin_thresh=bin_thresh,
+            rotated_bbox=rotated_bbox,
         )
         self.unclip_ratio = 2.2 if self.rotated_bbox else 1.5
 
     def polygon_to_box(
-        self,
-        points: np.ndarray,
+        self, points: np.ndarray,
     ) -> Optional[Union[RotatedBbox, Tuple[float, float, float, float]]]:
         """Expand a polygon (points) by a factor unclip_ratio, and returns a rotated box: x, y, w, h, alpha
 
@@ -57,7 +72,9 @@ class DBPostProcessor(DetectionPostProcessor):
             a box in absolute coordinates (xmin, ymin, xmax, ymax) or (x, y, w, h, alpha)
         """
         poly = Polygon(points)
-        distance = poly.area * self.unclip_ratio / poly.length  # compute distance to expand polygon
+        distance = (
+            poly.area * self.unclip_ratio / poly.length
+        )  # compute distance to expand polygon
         offset = pyclipper.PyclipperOffset()
         offset.AddPath(points, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
         _points = offset.Execute(distance)
@@ -74,13 +91,13 @@ class DBPostProcessor(DetectionPostProcessor):
         expanded_points = np.asarray(_points)  # expand polygon
         if len(expanded_points) < 1:
             return None
-        return fit_rbbox(expanded_points) if self.rotated_bbox else cv2.boundingRect(expanded_points)
+        return (
+            fit_rbbox(expanded_points)
+            if self.rotated_bbox
+            else cv2.boundingRect(expanded_points)
+        )
 
-    def bitmap_to_boxes(
-        self,
-        pred: np.ndarray,
-        bitmap: np.ndarray,
-    ) -> np.ndarray:
+    def bitmap_to_boxes(self, pred: np.ndarray, bitmap: np.ndarray,) -> np.ndarray:
         """Compute boxes from a bitmap/pred_map
 
         Args:
@@ -95,10 +112,14 @@ class DBPostProcessor(DetectionPostProcessor):
         min_size_box = 1 + int(height / 512)
         boxes = []
         # get contours from connected components on the bitmap
-        contours, _ = cv2.findContours(bitmap.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            bitmap.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
         for contour in contours:
             # Check whether smallest enclosing bounding box is not too small
-            if np.any(contour[:, 0].max(axis=0) - contour[:, 0].min(axis=0) < min_size_box):
+            if np.any(
+                contour[:, 0].max(axis=0) - contour[:, 0].min(axis=0) < min_size_box
+            ):
                 continue
             # Compute objectness
             if self.rotated_bbox:
@@ -108,12 +129,18 @@ class DBPostProcessor(DetectionPostProcessor):
                 points = np.array([[x, y], [x, y + h], [x + w, y + h], [x + w, y]])
                 score = self.box_score(pred, points, rotated_bbox=False)
 
-            if self.box_thresh > score:   # remove polygons with a weak objectness
+            if self.box_thresh > score:  # remove polygons with a weak objectness
                 continue
 
-            _box = self.polygon_to_box(np.squeeze(contour)) if self.rotated_bbox else self.polygon_to_box(points)
+            _box = (
+                self.polygon_to_box(np.squeeze(contour))
+                if self.rotated_bbox
+                else self.polygon_to_box(points)
+            )
 
-            if _box is None or _box[2] < min_size_box or _box[3] < min_size_box:  # remove to small boxes
+            if (
+                _box is None or _box[2] < min_size_box or _box[3] < min_size_box
+            ):  # remove to small boxes
                 continue
 
             if self.rotated_bbox:
@@ -124,7 +151,12 @@ class DBPostProcessor(DetectionPostProcessor):
             else:
                 x, y, w, h = _box  # type: ignore[misc]
                 # compute relative polygon to get rid of img shape
-                xmin, ymin, xmax, ymax = x / width, y / height, (x + w) / width, (y + h) / height
+                xmin, ymin, xmax, ymax = (
+                    x / width,
+                    y / height,
+                    (x + w) / width,
+                    (y + h) / height,
+                )
                 boxes.append([xmin, ymin, xmax, ymax, score])
 
         if self.rotated_bbox:
@@ -134,7 +166,11 @@ class DBPostProcessor(DetectionPostProcessor):
             boxes = np.concatenate((coord, np.asarray(boxes)[:, 4:]), axis=1)
             return boxes
         else:
-            return np.clip(np.asarray(boxes), 0, 1) if len(boxes) > 0 else np.zeros((0, 5), dtype=pred.dtype)
+            return (
+                np.clip(np.asarray(boxes), 0, 1)
+                if len(boxes) > 0
+                else np.zeros((0, 5), dtype=pred.dtype)
+            )
 
 
 class _DBNet:
@@ -154,11 +190,7 @@ class _DBNet:
 
     @staticmethod
     def compute_distance(
-        xs: np.array,
-        ys: np.array,
-        a: np.array,
-        b: np.array,
-        eps: float = 1e-7,
+        xs: np.array, ys: np.array, a: np.array, b: np.array, eps: float = 1e-7,
     ) -> float:
         """Compute the distance for each point of the map (xs, ys) to the (a, b) segment
 
@@ -175,7 +207,9 @@ class _DBNet:
         square_dist_1 = np.square(xs - a[0]) + np.square(ys - a[1])
         square_dist_2 = np.square(xs - b[0]) + np.square(ys - b[1])
         square_dist = np.square(a[0] - b[0]) + np.square(a[1] - b[1])
-        cosin = (square_dist - square_dist_1 - square_dist_2) / (2 * np.sqrt(square_dist_1 * square_dist_2) + eps)
+        cosin = (square_dist - square_dist_1 - square_dist_2) / (
+            2 * np.sqrt(square_dist_1 * square_dist_2) + eps
+        )
         square_sin = 1 - np.square(cosin)
         square_sin = np.nan_to_num(square_sin)
         result = np.sqrt(square_dist_1 * square_dist_2 * square_sin / square_dist)
@@ -183,10 +217,7 @@ class _DBNet:
         return result
 
     def draw_thresh_map(
-        self,
-        polygon: np.array,
-        canvas: np.array,
-        mask: np.array,
+        self, polygon: np.array, canvas: np.array, mask: np.array,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Draw a polygon treshold map on a canvas, as described in the DB paper
 
@@ -200,7 +231,11 @@ class _DBNet:
 
         # Augment polygon by shrink_ratio
         polygon_shape = Polygon(polygon)
-        distance = polygon_shape.area * (1 - np.power(self.shrink_ratio, 2)) / polygon_shape.length
+        distance = (
+            polygon_shape.area
+            * (1 - np.power(self.shrink_ratio, 2))
+            / polygon_shape.length
+        )
         subject = [tuple(coor) for coor in polygon]  # Get coord as list of tuples
         padding = pyclipper.PyclipperOffset()
         padding.AddPath(subject, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
@@ -220,8 +255,12 @@ class _DBNet:
         polygon[:, 0] = polygon[:, 0] - xmin
         polygon[:, 1] = polygon[:, 1] - ymin
         # Get absolute padded polygon
-        xs = np.broadcast_to(np.linspace(0, width - 1, num=width).reshape(1, width), (height, width))
-        ys = np.broadcast_to(np.linspace(0, height - 1, num=height).reshape(height, 1), (height, width))
+        xs = np.broadcast_to(
+            np.linspace(0, width - 1, num=width).reshape(1, width), (height, width)
+        )
+        ys = np.broadcast_to(
+            np.linspace(0, height - 1, num=height).reshape(height, 1), (height, width)
+        )
 
         # Compute distance map to fill the padded polygon
         distance_map = np.zeros((polygon.shape[0], height, width), dtype=polygon.dtype)
@@ -238,12 +277,13 @@ class _DBNet:
         ymax_valid = min(max(0, ymax), canvas.shape[0] - 1)
 
         # Fill the canvas with the distances computed inside the valid padded polygon
-        canvas[ymin_valid:ymax_valid + 1, xmin_valid:xmax_valid + 1] = np.fmax(
-            1 - distance_map[
-                ymin_valid - ymin:ymax_valid - ymin + 1,
-                xmin_valid - xmin:xmax_valid - xmin + 1
+        canvas[ymin_valid : ymax_valid + 1, xmin_valid : xmax_valid + 1] = np.fmax(
+            1
+            - distance_map[
+                ymin_valid - ymin : ymax_valid - ymin + 1,
+                xmin_valid - xmin : xmax_valid - xmin + 1,
             ],
-            canvas[ymin_valid:ymax_valid + 1, xmin_valid:xmax_valid + 1]
+            canvas[ymin_valid : ymax_valid + 1, xmin_valid : xmax_valid + 1],
         )
 
         return polygon, canvas, mask
@@ -255,9 +295,15 @@ class _DBNet:
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 
         if any(t['boxes'].dtype not in (np.float32, np.float16) for t in target):
-            raise AssertionError("the expected dtype of target 'boxes' entry is either 'np.float32' or 'np.float16'.")
-        if any(np.any((t['boxes'][:, :4] > 1) | (t['boxes'][:, :4] < 0)) for t in target):
-            raise ValueError("the 'boxes' entry of the target is expected to take values between 0 & 1.")
+            raise AssertionError(
+                "the expected dtype of target 'boxes' entry is either 'np.float32' or 'np.float16'."
+            )
+        if any(
+            np.any((t['boxes'][:, :4] > 1) | (t['boxes'][:, :4] < 0)) for t in target
+        ):
+            raise ValueError(
+                "the 'boxes' entry of the target is expected to take values between 0 & 1."
+            )
 
         input_dtype = target[0]['boxes'].dtype if any(target) else np.float32
 
@@ -280,31 +326,43 @@ class _DBNet:
 
             if abs_boxes.shape[1] == 5:
                 boxes_size = np.minimum(abs_boxes[:, 2], abs_boxes[:, 3])
-                polys = np.stack([
-                    rbbox_to_polygon(tuple(rbbox)) for rbbox in abs_boxes  # type: ignore[arg-type]
-                ], axis=1)
+                polys = np.stack(
+                    [
+                        rbbox_to_polygon(tuple(rbbox)) for rbbox in abs_boxes  # type: ignore[arg-type]
+                    ],
+                    axis=1,
+                )
             else:
-                boxes_size = np.minimum(abs_boxes[:, 2] - abs_boxes[:, 0], abs_boxes[:, 3] - abs_boxes[:, 1])
-                polys = np.stack([
-                    abs_boxes[:, [0, 1]],
-                    abs_boxes[:, [0, 3]],
-                    abs_boxes[:, [2, 3]],
-                    abs_boxes[:, [2, 1]],
-                ], axis=1)
+                boxes_size = np.minimum(
+                    abs_boxes[:, 2] - abs_boxes[:, 0], abs_boxes[:, 3] - abs_boxes[:, 1]
+                )
+                polys = np.stack(
+                    [
+                        abs_boxes[:, [0, 1]],
+                        abs_boxes[:, [0, 3]],
+                        abs_boxes[:, [2, 3]],
+                        abs_boxes[:, [2, 1]],
+                    ],
+                    axis=1,
+                )
 
-            for box, box_size, poly, is_ambiguous in zip(abs_boxes, boxes_size, polys, _target['flags']):
+            for box, box_size, poly, is_ambiguous in zip(
+                abs_boxes, boxes_size, polys, _target['flags']
+            ):
                 # Mask ambiguous boxes
                 if is_ambiguous:
-                    seg_mask[idx, box[1]: box[3] + 1, box[0]: box[2] + 1] = False
+                    seg_mask[idx, box[1] : box[3] + 1, box[0] : box[2] + 1] = False
                     continue
                 # Mask boxes that are too small
                 if box_size < self.min_size_box:
-                    seg_mask[idx, box[1]: box[3] + 1, box[0]: box[2] + 1] = False
+                    seg_mask[idx, box[1] : box[3] + 1, box[0] : box[2] + 1] = False
                     continue
 
                 # Negative shrink for gt, as described in paper
                 polygon = Polygon(poly)
-                distance = polygon.area * (1 - np.power(self.shrink_ratio, 2)) / polygon.length
+                distance = (
+                    polygon.area * (1 - np.power(self.shrink_ratio, 2)) / polygon.length
+                )
                 subject = [tuple(coor) for coor in poly]
                 padding = pyclipper.PyclipperOffset()
                 padding.AddPath(subject, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
@@ -312,19 +370,23 @@ class _DBNet:
 
                 # Draw polygon on gt if it is valid
                 if len(shrinked) == 0:
-                    seg_mask[box[1]: box[3] + 1, box[0]: box[2] + 1] = False
+                    seg_mask[box[1] : box[3] + 1, box[0] : box[2] + 1] = False
                     continue
                 shrinked = np.array(shrinked[0]).reshape(-1, 2)
                 if shrinked.shape[0] <= 2 or not Polygon(shrinked).is_valid:
-                    seg_mask[box[1]: box[3] + 1, box[0]: box[2] + 1] = False
+                    seg_mask[box[1] : box[3] + 1, box[0] : box[2] + 1] = False
                     continue
                 cv2.fillPoly(seg_target[idx], [shrinked.astype(np.int32)], 1)
 
                 # Draw on both thresh map and thresh mask
-                poly, thresh_target[idx], thresh_mask[idx] = self.draw_thresh_map(poly, thresh_target[idx],
-                                                                                  thresh_mask[idx])
+                poly, thresh_target[idx], thresh_mask[idx] = self.draw_thresh_map(
+                    poly, thresh_target[idx], thresh_mask[idx]
+                )
 
-        thresh_target = thresh_target.astype(input_dtype) * (self.thresh_max - self.thresh_min) + self.thresh_min
+        thresh_target = (
+            thresh_target.astype(input_dtype) * (self.thresh_max - self.thresh_min)
+            + self.thresh_min
+        )
 
         seg_target = seg_target.astype(input_dtype)
         seg_mask = seg_mask.astype(bool)

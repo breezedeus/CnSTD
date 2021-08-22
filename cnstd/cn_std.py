@@ -1,4 +1,5 @@
 # coding: utf-8
+# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,27 +16,28 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+
 from __future__ import absolute_import
 
 import os
-import time
 import logging
+from glob import glob
+from pathlib import Path
+from typing import Tuple, List, Dict, Union, Any
 
-import cv2
+from PIL import Image
 import numpy as np
-import mxnet as mx
-from mxnet.gluon.data.vision import transforms
 
 from .consts import MODEL_VERSION, AVAILABLE_MODELS
-from .model.net import PSENet
-from .model.pse import pse
+from .model import gen_model
+from .model.core import DetectionPredictor
 from .utils import (
     data_dir,
     check_model_name,
-    model_fn_prefix,
+    check_context,
     get_model_file,
-    imread,
-    normalize_img_array,
+    load_model_params,
+    read_img,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,332 +48,180 @@ class CnStd(object):
     场景文字检测器（Scene Text Detection）。虽然名字中有个"Cn"（Chinese），但其实也可以轻松识别英文的。
     """
 
+    MODEL_FILE_PREFIX = 'cnstd-v{}'.format(MODEL_VERSION)
+
     def __init__(
         self,
         model_name='mobilenetv3',
         model_epoch=None,
-        root=data_dir(),
+        *,
+        auto_rotate_whole_image=False,
+        rotated_bbox=True,
         context='cpu',
-        name=None,
+        model_fp=None,
+        root=data_dir(),
+        **kwargs,
     ):
         """
         Args:
             model_name: 模型名称。可选值为 'mobilenetv3', 'resnet50_v1b'
             model_epoch: 模型迭代次数。默认为 None，表示使用系统自带的模型对应的迭代次数
+            auto_rotate_whole_image: 是否自动对整张图片进行旋转调整。默认为False
+            rotated_bbox: 是否支持带角度的文本；默认为 True，表示支持；取值为 False 时，只检测水平的文本
+            context: 'cpu', or 'gpu'。表明预测时是使用CPU还是GPU。默认为CPU
+            model_fp: 如果不使用系统自带的模型，可以通过此参数直接指定导入的模型文件
             root: 模型文件所在的根目录。
-            Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/0.1.0/mobilenetv3`。
-            Windows下默认值为 `C:/Users/<username>/AppData/Roaming/cnstd`。
-            context: 'cpu', or 'gpu'。表明预测时是使用CPU还是GPU。默认为CPU。
-            name: 正在初始化的这个实例名称。如果需要同时初始化多个实例，需要为不同的实例指定不同的名称。
+                Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.0.0/db_resnet18`
+                Windows下默认值为 `C:/Users/<username>/AppData/Roaming/cnstd`。
         """
+        if 'name' in kwargs:
+            logger.warning(
+                'param `name` is useless and deprecated since version %s'
+                % MODEL_VERSION
+            )
         check_model_name(model_name)
+        check_context(context)
         self._model_name = model_name
-        self._model_epoch = model_epoch or AVAILABLE_MODELS[model_name][0]
-        self._model_file_name = model_fn_prefix(model_name, self._model_epoch)
+        self.context = context
+        self.rotated_bbox = rotated_bbox
+
+        self._model_file_prefix = '{}-{}'.format(self.MODEL_FILE_PREFIX, model_name)
+        self._model_epoch = model_epoch or AVAILABLE_MODELS.get('model_name', [None])[0]
+        if self._model_epoch is not None:
+            self._model_file_prefix = '%s-epoch=%03d' % (
+                self._model_file_prefix,
+                self._model_epoch,
+            )
+
+        self._assert_and_prepare_model_files(model_fp, root)
+
+        self._model = self._get_model(auto_rotate_whole_image)
+        logger.info('CnStd is initialized, with context {}'.format(self.context))
+
+    def _assert_and_prepare_model_files(self, model_fp, root):
+        if model_fp is not None and not os.path.isfile(model_fp):
+            raise FileNotFoundError('can not find model file %s' % model_fp)
+
+        if model_fp is not None:
+            self._model_fp = model_fp
+            return
 
         root = os.path.join(root, MODEL_VERSION)
         self._model_dir = os.path.join(root, self._model_name)
-        self._assert_and_prepare_model_files()
-        model_fp = os.path.join(self._model_dir, self._model_file_name)
+        fps = glob('%s/%s*.ckpt' % (self._model_dir, self._model_file_prefix))
+        if len(fps) > 1:
+            raise ValueError(
+                'multiple ckpt files are found in %s, not sure which one should be used'
+                % self._model_dir
+            )
+        elif len(fps) < 1:
+            logger.warning('no ckpt file is found in %s' % self._model_dir)
+            get_model_file(self._model_dir)  # download the .zip file and unzip
+            fps = glob('%s/%s*.ckpt' % (self._model_dir, self._model_file_prefix))
 
-        if isinstance(context, mx.Context):
-            self._context = context
-        elif isinstance(context, str):
-            self._context = mx.gpu() if context.lower() == 'gpu' else mx.cpu()
-        else:
-            self._context = mx.cpu()
-        logger.info('CnStd is initialized, with context {}'.format(self._context))
+        self._model_fp = fps[0]
 
-        # 传入''的话，也改成传入None
-        self._net_prefix = None if name == '' else name
-
-        self._model = restore_model(
+    def _get_model(self, auto_rotate_whole_image):
+        logger.info('use model: %s' % self._model_fp)
+        model = gen_model(
             self._model_name,
-            model_fp,
-            n_kernel=3,
-            ctx=self._context,
-            net_prefix=self._net_prefix,
+            pretrained_backbone=False,
+            auto_rotate_whole_image=auto_rotate_whole_image,
+            rotated_bbox=self.rotated_bbox,
         )
-        self._trans = transforms.Compose([transforms.ToTensor(),])
-        self.seg_maps = None
+        model.eval()
+        model.to(self.context)
+        load_model_params(model, self._model_fp, self.context)
 
-    def _assert_and_prepare_model_files(self):
-        model_dir = self._model_dir
-        model_files = [self._model_file_name]
-        file_prepared = True
-        for f in model_files:
-            f = os.path.join(model_dir, f)
-            if not os.path.exists(f):
-                file_prepared = False
-                logger.warning('can not find file %s', f)
-                break
-
-        if file_prepared:
-            return
-
-        get_model_file(model_dir)
+        predictor = DetectionPredictor(model, context=self.context)
+        return predictor
 
     def detect(
-        self, img_fp, max_size=768, pse_threshold=0.45, pse_min_area=100, **kwargs
-    ):
+        self,
+        img_list: Union[
+            str,
+            Path,
+            Image.Image,
+            np.ndarray,
+            List[Union[str, Path, Image.Image, np.ndarray]],
+        ],
+        resized_shape: Tuple[int, int] = (768, 768),
+        preserve_aspect_ratio: bool = True,
+        min_box_size: int = 8,
+        box_score_thresh: float = 0.3,
+        **kwargs,
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """
         检测图片中的文本。
         Args:
-            img_fp: image file path; or color image mx.nd.NDArray or np.ndarray,
-            with shape (height, width, 3), and the channels should be RGB formatted.
-            max_size: 如果图片的长边超过这个值，就把图片等比例压缩到长边等于这个size
-            pse_threshold: pse中的阈值；越低会导致识别出的文本框越大；反之越小
-            pse_min_area: 面积大小低于此值的框会被去掉。所以此值越小，识别出的框可能越多
-            kwargs: 目前会使用到的keys有：
-                        'height_border'，裁切图片时在高度上留出的边界比例，最终上下总共留出的边界大小为height * height_border; 默认为0.05；
-                        'width_border'，裁切图片时在宽度上留出的边界比例，最终左右总共留出的边界大小为height * width_border; 默认为0.0；
+            img_list: 单图片或者图片列表。每个值可以是图片路径，或者已经读取进来 PIL.Image.Image 或 np.ndarray,
+                格式应该是 RGB 3通道，shape: (height, width, 3), 取值：[0, 255]
+            resized_shape: (height, width), 检测前，先把原始图片resize到此大小。
+                注：其中取值必须都能整除32。这个取值对检测结果的影响较大，可以针对自己的应用多尝试几组值，再选出最优值。
+            preserve_aspect_ratio: 对原始图片resize时是否保持高宽比不变。
+            min_box_size: 如果检测出的文本框高度或者宽度低于此值，此文本框会被过滤掉。
+            box_score_thresh: 过滤掉得分低于此值的文本框
+            kwargs:
 
-        Returns: List(Dict), 每个元素存储了检测出的一个框的信息，使用词典记录，包括以下几个值：
-                    'box'：检测出的文字对应的矩形框四个点的坐标（第一列是宽度方向，第二列是高度方向）；
-                           np.ndarray类型，shape==(4, 2)；
-                    'score'：得分；float类型；
-                    'croppped_img'：对应'box'中的图片patch（RGB格式），会把倾斜的图片旋转为水平。
-                           np.ndarray类型，shape==(width, height, 3)；
+        Returns:
+            List[Dict], 每个Dict对应一张图片的检测结果。Dict 中包含以下 keys：
+               * 'rotated_angle': 整张图片旋转的角度。只有 auto_rotate_whole_image==True 才可能非0。
+               * 'detected_texts': 每个元素存储了检测出的一个框的信息，使用词典记录，包括以下几个值：
+                   'box'：检测出的文字对应的矩形框；4个 (rotated_bbox==False) 或者 5个 (rotated_bbox==True) 元素;
+                       * 4个元素时的含义：[xmin, ymin, xmax, ymax] for the box (rotated_bbox==False);
+                       * 5个元素时的含义：[x, y, w, h, angle] for the box (rotated_bbox==True)
+                   'score'：得分；float类型；
+                   'cropped_img'：对应'box'中的图片patch（RGB格式），会把倾斜的图片旋转为水平。
+                          np.ndarray类型，shape==(width, height, 3)；
 
-          示例:
-            [{'box': array([[416,  77],
-                            [486,  13],
-                            [800, 325],
-                            [730, 390]], dtype=int32),
-              'score': 1.0, 'cropped_img': array([[[25, 20, 24],
-                                                   [26, 21, 25],
-                                                   [25, 20, 24],
-                                                   ...,
-                                                   [11, 11, 13],
-                                                   [11, 11, 13],
-                                                   [11, 11, 13]]], dtype=uint8)},
-             ...
+               示例:
+                   [[{'box': array([824.19433594, 712.30371094, 19.98046875, 9.99023438, -0.0]),
+                   'score': 0.8, 'cropped_img': array([[[25, 20, 24],
+                                                          [26, 21, 25],
+                                                          [25, 20, 24],
+                                                          ...,
+                                                          [11, 11, 13],
+                                                          [11, 11, 13],
+                                                          [11, 11, 13]]], dtype=uint8)},
+                    ...
+              ]
             ]
 
         """
-        if isinstance(img_fp, str):
-            if not os.path.isfile(img_fp):
-                raise FileNotFoundError(img_fp)
-            img = imread(img_fp)
-        elif isinstance(img_fp, mx.nd.NDArray):
-            img = img_fp.asnumpy()
-        elif isinstance(img_fp, np.ndarray):
-            img = img_fp
+        single = False
+        if isinstance(img_list, (list, tuple)):
+            img_list = self._preprocess_images(img_list)
+        elif isinstance(img_list, (str, Path)):
+            img_list = [read_img(img_list)]
+            single = True
+        elif isinstance(img_list, (Image.Image, np.ndarray)):
+            img_list = [img_list]
+            single = True
         else:
-            raise TypeError('Inappropriate argument type.')
-        if min(img.shape[0], img.shape[1]) < 2:
-            return []
-        logger.debug("processing image with shape {}".format(img.shape))
+            raise TypeError('type %s is not supported now' % str(type(img_list)))
 
-        resize_img, (ratio_h, ratio_w) = resize_image(img, max_side_len=max_size)
-
-        h, w, _ = resize_img.shape
-        resize_img = normalize_img_array(resize_img)
-        im_res = mx.nd.array(resize_img)
-        im_res = self._trans(im_res)
-
-        t1 = time.time()
-        seg_maps = self._model(im_res.expand_dims(axis=0).as_in_context(self._context))
-        self.seg_maps = seg_maps = seg_maps.asnumpy()
-        t2 = time.time()
-        boxes, scores, rects = detect_pse(
-            seg_maps,
-            threshold=pse_threshold,
-            threshold_k=pse_threshold,
-            boxes_thres=0.01,
-            min_area=pse_min_area,
-        )
-        t3 = time.time()
-        logger.debug(
-            "\tfinished, time costs: psenet pred {}, pse {}, text_boxes: {}".format(
-                t2 - t1, t3 - t2, len(boxes)
-            )
+        out = self._model(
+            img_list,
+            resized_shape=resized_shape,
+            preserve_aspect_ratio=preserve_aspect_ratio,
+            min_box_size=min_box_size,
+            box_score_thresh=box_score_thresh,
         )
 
-        if len(boxes) == 0:
-            return []
+        return out[0] if single else out
 
-        boxes = boxes.reshape((-1, 4, 2))
-        boxes[:, :, 0] /= ratio_w
-        boxes[:, :, 1] /= ratio_h
-        boxes = boxes.astype('int32')
-
-        height_border = kwargs.get('height_border', 0.05)
-        width_border = kwargs.get('width_border', 0.0)
-        cropped_imgs = []
-        for idx, rect in enumerate(rects):
-            # import pdb; pdb.set_trace()
-            # cv2.drawContours(img, [np.int0(bboxes[idx])], 0, (0, 0, 255), 3)
-            # cv2.imwrite('img_box.jpg', img)
-            rect = resize_rect(rect, 1.0 / ratio_w, 1.0 / ratio_h)
-            cropped_img = crop_rect(img, rect, height_border, width_border)
-            cropped_imgs.append(cropped_img)
-            # cv2.imwrite("img_crop_rot%d.jpg" % idx, cropped_img)
-
-        names = ('box', 'score', 'cropped_img')
-        final_res = []
-        for one_info in zip(boxes, scores, cropped_imgs):
-            one_dict = dict(zip(names, one_info))
-            one_dict['box'] = sort_poly(one_dict['box'])
-            final_res.append(one_dict)
-        return final_res
-
-
-def restore_model(backbone, ckpt_path, n_kernel, ctx, net_prefix):
-    """
-    Restore model and get runtime session, input, output
-    Args:
-        - ckpt_path: the path to checkpoint file
-        - n_kernel: [kernel_map, score_map]
-        - net_prefix: prefix for the net
-    """
-
-    net = PSENet(
-        base_net_name=backbone, num_kernels=n_kernel, ctx=ctx, prefix=net_prefix
-    )
-    net.load_parameters(ckpt_path, ctx=ctx)
-    return net
-
-
-def resize_image(im, max_side_len=2400):
-    """
-    resize image to a size multiple of 32 which is required by the network
-    :param im: the resized image
-    :param max_side_len: limit of max image size to avoid out of memory in gpu
-    :return: the resized image and the resize ratio
-    """
-    h, w, _ = im.shape
-
-    resize_w = w
-    resize_h = h
-
-    # limit the max side
-    if max(resize_h, resize_w) > max_side_len:
-        ratio = float(max_side_len) / max(resize_h, resize_w)
-        resize_h = int(resize_h * ratio)
-        resize_w = int(resize_w * ratio)
-
-    resize_h = resize_h if resize_h % 32 == 0 else max(1, resize_h // 32) * 32
-    resize_w = resize_w if resize_w % 32 == 0 else max(1, resize_w // 32) * 32
-    im = cv2.resize(im, (int(resize_w), int(resize_h)))
-
-    ratio_h = resize_h / float(h)
-    ratio_w = resize_w / float(w)
-
-    return im, (ratio_h, ratio_w)
-
-
-def mask_to_boxes_pse(result_map, score_map, min_score=0.5, min_area=200, scale=4.0):
-    """
-    Generate boxes from mask
-    Args:
-        - result_map: fusion from kernel maps
-        - score_map: text_region
-        - min_score: the threshold to filter box that lower than min_score
-        - min_area: filter box whose area is smaller than min_area
-        - scale: ratio about input and output of network
-    """
-    label = result_map
-    label_num = np.max(label) + 1
-    boxes = []
-    scores = []
-    rects = []
-    for i in range(1, label_num):
-        points = np.array(np.where(label == i)).transpose((1, 0))[:, ::-1]
-        if points.shape[0] < min_area / (scale * scale):
-            continue
-
-        score_i = np.mean(score_map[label == i])
-        if score_i < min_score:
-            continue
-
-        rect = cv2.minAreaRect(points)
-        box = cv2.boxPoints(rect) * scale
-        boxes.append(box.reshape(-1))
-        scores.append(score_i)
-
-        rect = resize_rect(rect, scale, scale)
-        rects.append(rect)
-    return np.array(boxes, dtype=np.float32), np.array(scores, dtype=np.float32), rects
-
-
-def detect_pse(
-    seg_maps, threshold=0.5, threshold_k=0.55, boxes_thres=0.01, min_area=100
-):
-    """
-    poster with pse
-    """
-    seg_maps = seg_maps[0, :, :, :]
-    mask = np.where(seg_maps[0, :, :] > threshold, 1.0, 0.0)
-    seg_maps = seg_maps * mask > threshold_k
-
-    result_map = pse(seg_maps, 5)
-    boxes, scores, rects = mask_to_boxes_pse(
-        result_map, seg_maps[0, :, :], min_score=boxes_thres, min_area=min_area
-    )
-    return boxes, scores, rects
-
-
-def crop_rect(img, rect, height_border=0.05, width_border=0.0):
-    """
-    adapted from https://github.com/ouyanghuiyu/chineseocr_lite/blob/e959b6dbf3/utils.py
-    从图片中按框截取出图片patch。
-    """
-    center, sizes, angle = rect[0], rect[1], rect[2]
-    sizes = (
-        int(sizes[0] * (1 + height_border)),
-        int(sizes[1] + sizes[0] * width_border),
-    )
-    center = (int(center[0]), int(center[1]))
-
-    if 1.5 * sizes[0] < sizes[1]:
-        sizes = (sizes[1], sizes[0])
-        angle += 90
-    elif angle < -45 and (0.66 < sizes[0] / (1e-6 + sizes[1]) < 1.5):
-        sizes = (sizes[1], sizes[0])
-        angle -= 270
-
-    height, width = img.shape[0], img.shape[1]
-    # 先把中心点平移到图片中心，然后再旋转就不会截断图片了
-    img = translate(img, width // 2 - center[0], height // 2 - center[1])
-    center = (width // 2, height // 2)
-
-    # FIXME 如果遇到一个贯穿整个图片对角线的文字行，旋转还是会有边缘被截断的情况
-    M = cv2.getRotationMatrix2D(center, angle, 1)
-    img_rot = cv2.warpAffine(img, M, (width, height))
-    img_crop = cv2.getRectSubPix(img_rot, sizes, center)
-    # cv2.imwrite("img_translate.jpg", img)
-    # cv2.imwrite("img_rot.jpg", img_rot)
-    # cv2.imwrite("img_crop_rot.jpg", img_crop)
-    # import pdb; pdb.set_trace()
-    return img_crop
-
-
-def translate(image, x, y):
-    """from https://www.programcreek.com/python/example/89459/cv2.getRotationMatrix2D:
-        Example 29
-    """
-    # 定义平移矩阵
-    M = np.float32([[1, 0, x], [0, 1, y]])
-    shifted = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
-
-    # 返回转换后的图像
-    return shifted
-
-
-def resize_rect(rect, w_scale, h_scale):
-    # FIXME 如果w_scale和h_scale不同，angle其实也要对应修正
-    center, sizes, angle = rect
-    center = (center[0] * w_scale, center[1] * h_scale)
-    sizes = (sizes[0] * w_scale, sizes[1] * h_scale)
-    rect = (center, sizes, angle)
-    return rect
-
-
-def sort_poly(p):
-    min_axis = np.argmin(np.sum(p, axis=1))
-    p = p[[min_axis, (min_axis + 1) % 4, (min_axis + 2) % 4, (min_axis + 3) % 4]]
-    if abs(p[0, 0] - p[1, 0]) > abs(p[0, 1] - p[1, 1]):
-        return p
-    else:
-        return p[[0, 3, 2, 1]]
+    def _preprocess_images(
+        self, img_list: List[Union[str, Path, Image.Image, np.ndarray]]
+    ):
+        out_list = []
+        for img in img_list:
+            if isinstance(img, (str, Path)):
+                if not os.path.isfile(img):
+                    raise FileNotFoundError(img)
+                pil_img = read_img(img)
+                out_list.append(pil_img)
+            elif isinstance(img, (Image.Image, np.ndarray)):
+                out_list.append(img)
+            else:
+                raise TypeError('type %s is not supported now' % str(type(img)))
+        return out_list

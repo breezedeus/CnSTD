@@ -1,4 +1,5 @@
 # coding: utf-8
+# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -30,7 +31,7 @@ import numpy as np
 from PIL import Image
 import torch
 
-from ..consts import MODEL_VERSION, BACKBONE_NET_NAME, AVAILABLE_MODELS
+from ..consts import MODEL_VERSION, MODEL_CONFIGS, AVAILABLE_MODELS
 
 
 fmt = '[%(levelname)s %(asctime)s %(funcName)s:%(lineno)d] %(' 'message)s '
@@ -97,7 +98,7 @@ def data_dir():
 
 
 def check_model_name(model_name):
-    assert model_name in BACKBONE_NET_NAME
+    assert model_name in MODEL_CONFIGS
 
 
 def check_sha1(filename, sha1_hash):
@@ -368,3 +369,38 @@ def load_model_params(model, param_fp, device='cpu'):
             state_dict[k.split('.', maxsplit=1)[1]] = v
     model.load_state_dict(state_dict)
     return model
+
+
+def plot_for_debugging(rotated_img, one_out, box_score_thresh, idx):
+    import matplotlib.pyplot as plt
+    import math
+
+    crops = [info['cropped_img'] for info in one_out]
+    logger.info('%d boxes are found' % len(crops))
+    ncols = 3
+    nrows = math.ceil(len(crops) / ncols)
+    fig, ax = plt.subplots(nrows=nrows, ncols=ncols)
+    for i, axi in enumerate(ax.flat):
+        if i >= len(crops):
+            break
+        axi.imshow(crops[i])
+    plt.tight_layout(True)
+    crop_fp = 'crops-%d.png' % idx
+    plt.savefig(crop_fp)
+    logger.info('cropped results are save to file %s' % crop_fp)
+
+    for info in one_out:
+        box, score = info['box'], info['score']
+        if score < box_score_thresh:  # score < 0.5
+            continue
+        if len(box) == 5:  # rotated_box == True
+            x, y, w, h, alpha = box.astype('float32')
+            box = cv2.boxPoints(((x, y), (w, h), alpha))
+            box = np.int0(box)
+            cv2.drawContours(rotated_img, [box], 0, (255, 0, 0), 2)
+        else:  # len(box) == 4, rotated_box == False
+            xmin, ymin, xmax, ymax = box.astype('float32')
+            cv2.rectangle(rotated_img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
+    result_fp = 'result-%d.png' % idx
+    imsave(rotated_img, result_fp, normalized=False)
+    logger.info('boxes results are save to file %s' % result_fp)

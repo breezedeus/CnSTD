@@ -1,10 +1,25 @@
-# Copyright (C) 2021, Mindee.
-
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+# coding: utf-8
+# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+# Credits: adapted from https://github.com/mindee/doctr
 
 import logging
-from typing import List, Any, Optional, Dict, Tuple, Union
+from typing import List, Any, Optional, Dict, Tuple, Union, Callable
 
 import numpy as np
 import cv2
@@ -15,12 +30,11 @@ from ..transforms import Resize
 from ..utils import (
     pil_to_numpy,
     normalize_img_array,
-    restore_img,
     imsave,
     get_resized_ratio,
 )
 from ..utils.repr import NestedObject
-from .._utils import rotate_page, get_bitmap_angle, extract_crops, extract_rcrops
+from ..utils._utils import rotate_page, get_bitmap_angle, extract_crops, extract_rcrops
 
 
 logger = logging.getLogger(__name__)
@@ -40,18 +54,22 @@ class DetectionPostProcessor(NestedObject):
     """Abstract class to postprocess the raw output of the model
 
     Args:
-        min_size_box (int): minimal length (pix) to keep a box
-        max_candidates (int): maximum boxes to consider in a single page
-        box_thresh (float): minimal objectness score to consider a box
+        auto_rotate_whole_image: whether to detect the angle of the whold image and calibrate it automatically
+        box_thresh: minimal objectness score to consider a box
+        bin_thresh: threshold used to binzarized p_map at inference time
+        rotated_bbox: whether to detect non-vertical and non-horizontal boxes
     """
 
     def __init__(
         self,
+        *,
+        auto_rotate_whole_image=False,
         box_thresh: float = 0.5,
         bin_thresh: float = 0.5,
         rotated_bbox: bool = False,
     ) -> None:
 
+        self.auto_rotate_whole_image = auto_rotate_whole_image
         self.box_thresh = box_thresh
         self.bin_thresh = bin_thresh
         self.rotated_bbox = rotated_bbox
@@ -111,7 +129,10 @@ class DetectionPostProcessor(NestedObject):
             # Perform opening (erosion + dilatation)
             bitmap_ = cv2.morphologyEx(bitmap_, cv2.MORPH_OPEN, kernel)
             # Rotate bitmap and proba_map
-            angle = get_bitmap_angle(bitmap_)
+            if self.auto_rotate_whole_image:
+                angle = get_bitmap_angle(bitmap_)
+            else:
+                angle = 0.0
             angles_batch.append(angle)
             bitmap_, p_ = rotate_page(bitmap_, -angle), rotate_page(p_, -angle)
             boxes = self.bitmap_to_boxes(pred=p_, bitmap=bitmap_)
@@ -130,25 +151,10 @@ class DetectionPredictor(NestedObject):
 
     _children_names: List[str] = ['model']
 
-    def __init__(
-        self,
-        model,
-        *,
-        resized_shape,
-        min_box_size=8,
-        preserve_aspect_ratio=True,
-        debug=False,
-    ) -> None:
-
-        self.resized_shape = resized_shape
-        self.min_box_size = min_box_size
-        self.preserve_aspect_ratio = preserve_aspect_ratio
-        self.debug = debug
+    def __init__(self, model, *, context='cpu') -> None:
+        self.device = torch.device(context)
         self.model = model
         self.model.eval()
-        self.val_transform = Resize(
-            self.resized_shape, preserve_aspect_ratio=self.preserve_aspect_ratio
-        )
         self.extract_crops_fn = (
             extract_rcrops if self.model.rotated_bbox else extract_crops
         )
@@ -157,27 +163,39 @@ class DetectionPredictor(NestedObject):
     def __call__(
         self,
         img_list: List[Union[Image.Image, np.ndarray]],
+        resized_shape: Tuple[int, int],
+        preserve_aspect_ratio: bool = True,
+        min_box_size: int = 8,
         box_score_thresh: float = 0.5,
         **kwargs: Any,
-    ) -> List[List[Dict[str, Any]]]:
+    ) -> List[Dict[str, Any]]:
         """
 
         Args:
             img_list: list, which element's should be one type of Image.Image and np.ndarray.
                 For Image.Image, it should be generated from read_img;
                 For np.ndarray, it should be RGB-style, with shape [H, W, 3], scale [0, 255]
+            resized_shape: tuple, [height, width], height and width after resizing original images
+            preserve_aspect_ratio: whether or not presserve aspect ratio of original images when resizing them
+            min_box_size: minimal size of detected boxes; boxes with smaller height or width will be ignored
             box_score_thresh: score threshold for boxes, boxes with scores lower than this value will be ignored
             **kwargs:
 
         Returns:
 
         """
-        ori_imgs, batch, compress_ratios = self.preprocess(img_list)
+        if len(img_list) == 0:
+            return []
+        size_transform = Resize(
+            resized_shape, preserve_aspect_ratio=preserve_aspect_ratio
+        )
+        ori_imgs, batch, compress_ratios = self.preprocess(
+            img_list, resized_shape, size_transform, preserve_aspect_ratio
+        )
 
-        out = self.model(batch, return_preds=True, **kwargs)  # type:ignore[operator]
+        out = self.model(batch, return_preds=True, **kwargs)
         boxes, angles = out['preds']
         results = []
-        idx = 0
         for image, _boxes, compress_ratio, angle in zip(
             ori_imgs, boxes, compress_ratios, angles
         ):
@@ -201,53 +219,19 @@ class DetectionPredictor(NestedObject):
             ):
                 if score < box_score_thresh:
                     continue
-                if min(crop.shape[:2]) < self.min_box_size:
+                if min(crop.shape[:2]) < min_box_size:
                     continue
                 one_out.append(dict(box=box, score=score, cropped_img=crop))
-            results.append(one_out)
-
-            if self.debug:
-                self._plot_for_debugging(
-                    rotated_img, one_out, box_score_thresh, idx
-                )
-            idx += 1
+            results.append({'rotated_angle': angle, 'detected_texts': one_out})
 
         return results
 
-    def _plot_for_debugging(
-        self, rotated_img, one_out, box_score_thresh, idx
-    ):
-        import matplotlib.pyplot as plt
-        import math
-
-        crops = [info['cropped_img'] for info in one_out]
-        logger.info('%d boxes are found' % len(crops))
-        ncols = 3
-        nrows = math.ceil(len(crops) / ncols)
-        fig, ax = plt.subplots(nrows=nrows, ncols=ncols)
-        for i, axi in enumerate(ax.flat):
-            if i >= len(crops):
-                break
-            axi.imshow(crops[i])
-        plt.tight_layout(True)
-        plt.savefig('crops-%d.png' % idx)
-
-        for info in one_out:
-            box, score = info['box'], info['score']
-            if score < box_score_thresh:  # score < 0.5
-                continue
-            if len(box) == 5:  # rotated_box == True
-                x, y, w, h, alpha = box.astype('float32')
-                box = cv2.boxPoints(((x, y), (w, h), alpha))
-                box = np.int0(box)
-                cv2.drawContours(rotated_img, [box], 0, (255, 0, 0), 2)
-            else:  # len(box) == 4, rotated_box == False
-                xmin, ymin, xmax, ymax = box.astype('float32')
-                cv2.rectangle(rotated_img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
-        imsave(rotated_img, 'result-%d.png' % idx, normalized=False)
-
     def preprocess(
-        self, pil_img_list: List[Union[Image.Image, np.ndarray]]
+        self,
+        pil_img_list: List[Union[Image.Image, np.ndarray]],
+        resized_shape: Tuple[int, int],
+        size_transform: Callable,
+        preserve_aspect_ratio: bool,
     ) -> Tuple[List[np.ndarray], torch.Tensor, List[Tuple[float, float]]]:
         ori_img_list = []
         img_list = []
@@ -261,15 +245,21 @@ class DetectionPredictor(NestedObject):
                 raise ValueError('unsupported image input is found')
 
             ori_img_list.append(img)
-            compress_ratio = self._compress_ratio(img.shape[1:], self.resized_shape)
+            compress_ratio = self._compress_ratio(
+                img.shape[1:], resized_shape, preserve_aspect_ratio
+            )
             compress_ratios_list.append(compress_ratio)
-            img = self.val_transform(torch.from_numpy(img)).numpy()
+            img = size_transform(torch.from_numpy(img)).numpy()
             img = normalize_img_array(img)
             img_list.append(torch.from_numpy(img))
-        return ori_img_list, torch.stack(img_list, dim=0), compress_ratios_list
+        return (
+            ori_img_list,
+            torch.stack(img_list, dim=0).to(device=self.device),
+            compress_ratios_list,
+        )
 
-    def _compress_ratio(self, ori_hw, target_hw):
-        if not self.preserve_aspect_ratio:
+    def _compress_ratio(self, ori_hw, target_hw, preserve_aspect_ratio):
+        if not preserve_aspect_ratio:
             return 1.0, 1.0
 
         resized_ratios = get_resized_ratio(ori_hw, target_hw, True)

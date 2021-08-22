@@ -1,4 +1,5 @@
 # coding: utf-8
+# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,6 +16,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+
 import os
 import click
 import json
@@ -23,20 +25,21 @@ import time
 import numpy as np
 import torchvision.transforms as T
 
-from .consts import BACKBONE_NET_NAME, MODEL_VERSION
+from .utils import rotate_page
+from .consts import MODEL_VERSION, MODEL_CONFIGS
 from .utils import (
     set_logger,
     data_dir,
     load_model_params,
     imsave,
     read_img,
+    pil_to_numpy,
+    plot_for_debugging,
 )
-from .dataset import StdDataModule
+from .datasets import StdDataModule
 from .trainer import PlTrainer, resave_model
 from .model import gen_model
-from .model.core import DetectionPredictor
-
-# from .eval import evaluate
+from . import CnStd
 
 
 _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
@@ -51,7 +54,13 @@ def cli():
 
 
 @cli.command('train')
-@click.option('-m', '--model-name', type=str, default=DEFAULT_MODEL_NAME, help='模型名称')
+@click.option(
+    '-m',
+    '--model-name',
+    type=click.Choice(MODEL_CONFIGS.keys()),
+    default=DEFAULT_MODEL_NAME,
+    help='模型名称',
+)
 @click.option(
     '-i',
     '--index-dir',
@@ -75,7 +84,10 @@ def train(
 ):
     train_config = json.load(open(train_config_fp))
 
-    kwargs = dict(rotated_bbox=train_config['rotated_bbox'])
+    kwargs = dict(
+        rotated_bbox=train_config['rotated_bbox'],
+        auto_rotate_whole_image=train_config.get('auto_rotate_whole_image', False),
+    )
     if 'resized_shape' in train_config:
         kwargs['input_shape'] = train_config['resized_shape']
     model = gen_model(model_name, **kwargs)
@@ -177,40 +189,52 @@ def predict(
     context,
     file,
 ):
-    model = gen_model(model_name, pretrained_backbone=False, rotated_bbox=rotated_bbox)
-    model.eval()
-    if pretrained_model_fp is not None:
-        load_model_params(model, pretrained_model_fp)
+    std = CnStd(
+        model_name, model_epoch, model_fp=pretrained_model_fp, rotated_bbox=rotated_bbox
+    )
 
     resized_shape = tuple(map(int, resized_shape.split(',')))  # [H, W]
-    predictor = DetectionPredictor(
-        model,
-        resized_shape=resized_shape,
-        preserve_aspect_ratio=preserve_aspect_ratio,
-        debug=True,
-    )
     pil_img = read_img(file)
     start_time = time.time()
-    predictor([pil_img], box_score_thresh=box_score_thresh)
+    std_out = std.detect(
+        pil_img,
+        resized_shape=resized_shape,
+        preserve_aspect_ratio=preserve_aspect_ratio,
+        box_score_thresh=box_score_thresh,
+    )
     logger.info('time cost of prediction: %f' % (time.time() - start_time))
+
+    angle = std_out['rotated_angle']
+    img = pil_to_numpy(pil_img).transpose((1, 2, 0)).astype(np.uint8)
+    rotated_img = np.ascontiguousarray(rotate_page(img, -angle))
+    plot_for_debugging(rotated_img, std_out['detected_texts'], box_score_thresh, idx=0)
+
+    # from cnocr import CnOcr
+    #
+    # ocr = CnOcr(model_name='densenet-s-fc')
+    # for box_info in std_out:
+    #     cropped_img = box_info['cropped_img']  # 检测出的文本框
+    #     ocr_out = ocr.ocr_for_single_line(cropped_img)
+    #     # print('ocr result: %s' % ''.join(ocr_res))
+    #     logger.info('ocr result: %s' % str(ocr_out))
 
 
 @cli.command('resave')
 @click.option('-i', '--input-model-fp', type=str, required=True, help='输入的模型文件路径')
 @click.option('-o', '--output-model-fp', type=str, required=True, help='输出的模型文件路径')
 def resave_model_file(
-        input_model_fp,
-        output_model_fp,
+    input_model_fp, output_model_fp,
 ):
     resave_model(input_model_fp, output_model_fp, map_location='cpu')
 
 
 @cli.command('evaluate', context_settings=_CONTEXT_SETTINGS)
 @click.option(
-    '--backbone',
-    type=click.Choice(BACKBONE_NET_NAME),
-    default='mobilenetv3',
-    help='backbone model name',
+    '-m',
+    '--model-name',
+    type=click.Choice(MODEL_CONFIGS.keys()),
+    default=DEFAULT_MODEL_NAME,
+    help='模型名称',
 )
 @click.option('--model_root_dir', default=data_dir(), help='模型所在的根目录')
 @click.option('--model_epoch', type=int, default=None, help='model epoch')
@@ -233,7 +257,7 @@ def resave_model_file(
 @click.option('--gpu', type=int, default=-1, help='使用的GPU数量。默认值为-1，表示自动判断')
 @click.option('-o', '--output_dir', default='outputs', help='输出结果存放的目录')
 def evaluate_model(
-    backbone,
+    model_name,
     model_root_dir,
     model_epoch,
     img_dir,

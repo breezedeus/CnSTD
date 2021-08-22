@@ -1,46 +1,26 @@
 # coding: utf-8
-from typing import Dict, Any
+# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 from copy import deepcopy
 
-from torchvision.models import resnet18, resnet34, resnet50, mobilenet_v3_large
-
 from .dbnet import gen_dbnet, DBNet
-
-
-MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
-    'db_resnet50': {
-        'backbone': resnet50,
-        'backbone_submodule': None,
-        'fpn_layers': ['layer1', 'layer2', 'layer3', 'layer4'],
-        'fpn_channels': [256, 512, 1024, 2048],
-        'input_shape': (3, 768, 768),  # resize后输入模型的图片大小, 即 `resized_shape`
-        'url': None,
-    },
-    'db_resnet34': {
-        'backbone': resnet34,
-        'backbone_submodule': None,
-        'fpn_layers': ['layer1', 'layer2', 'layer3', 'layer4'],
-        'fpn_channels': [64, 128, 256, 512],
-        'input_shape': (3, 768, 768),
-        'url': None,
-    },
-    'db_resnet18': {
-        'backbone': resnet18,
-        'backbone_submodule': None,
-        'fpn_layers': ['layer1', 'layer2', 'layer3', 'layer4'],
-        'fpn_channels': [64, 128, 256, 512],
-        'input_shape': (3, 768, 768),
-        'url': None,
-    },
-    'db_mobilenet_v3': {
-        'backbone': mobilenet_v3_large,
-        'backbone_submodule': 'features',
-        'fpn_layers': ['3', '6', '12', '16'],
-        'fpn_channels': [24, 40, 112, 960],
-        'input_shape': (3, 768, 768),
-        'url': None,
-    },
-}
+from ..consts import MODEL_CONFIGS
 
 
 def gen_model(model_name: str, pretrained_backbone: bool = True, **kwargs) -> DBNet:

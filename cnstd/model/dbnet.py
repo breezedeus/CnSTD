@@ -1,7 +1,22 @@
-# Copyright (C) 2021, Mindee.
-
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+# coding: utf-8
+# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+# Credits: adapted from https://github.com/mindee/doctr
 
 import logging
 from typing import List, Dict, Any, Optional
@@ -80,6 +95,7 @@ class DBNet(_DBNet, nn.Module):
         head_chans: int = 256,
         deform_conv: bool = False,
         num_classes: int = 1,
+        auto_rotate_whole_image=False,
         rotated_bbox: bool = False,
         cfg: Optional[Dict[str, Any]] = None,
         **kwargs,
@@ -122,7 +138,10 @@ class DBNet(_DBNet, nn.Module):
             nn.ConvTranspose2d(head_chans // 4, num_classes, 2, stride=2),
         )
 
-        self.postprocessor = DBPostProcessor(rotated_bbox=self.rotated_bbox)
+        self.postprocessor = DBPostProcessor(
+            auto_rotate_whole_image=auto_rotate_whole_image,
+            rotated_bbox=self.rotated_bbox,
+        )
 
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, DeformConv2d)):
@@ -279,7 +298,7 @@ def gen_dbnet(
     config: Dict[str, Any],
     pretrained: bool = False,
     pretrained_backbone: bool = True,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> DBNet:
 
     pretrained_backbone = pretrained_backbone and not pretrained
