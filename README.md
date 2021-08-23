@@ -1,14 +1,20 @@
 # cnstd
 
-**cnstd** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，自带了多个训练好的检测模型，安装后即可直接使用。当前的文字检测模型使用的是 [PSENet](https://github.com/whai362/PSENet)，目前支持两种 backbone 模型：**`mobilenetv3`** 和 **`resnet50_v1b`**。它们都是在 **ICPR** 和 **ICDAR15** 的 `11000` 张训练集图片上训练得到的。
+**cnstd** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，自带了多个训练好的检测模型，安装后即可直接使用。当前的 **v1.0.0** 已经从之前基于 MxNet 实现转为基于 **PyTorch** 实现。V1.0.0 模型的训练合并了  **ICPR MTWI 2018**、**ICDAR RCTW-17** 和 **ICDAR2019-LSVT** 三个数据集，包括了 **`46447`** 个训练样本，和 **`1534`** 个测试样本。
+
+
+
+相较于 V0.1， **V1.0.0** 的变化主要包括：
+
+* MxNet 越来越小众化，故从基于 MxNet 的实现转为基于 **PyTorch** 的实现；
+* 检测速度得到极大提升，耗时几乎下降了一个量级；
+* 检测精度也得到较大的提升；
+* 实用性增强；检测接口中提供了更灵活的参数，不同应用场景可以尝试使用不同的参数以获得更好的检测效果；
+* 提供了更丰富的预训练模型，开箱即用。
 
 
 
 如需要识别文本框中的文字，可以结合 **OCR** 工具包 **[cnocr](https://github.com/breezedeus/cnocr)** 一起使用。
-
-
-
-本项目初始代码主要来自 [saicoco/Gluon-PSENet](https://github.com/saicoco/Gluon-PSENet) ，感谢作者。
 
 
 
@@ -30,14 +36,18 @@ pip install cnstd
 
 【注意】：
 
-* 请使用Python3 (3.4, 3.5, 3.6以及之后版本应该都行)，没测过Python2下是否ok。
-* 依赖opencv，所以可能需要额外安装opencv。
+* 请使用 **Python3** (3.6以及之后版本应该都行)，没测过Python2下是否ok。
+* 依赖 **opencv**，所以可能需要额外安装opencv。
 
 
 
 ## 已有模型
 
-当前的文字检测模型使用的是[PSENet](https://github.com/whai362/PSENet)，目前包含两个已训练好的模型，分别对应两种backbone模型：`mobilenetv3` 和 `resnet50_v1b`。它们都是在ICPR和ICDAR15训练数据上训练得到的。
+当前版本（**V1.0.0**）的文字检测模型使用的是 **[DBNet](https://github.com/MhLiao/DB)**，相较于 V0.1 使用的 [PSENet](https://github.com/whai362/PSENet) 模型， DBNet 的检测耗时几乎下降了一个量级，同时检测精度也得到了极大的提升。
+
+
+
+目前包含两个已训练好的模型，分别对应两种backbone模型：`mobilenetv3` 和 `resnet50_v1b`。它们都是在ICPR和ICDAR15训练数据上训练得到的。
 
 
 | 模型名称     | backbone模型 | 模型大小 | 迭代次数 |
@@ -51,10 +61,11 @@ pip install cnstd
 
 ## 使用方法
 
-首次使用 **cnstd** 时，系统会自动下载zip格式的模型压缩文件，并存放于 `~/.cnstd`目录（Windows下默认路径为 `C:\Users\<username>\AppData\Roaming\cnstd`）。
-下载后的zip文件代码会自动对其解压，然后把解压后的模型相关目录放于`~/.cnstd/0.1.0`目录中。
+首次使用 **cnstd** 时，系统会自动从 [贝叶智能](https://www.behye.com) 的CDN上下载zip格式的模型压缩文件，并存放于 `~/.cnstd`目录（Windows下默认路径为 `C:\Users\<username>\AppData\Roaming\cnstd`）。下载速度超快。下载后的zip文件代码会自动对其解压，然后把解压后的模型相关目录放于`~/.cnstd/1.0`目录中。
 
-如果系统无法自动成功下载zip文件，则需要手动从 [百度云盘](https://pan.baidu.com/s/1baAbek7gJ8ScYctB-oCu9w)（提取码为 ` 4ndj`）下载对应的zip文件并把它存放于 `~/.cnstd/0.1.0`（Windows下为 `C:\Users\<username>\AppData\Roaming\cnstd\0.1.0`）目录中。放置好zip文件后，后面的事代码就会自动执行了。
+
+
+如果系统无法自动成功下载zip文件，则需要手动从 [百度云盘](https://pan.baidu.com/s/1e0PikC5r3upzsF5oa5oFcw)（提取码为 `56r2`）下载对应的zip文件并把它存放于 `~/.cnstd/1.0`（Windows下为 `C:\Users\<username>\AppData\Roaming\cnstd\1.0`）目录中。放置好zip文件后，后面的事代码就会自动执行了。
 
 
 
@@ -69,23 +80,31 @@ class CnStd(object):
     """
 
     def __init__(
-        model_name='mobilenetv3',
+        self,
+        model_name='db_resnet18',
         model_epoch=None,
-        root=data_dir(),
+        *,
+        auto_rotate_whole_image=False,
+        rotated_bbox=True,
         context='cpu',
-        name=None,
+        model_fp=None,
+        root=data_dir(),
+        **kwargs,
     ):
 ```
 
 其中的几个参数含义如下：
 
-* `model_name`: 模型名称，即上面表格第一列中的值，目前仅支持取值为 `mobilenetv3` 和 `resnet50_v1b`。默认为 `mobilenetv3` 。
-* `model_epoch`: 模型迭代次数。默认为 `None`，表示使用系统自带的模型对应的迭代次数。对于模型名称 `mobilenetv3`就是 `59`。
+* `model_name`:  模型名称，即上面表格第一列中的值，目前仅支持取值为 `db_resnet18`, `db_resnet34`, `db_resnet50`, `db_mobilenet_v3`。默认为 `db_resnet18` 。
+* `model_epoch`:  模型迭代次数。默认为 `None`，表示使用系统自带的模型对应的迭代次数。对于模型名称 `db_resnet18`就是 `29`。
+* `auto_rotate_whole_image`:  是否自动对整张图片进行旋转调整。默认为`False`。
+* `rotated_bbox`:  是否支持检测带角度的文本框；默认为 `True`，表示支持；取值为 `False` 时，只检测水平或垂直的文本。
+* `context`：预测使用的机器资源，可取值为字符串`cpu`、`gpu`。
+* `model_fp`:  如果不使用系统自带的模型，可以通过此参数直接指定所使用的模型文件（`.ckpt`文件）。
 * `root`: 模型文件所在的根目录。
-  * Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/0.1.0/mobilenetv3`。
+  
+  * Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.0/db_resnet18`。
   * Windows下默认值为 `C:\Users\<username>\AppData\Roaming\cnstd`。
-* `context`：预测使用的机器资源，可取值为字符串`cpu`、`gpu`，或者 `mx.Context`实例。
-* `name`：正在初始化的这个实例的名称。如果需要同时初始化多个实例，需要为不同的实例指定不同的名称。
 
 
 
@@ -98,35 +117,61 @@ class CnStd(object):
 
 
 
-#### 类函数`CnStd.detect(img_fp, max_size, pse_threshold, pse_min_area, **kwargs)`
+#### 类函数`CnStd.detect()`
+
+```python
+    def detect(
+        self,
+        img_list: Union[
+            str,
+            Path,
+            Image.Image,
+            np.ndarray,
+            List[Union[str, Path, Image.Image, np.ndarray]],
+        ],
+        resized_shape: Tuple[int, int] = (768, 768),
+        preserve_aspect_ratio: bool = True,
+        min_box_size: int = 8,
+        box_score_thresh: float = 0.3,
+        batch_size=20,
+        **kwargs,
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+```
 
 
 
 **函数说明**：
 
-- 输入参数 `img_fp`: 可以是需要识别的图片文件路径，或者是已经从图片文件中读入的数组，类型可以为`mx.nd.NDArray` 或  `np.ndarray`，取值应该是`[0，255]`的整数，维数应该是`(height, width, 3)`，第三个维度是channel，它应该是`RGB`格式的。
+函数输入参数包括：
 
-- 输入参数 `max_size`: 如果图片的长边超过这个值，就把图片等比例压缩到长边等于这个size。
+- 输入参数 `img_list`: 支持对单个图片或者多个图片（列表）的检测。每个值可以是图片路径，或者已经读取进来 `PIL.Image.Image` 或 `np.ndarray`,  格式应该是 `RGB` 3 通道，shape: `(height, width, 3)`, 取值范围：`[0, 255]`。
+- 输入参数 `resized_shape`:  `(height, width)`, 检测前，会先把原始图片 resize 到此大小。默认为 `(768, 768)`。
+		注：其中取值必须都能整除 `32`。这个取值对检测结果的影响较大，可以针对自己的应用多尝试几组值，再选出最优值。例如 `(512, 768)`, `(768, 768)`, `(768, 1024)`等。
+- 输入参数 `preserve_aspect_ratio`: 对原始图片 resize 时是否保持高宽比不变。默认为 `True`。
+- 输入参数 `min_box_size`: 如果检测出的文本框高度或者宽度低于此值，此文本框会被过滤掉。默认为 `8`，也即高或者宽小于 `8` 的文本框会被过滤去掉。
+- 输入参数 `box_score_thresh`: 过滤掉得分低于此值的文本框。默认为 `0.3`。
+- 输入参数 `batch_size`: 待处理图片很多时，需要分批处理，每批图片的数量由此参数指定。默认为 `20`。
+- 输入参数 `kwargs`: 保留参数，目前未被使用。
 
-- 输入参数 `pse_threshold`: pse中的阈值；越低会导致识别出的文本框越大；反之越小。
 
-- 输入参数 `pse_min_area`: 面积大小低于此值的框会被去掉。所以此值越小，识别出的框可能越多。
 
-- 输入参数 `kwargs`: 目前会使用到的keys有：
-  - "height_border"，裁切图片时在高度上留出的边界比例，最终上下总共留出的边界大小为height * height_border; 默认为0.05；
-  - "width_border"，裁切图片时在宽度上留出的边界比例，最终左右总共留出的边界大小为height * width_border; 默认为0.0；
-- 返回值：类型为`list`，其中每个元素是一个字典，  存储了检测出的一个框的各种信息。字典包括以下几个值：
-	- "box"：检测出的文字对应的矩形框四个点的坐标（第一列对应宽度方向，第二列对应高度方向）；
-			`np.ndarray`类型，`shape==(4, 2)`；
+函数输出类型为`list`，其中每个元素是一个字典，对应一张图片的检测结果。字典中包含以下 `keys`：
+
+-  `rotated_angle`: `float`, 整张图片旋转的角度。只有 `auto_rotate_whole_image==True` 才可能非 `0`。
+
+-  `detected_texts`: `list`, 每个元素存储了检测出的一个框的信息，使用词典记录，包括以下几个值：
+
+	- `box`：检测出的文字对应的矩形框；4个 (`rotated_bbox==False`) 或者 5个 (`rotated_bbox==True`) 元素;
 		
-	- "score"：得分；float类型；分数越高表示越可靠；
+		- 4个元素时的含义：对应 `rotated_bbox==False`，取值为：`[xmin, ymin, xmax, ymax]` ;
+		- 5个元素时的含义：对应 `rotated_bbox==True`，取值为：`[x, y, w, h, angle]`。
+		
+	- "score"：得分；`float` 类型；分数越高表示越可靠；
 	
-	- "croppped_img"：对应 "box" 中的图片patch（`RGB`格式），会把倾斜的图片旋转为水平。
-		  `np.ndarray`类型，`shape==(width, height, 3)`；
-		
+	- "croppped_img"：对应 "box" 中的图片patch（`RGB`格式），会把倾斜的图片旋转为水平。`np.ndarray`类型，`shape: (height, width, 3)`,  取值范围：`[0, 255]`；
+		  
 	- 示例:
-		
-```python
+		```python
 		  [{'box': array([[416,  77],
 		                  [486,  13],
 		                  [800, 325],
@@ -141,7 +186,7 @@ class CnStd(object):
 		                           [11, 11, 13]]], dtype=uint8)},
 		   ...
 		  ]
-```
+		```
 
 
 
@@ -157,13 +202,13 @@ box_info_list = std.detect('examples/taobao.jpg')
 或：
 
 ```python
-import mxnet as mx
+from PIL import Image
 from cnstd import CnStd
 
 std = CnStd()
 img_fp = 'examples/taobao.jpg'
-img = mx.image.imread(img_fp, 1)
-box_info_list = std.detect(img)
+img = Image.open(img_fp)
+box_infos = std.detect(img)
 ```
 
 
@@ -179,15 +224,17 @@ from cnocr import CnOcr
 std = CnStd()
 cn_ocr = CnOcr()
 
-box_info_list = std.detect('examples/taobao.jpg')
+box_infos = std.detect('examples/taobao.jpg')
 
-for box_info in box_info_list:
+for box_info in box_infos['detected_texts']:
     cropped_img = box_info['cropped_img']
     ocr_res = cn_ocr.ocr_for_single_line(cropped_img)
-    print('ocr result: %s' % ''.join(ocr_res))
+    print('ocr result: %s' % str(ocr_out))
 ```
 
-注：运行上面示例需要先安装 **`cnocr`** ：
+
+
+注：运行上面示例需要先安装  **[cnocr](https://github.com/breezedeus/cnocr)** ：
 
 ```bash
 pip install cnocr
@@ -197,31 +244,36 @@ pip install cnocr
 
 ### 脚本使用
 
-**cnstd** 包含了几个命令行命令，安装 **cnstd** 后即可使用。
+**cnstd** 包含了几个命令行工具，安装 **cnstd** 后即可使用。
 
 
 
 #### 预测单个文件或文件夹中所有图片
 
-使用命令 **`cnstd evaluate`** 预测单个文件或文件夹中所有图片，以下是使用说明：
+使用命令 **`cnstd predict`** 预测单个文件或文件夹中所有图片，以下是使用说明：
 
 ```bash
-(venv) ➜  cnstd git:(master) ✗ cnstd evaluate -h
-Usage: cnstd evaluate [OPTIONS]
+(venv) ➜  cnstd git:(master) ✗ cnstd predict -h
+Usage: cnstd predict [OPTIONS]
+
+  预测单个文件，或者指定目录下的所有图片
 
 Options:
-  --backbone [mobilenetv3|resnet50_v1b]
-                                  backbone model name
-  --model_root_dir TEXT           模型所在的根目录
-  --model_epoch INTEGER           model epoch
-  -i, --img_dir TEXT              评估图片所在的目录或者单个图片文件路径
-  --max_size INTEGER              图片预测时的最大尺寸（最好是32的倍数）。超过这个尺寸的图片会被等比例压缩到此尺寸
-                                  [Default: 768]
+  -m, --model-name [db_resnet50|db_resnet34|db_resnet18|db_mobilenet_v3]
+                                  模型名称。默认值为 `db_resnet18`
+  --model-epoch INTEGER           model epoch。默认为 `None`，表示使用系统自带的预训练模型
+  -p, --pretrained-model-fp TEXT  导入的训练好的模型，作为初始模型。默认为 `None`，表示使用系统自带的预训练模型
+  -r, --rotated-bbox              是否检测带角度（非水平和垂直）的文本框。默认为 `True`
+  --resized-shape TEXT            格式："height,width";
+                                  预测时把图片resize到此大小再进行预测。两个值都需要是32的倍数。默认为
+                                  `768,768`
 
-  --pse_threshold FLOAT           threshold for pse [Default: 0.45]
-  --pse_min_area INTEGER          min area for pse [Default: 100]
-  --gpu INTEGER                   使用的GPU数量。默认值为-1，表示自动判断
-  -o, --output_dir TEXT           输出结果存放的目录
+  --box-score-thresh FLOAT        检测结果只保留分数大于此值的文本框。默认值为 `0.3`
+  --preserve-aspect-ratio BOOLEAN
+                                  resize时是否保留图片原始比例。默认值为 `True`
+  --context [cpu|gpu]             使用cpu还是 `gpu` 运行代码。默认为 `cpu`
+  -i, --img-file-or-dir TEXT      输入图片的文件路径或者指定的文件夹
+  -o, --output-dir TEXT           检测结果存放的文件夹。默认为 `./predictions`
   -h, --help                      Show this message and exit.
 ```
 
@@ -230,7 +282,7 @@ Options:
 例如可以使用以下命令对图片 `examples/taobao.jpg`进行检测，并把检测结果存放在目录 `outputs`中：
 
 ```bash
-cnstd evaluate -i examples/taobao.jpg -o outputs
+cnstd predict -i examples/taobao.jpg -o outputs
 ```
 
 
@@ -247,21 +299,20 @@ cnstd evaluate -i examples/taobao.jpg -o outputs
 (venv) ➜  cnstd git:(master) ✗ cnstd train -h
 Usage: cnstd train [OPTIONS]
 
+  训练文本检测模型
+
 Options:
-  --backbone [mobilenetv3|resnet50_v1b]
-                                  backbone model name
-  --pretrain_model_fp TEXT        初始化模型路径
-  --gpu INTEGER                   使用的GPU数量。默认值为-1，表示自动判断
-  --optimizer TEXT                optimizer for training [Default: Adam]
-  --batch_size INTEGER            batch size for each device [Default: 4]
-  --epoch INTEGER                 train epochs [Default: 50]
-  --lr FLOAT                      learning rate [Default: 0.001]
-  --momentum FLOAT                momentum [Default: 0.9]
-  --wd FLOAT                      weight decay factor [Default: 0.0]
-  --log_step INTEGER              隔多少步打印一次信息 [Default: 5]
-  -r, --root_dir TEXT             数据所在的根目录，它与索引文件中指定的文件路径合并后获得最终的文件路径
-  -i, --train_index_fp TEXT       存放训练数据的索引文件
-  -o, --output_dir TEXT           模型输出的根目录 [Default: ~/.cnstd]
+  -m, --model-name [db_resnet50|db_resnet34|db_resnet18|db_mobilenet_v3]
+                                  模型名称。默认值为 db_resnet18
+  -i, --index-dir TEXT            索引文件所在的文件夹，会读取文件夹中的 train.tsv 和 dev.tsv 文件
+                                  [required]
+
+  --train-config-fp TEXT          训练使用的json配置文件  [required]
+  -r, --resume-from-checkpoint TEXT
+                                  恢复此前中断的训练状态，继续训练
+  -p, --pretrained-model-fp TEXT  导入的训练好的模型，作为初始模型。优先级低于 "--restore-training-
+                                  fp"，当传入"--restore-training-fp"时，此传入失效
+
   -h, --help                      Show this message and exit.
 ```
 
@@ -271,11 +322,31 @@ Options:
 
 
 
+#### 模型转存
+
+训练好的模型会存储训练状态，使用命令 **`cnstd resave`**  去掉与预测无关的数据，降低模型大小。
+
+```bash
+(venv) ➜  cnstd git:(master) ✗ cnstd resave -h
+Usage: cnstd resave [OPTIONS]
+
+  训练好的模型会存储训练状态，使用此命令去掉预测时无关的数据，降低模型大小
+
+Options:
+  -i, --input-model-fp TEXT   输入的模型文件路径  [required]
+  -o, --output-model-fp TEXT  输出的模型文件路径  [required]
+  -h, --help                  Show this message and exit.
+```
+
+
+
+
+
 ## 未来工作
 
 
 
 * [ ] 进一步精简模型结构，降低模型大小。
-* [ ] PSENet速度上还是比较慢，尝试更快的STD算法。
-* [ ] 加入更多的训练数据。
+* [x] PSENet速度上还是比较慢，尝试更快的STD算法。
+* [x] 加入更多的训练数据。
 
