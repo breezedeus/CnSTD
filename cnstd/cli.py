@@ -83,6 +83,7 @@ def cli():
 def train(
     model_name, index_dir, train_config_fp, resume_from_checkpoint, pretrained_model_fp
 ):
+    """训练文本检测模型"""
     train_config = json.load(open(train_config_fp))
 
     kwargs = dict(
@@ -194,6 +195,7 @@ def predict(
     img_file_or_dir,
     output_dir,
 ):
+    """预测单个文件，或者指定目录下的所有图片"""
     std = CnStd(
         model_name,
         model_epoch,

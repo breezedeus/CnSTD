@@ -37,18 +37,20 @@ exec(
 )
 
 required = [
-    "torch",
-    "torchvision",
     'click',
+    'tqdm',
     'unidecode',
+    "torch>=1.7.0",
+    "torchvision",
+    'numpy',
+    'scipy',
+    "pytorch-lightning",
+    'pillow>=5.3.0',
+    'opencv-python>=4.0.0',
     'shapely',
     'Polygon3',
     'pyclipper',
-    'TensorboardX',
-    'pillow>=5.3.0',
-    'opencv-python',
-    "pytorch-lightning",
-    'numpy',
+    'matplotlib',
 ]
 
 extras_require = {
@@ -63,7 +65,7 @@ cnstd = cnstd.cli:cli
 setup(
     name=PACKAGE_NAME,
     version=about['__version__'],
-    description="Simple package for Chinese STR (Scene Text Recognition), with small pretrained models",
+    description="Python3 package for Chinese STR (Scene Text Recognition), with small pretrained models",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author='breezedeus',

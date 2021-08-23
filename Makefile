@@ -1,33 +1,18 @@
-ROOT_DIR = data
-#TRAIN_IDX_FP = data/train.tsv
-TRAIN_IDX_FP = data/icdar2015/train.txt
-
-BACKBONE = db_resnet18
-EPOCHS = 50
-OPTIMIZER = adam
-LR = 3e-4
-NUM_GPU = -1
+MODEL_NAME = db_resnet18
 
 train:
-	cnstd train -m $(BACKBONE) --train-config-fp examples/train_config.json -i data/icdar2015
-#	nohup cnstd train --backbone $(BACKBONE) -r $(ROOT_DIR) -i $(TRAIN_IDX_FP) -o ckpt --optimizer $(OPTIMIZER) \
-#	--epoch $(EPOCHS) --gpu $(NUM_GPU) --batch_size 4 --lr $(LR) > nohup-$(BACKBONE).out 2>&1 &
+	cnstd train -m $(MODEL_NAME) --train-config-fp examples/train_config.json -i data/icdar2015
 
-MAX_SIZE = 768# 640
-PSE_THRSH = 0.45
-PSE_MIN_AREA = 100
-
-evaluate:
-	cnstd evaluate --backbone $(BACKBONE) --model_epoch 59 \
-	-i examples -o outputs-$(BACKBONE)-size$(MAX_SIZE)-thrsh$(PSE_THRSH)-area$(PSE_MIN_AREA) \
-	--max_size $(MAX_SIZE) --pse_threshold $(PSE_THRSH) --pse_min_area $(PSE_MIN_AREA)
+predict:
+	cnstd predict -m $(MODEL_NAME) --model_epoch 30 --rotated-bbox --box-score-thresh 0.3 --resized-shape 768,768 \
+	--context cpu -i examples -o prediction
 
 package:
 	python setup.py sdist bdist_wheel
 
-VERSION = 0.1.1
+VERSION = 1.0.0
 upload:
 	python -m twine upload  dist/cnstd-$(VERSION)* --verbose
 
 
-.PHONY: train evaluate package upload
+.PHONY: train predict package upload
