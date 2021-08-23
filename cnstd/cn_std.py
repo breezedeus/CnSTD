@@ -52,7 +52,7 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name='mobilenetv3',
+        model_name='db_resnet18',
         model_epoch=None,
         *,
         auto_rotate_whole_image=False,
@@ -64,14 +64,14 @@ class CnStd(object):
     ):
         """
         Args:
-            model_name: 模型名称。可选值为 'mobilenetv3', 'resnet50_v1b'
+            model_name: 模型名称。可选值为 'db_resnet18', 'db_resnet34', 'db_resnet50', 'db_mobilenet_v3'
             model_epoch: 模型迭代次数。默认为 None，表示使用系统自带的模型对应的迭代次数
             auto_rotate_whole_image: 是否自动对整张图片进行旋转调整。默认为False
-            rotated_bbox: 是否支持带角度的文本；默认为 True，表示支持；取值为 False 时，只检测水平的文本
+            rotated_bbox: 是否支持检测带角度的文本框；默认为 True，表示支持；取值为 False 时，只检测水平或垂直的文本
             context: 'cpu', or 'gpu'。表明预测时是使用CPU还是GPU。默认为CPU
-            model_fp: 如果不使用系统自带的模型，可以通过此参数直接指定导入的模型文件
+            model_fp: 如果不使用系统自带的模型，可以通过此参数直接指定所使用的模型文件（'.ckpt' 文件）
             root: 模型文件所在的根目录。
-                Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.0.0/db_resnet18`
+                Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.0/db_resnet18`
                 Windows下默认值为 `C:/Users/<username>/AppData/Roaming/cnstd`。
         """
         if 'name' in kwargs:
@@ -155,29 +155,30 @@ class CnStd(object):
         """
         检测图片中的文本。
         Args:
-            img_list: 单图片或者图片列表。每个值可以是图片路径，或者已经读取进来 PIL.Image.Image 或 np.ndarray,
+            img_list: 支持对单个图片或者多个图片（列表）的检测。每个值可以是图片路径，或者已经读取进来 PIL.Image.Image 或 np.ndarray,
                 格式应该是 RGB 3通道，shape: (height, width, 3), 取值：[0, 255]
-            resized_shape: (height, width), 检测前，先把原始图片resize到此大小。
+            resized_shape: (height, width), 检测前，先把原始图片resize到此大小。默认为 `(768, 768)`。
                 注：其中取值必须都能整除32。这个取值对检测结果的影响较大，可以针对自己的应用多尝试几组值，再选出最优值。
-            preserve_aspect_ratio: 对原始图片resize时是否保持高宽比不变。
-            min_box_size: 如果检测出的文本框高度或者宽度低于此值，此文本框会被过滤掉。
-            box_score_thresh: 过滤掉得分低于此值的文本框。
-            batch_size: 待处理图片很多时，需要分批处理，每批图片的数量由此参数指定。
-            kwargs:
+                    例如 (512, 768), (768, 768), (768, 1024)等。
+            preserve_aspect_ratio: 对原始图片resize时是否保持高宽比不变。默认为 `True`。
+            min_box_size: 如果检测出的文本框高度或者宽度低于此值，此文本框会被过滤掉。默认为 `8`，也即高或者宽低于 `8` 的文本框会被过滤去掉。
+            box_score_thresh: 过滤掉得分低于此值的文本框。默认为 `0.3`。
+            batch_size: 待处理图片很多时，需要分批处理，每批图片的数量由此参数指定。默认为 `20`。
+            kwargs: 保留参数，目前未被使用。
 
         Returns:
             List[Dict], 每个Dict对应一张图片的检测结果。Dict 中包含以下 keys：
-               * 'rotated_angle': 整张图片旋转的角度。只有 auto_rotate_whole_image==True 才可能非0。
-               * 'detected_texts': 每个元素存储了检测出的一个框的信息，使用词典记录，包括以下几个值：
+               * 'rotated_angle': float, 整张图片旋转的角度。只有 auto_rotate_whole_image==True 才可能非0。
+               * 'detected_texts': list, 每个元素存储了检测出的一个框的信息，使用词典记录，包括以下几个值：
                    'box'：检测出的文字对应的矩形框；4个 (rotated_bbox==False) 或者 5个 (rotated_bbox==True) 元素;
-                       * 4个元素时的含义：[xmin, ymin, xmax, ymax] for the box (rotated_bbox==False);
-                       * 5个元素时的含义：[x, y, w, h, angle] for the box (rotated_bbox==True)
-                   'score'：得分；float类型；
+                       * 4个元素时的含义：对应 rotated_bbox==False，取值为：[xmin, ymin, xmax, ymax] ;
+                       * 5个元素时的含义：对应 rotated_bbox==True，取值为：[x, y, w, h, angle]。
+                   'score'：得分；float 类型；分数越高表示越可靠；
                    'cropped_img'：对应'box'中的图片patch（RGB格式），会把倾斜的图片旋转为水平。
-                          np.ndarray类型，shape==(width, height, 3)；
+                          np.ndarray 类型，shape: (height, width, 3), 取值范围：[0, 255]；
 
                  示例:
-                   [[{'box': array([824.19433594, 712.30371094, 19.98046875, 9.99023438, -0.0]),
+                   [{'box': array([824.19433594, 712.30371094, 19.98046875, 9.99023438, -0.0]),
                    'score': 0.8, 'cropped_img': array([[[25, 20, 24],
                                                           [26, 21, 25],
                                                           [25, 20, 24],
@@ -187,7 +188,6 @@ class CnStd(object):
                                                           [11, 11, 13]]], dtype=uint8)},
                     ...
               ]
-            ]
 
         """
         single = False
