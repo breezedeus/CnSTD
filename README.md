@@ -1,16 +1,20 @@
 # cnstd
 
-**cnstd** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，支持**中文**、**英文**等语言的文字检测，自带了多个训练好的检测模型，安装后即可直接使用。
+**cnstd** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，支持**中文**、**英文**等语言的文字检测，自带了多个训练好的检测模型，安装后即可直接使用。欢迎扫码加入QQ交流群：
 
 
 
-当前的 **v1.0.0** 已经从之前基于 MxNet 实现转为基于 **PyTorch** 实现。V1.0.0 模型的训练合并了  **ICPR MTWI 2018**、**ICDAR RCTW-17** 和 **ICDAR2019-LSVT** 三个数据集，包括了 **`46447`** 个训练样本，和 **`1534`** 个测试样本。
+![QQ群二维码](./docs/cnstd-qq.jpg)
+
+
+
+当前的 **v1.0.0** 已经从之前基于 MXNet 实现转为基于 **PyTorch** 实现。V1.0.0 模型的训练合并了  **ICPR MTWI 2018**、**ICDAR RCTW-17** 和 **ICDAR2019-LSVT** 三个数据集，包括了 **`46447`** 个训练样本，和 **`1534`** 个测试样本。
 
 
 
 相较于 V0.1， **V1.0.0** 的变化主要包括：
 
-* MxNet 越来越小众化，故从基于 MxNet 的实现转为基于 **PyTorch** 的实现；
+* MXNet 越来越小众化，故从基于 MXNet 的实现转为基于 **PyTorch** 的实现；
 * 检测速度得到极大提升，耗时几乎下降了一个量级；
 * 检测精度也得到较大的提升；
 * 实用性增强；检测接口中提供了更灵活的参数，不同应用场景可以尝试使用不同的参数以获得更好的检测效果；
@@ -104,7 +108,7 @@ class CnStd(object):
 
 其中的几个参数含义如下：
 
-* `model_name`:  模型名称，即上面表格第一列中的值，目前仅支持取值为 `db_resnet18`, `db_resnet34`, `db_resnet50`, `db_mobilenet_v3`。默认为 `db_resnet18` 。
+* `model_name`:  模型名称，即上面表格第一列中的值，目前仅支持取值为 `db_resnet18`, `db_resnet34`, `db_resnet50`, `db_mobilenet_v3`。默认为 **`db_resnet18`** 。
 * `model_epoch`:  模型迭代次数。默认为 `None`，表示使用系统自带的模型对应的迭代次数。对于模型名称 `db_resnet18`就是 `29`。
 * `auto_rotate_whole_image`:  是否自动对整张图片进行旋转调整。默认为`False`。
 * `rotated_bbox`:  是否支持检测带角度的文本框；默认为 `True`，表示支持；取值为 `False` 时，只检测水平或垂直的文本。
