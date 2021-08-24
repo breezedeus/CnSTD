@@ -24,7 +24,7 @@ MODEL_VERSION = '.'.join(__version__.split('.', maxsplit=2)[:2]) + '.0'
 BACKBONE_NET_NAME = ['mobilenetv3', 'resnet50_v1b']
 
 root_url = (
-    'https://static.einplus.cn/cnstd/%s'
+    'https://beiye-model.oss-cn-beijing.aliyuncs.com/models/cnstd/%s/'
     % MODEL_VERSION
 )
 # name: (epochs, url)
