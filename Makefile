@@ -24,7 +24,7 @@ evaluate:
 package:
 	python setup.py sdist bdist_wheel
 
-VERSION = 0.1.1
+VERSION = 0.1.2
 upload:
 	python -m twine upload  dist/cnstd-$(VERSION)* --verbose
 
