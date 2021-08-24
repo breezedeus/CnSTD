@@ -65,7 +65,7 @@ cnstd = cnstd.cli:cli
 setup(
     name=PACKAGE_NAME,
     version=about['__version__'],
-    description="Python3 package for Chinese STR (Scene Text Recognition), with small pretrained models",
+    description="Python3 package for Chinese/English STR (Scene Text Recognition), with small pretrained models",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author='breezedeus',
