@@ -1,5 +1,5 @@
 # coding: utf-8
-# Copyright (C) 2021, Breezedeus.
+# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -29,10 +29,6 @@ from .__version__ import __version__
 # 如: __version__ = '1.0.*'，对应的 MODEL_VERSION 都是 '1.0'
 MODEL_VERSION = '.'.join(__version__.split('.', maxsplit=2)[:2])
 VOCAB_FP = Path(__file__).parent.parent / 'label_cn.txt'
-# BACKBONE_NET_NAME = ['mobilenetv3', 'resnet50_v1b']
-# BACKBONE_CONFIGS = {
-#
-# }
 
 MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
     'db_resnet50': {
@@ -70,12 +66,13 @@ MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
 }
 
 root_url = (
-        'https://static.einplus.cn/cnstd/%s'
+        'https://beiye-model.oss-cn-beijing.aliyuncs.com/models/cnstd/%s/'
         % MODEL_VERSION
 )
 # name: (epochs, url)
 AVAILABLE_MODELS = {
-    'db_resnet18': (59, root_url + '/mobilenetv3.zip'),
-    'db_resnet34': (49, root_url + '/resnet50_v1b.zip'),
-    'db_mobilenet_v3': (49, root_url + '/resnet50_v1b.zip'),
+    'db_resnet18': (29, root_url + 'db_resnet18.zip'),
+    'db_resnet34': (33, root_url + 'db_resnet34.zip'),
+    # 以上为免费模型，以下为付费模型
+    'db_mobilenet_v3': (30, root_url + 'db_mobilenet_v3.zip'),
 }

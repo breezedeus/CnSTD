@@ -69,7 +69,7 @@ def model_fn_prefix(backbone, epoch):
 
 def check_context(context):
     if isinstance(context, str):
-        return context.lower() in ('gpu', 'cpu', 'cuda')
+        return any([ctx in context.lower() for ctx in ('gpu', 'cpu', 'cuda')])
     if isinstance(context, list):
         if len(context) < 1:
             return False

@@ -160,7 +160,12 @@ def visualize_example(example):
     default=DEFAULT_MODEL_NAME,
     help='模型名称。默认值为 %s' % DEFAULT_MODEL_NAME,
 )
-@click.option("--model-epoch", type=int, default=None, help="model epoch。默认为 `None`，表示使用系统自带的预训练模型")
+@click.option(
+    "--model-epoch",
+    type=int,
+    default=None,
+    help="model epoch。默认为 `None`，表示使用系统自带的预训练模型",
+)
 @click.option(
     '-p',
     '--pretrained-model-fp',
@@ -168,21 +173,28 @@ def visualize_example(example):
     default=None,
     help='导入的训练好的模型，作为初始模型。默认为 `None`，表示使用系统自带的预训练模型',
 )
-@click.option("-r", "--rotated-bbox", is_flag=True, help="是否检测带角度（非水平和垂直）的文本框。默认为 `True`")
+@click.option(
+    "-r", "--rotated-bbox", is_flag=True, help="是否检测带角度（非水平和垂直）的文本框。默认为 `True`"
+)
 @click.option(
     "--resized-shape",
     type=str,
     default='768,768',
     help='格式："height,width"; 预测时把图片resize到此大小再进行预测。两个值都需要是32的倍数。默认为 `768,768`',
 )
-@click.option("--box-score-thresh", type=float, default=0.3, help="检测结果只保留分数大于此值的文本框。默认值为 `0.3`")
 @click.option(
-    "--preserve-aspect-ratio", type=bool, default=True, help="resize时是否保留图片原始比例。默认值为 `True`"
+    "--box-score-thresh", type=float, default=0.3, help="检测结果只保留分数大于此值的文本框。默认值为 `0.3`"
+)
+@click.option(
+    "--preserve-aspect-ratio",
+    type=bool,
+    default=True,
+    help="resize时是否保留图片原始比例。默认值为 `True`",
 )
 @click.option(
     "--context",
-    help="使用cpu还是 `gpu` 运行代码。默认为 `cpu`",
-    type=click.Choice(['cpu', 'gpu']),
+    help="使用cpu还是 `gpu` 运行代码，也可指定为特定gpu，如`cuda:0`。默认为 `cpu`",
+    type=str,
     default='cpu',
 )
 @click.option("-i", "--img-file-or-dir", help="输入图片的文件路径或者指定的文件夹")

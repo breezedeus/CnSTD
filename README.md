@@ -65,7 +65,7 @@ pip install cnstd
 
 
 
-如果系统无法自动成功下载zip文件，则需要手动从 [百度云盘](https://pan.baidu.com/s/1e0PikC5r3upzsF5oa5oFcw)（提取码为 `56r2`）下载对应的zip文件并把它存放于 `~/.cnstd/1.0`（Windows下为 `C:\Users\<username>\AppData\Roaming\cnstd\1.0`）目录中。放置好zip文件后，后面的事代码就会自动执行了。
+如果系统无法自动成功下载zip文件，则需要手动从 [百度云盘](https://pan.baidu.com/s/1w2nTNfImXRGa1F-jXlDbOw)（提取码为 `7cju`）下载对应的zip文件并把它存放于 `~/.cnstd/1.0`（Windows下为 `C:\Users\<username>\AppData\Roaming\cnstd\1.0`）目录中。放置好zip文件后，后面的事代码就会自动执行了。
 
 
 
@@ -271,7 +271,7 @@ Options:
   --box-score-thresh FLOAT        检测结果只保留分数大于此值的文本框。默认值为 `0.3`
   --preserve-aspect-ratio BOOLEAN
                                   resize时是否保留图片原始比例。默认值为 `True`
-  --context [cpu|gpu]             使用cpu还是 `gpu` 运行代码。默认为 `cpu`
+  --context TEXT                  使用cpu还是 `gpu` 运行代码，也可指定为特定gpu，如`cuda:0`。默认为 `cpu`
   -i, --img-file-or-dir TEXT      输入图片的文件路径或者指定的文件夹
   -o, --output-dir TEXT           检测结果存放的文件夹。默认为 `./predictions`
   -h, --help                      Show this message and exit.
