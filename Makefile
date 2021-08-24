@@ -4,7 +4,7 @@ train:
 	cnstd train -m $(MODEL_NAME) --train-config-fp examples/train_config.json -i data/icdar2015
 
 predict:
-	cnstd predict -m $(MODEL_NAME) --model_epoch 30 --rotated-bbox --box-score-thresh 0.3 --resized-shape 768,768 \
+	cnstd predict -m $(MODEL_NAME) --model_epoch 29 --rotated-bbox --box-score-thresh 0.3 --resized-shape 768,768 \
 	--context cpu -i examples -o prediction
 
 package:
