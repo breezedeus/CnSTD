@@ -23,7 +23,7 @@ import os
 import logging
 from glob import glob
 from pathlib import Path
-from typing import Tuple, List, Dict, Union, Any
+from typing import Tuple, List, Dict, Union, Any, Optional
 
 from PIL import Image
 import numpy as np
@@ -52,14 +52,14 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name='db_resnet18',
-        model_epoch=None,
+        model_name: str = 'db_resnet18',
+        model_epoch: Optional[int] = None,
         *,
-        auto_rotate_whole_image=False,
-        rotated_bbox=True,
-        context='cpu',
-        model_fp=None,
-        root=data_dir(),
+        auto_rotate_whole_image: bool = False,
+        rotated_bbox: bool = True,
+        context: str = 'cpu',
+        model_fp: Optional[str] = None,
+        root: Union[str, Path] = data_dir(),
         **kwargs,
     ):
         """
@@ -86,7 +86,11 @@ class CnStd(object):
         self.rotated_bbox = rotated_bbox
 
         self._model_file_prefix = '{}-{}'.format(self.MODEL_FILE_PREFIX, model_name)
-        self._model_epoch = model_epoch or AVAILABLE_MODELS.get('model_name', [None])[0]
+        self._model_epoch = (
+            model_epoch
+            if model_epoch is not None
+            else AVAILABLE_MODELS.get(model_name, [None])[0]
+        )
         if self._model_epoch is not None:
             self._model_file_prefix = '%s-epoch=%03d' % (
                 self._model_file_prefix,
@@ -149,7 +153,7 @@ class CnStd(object):
         preserve_aspect_ratio: bool = True,
         min_box_size: int = 8,
         box_score_thresh: float = 0.3,
-        batch_size=20,
+        batch_size: int = 20,
         **kwargs,
     ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """

@@ -64,7 +64,7 @@ pip install cnstd
 | db_resnet34  | 33 | 22.5 M   | 86 M         | 0.6144            | 1.58                  | 自动     |
 | db_mobilenet_v3 | 30 | 4.2 M    | 16 M         | 0.5949            | 0.83                  | 待定     |
 
-> 上表耗时基于本地 Mac 获得，绝对值无太大参考价值，相对值可供参考。
+> 上表耗时基于本地 Mac 获得，绝对值无太大参考价值，相对值可供参考。IoU的计算方式经过调整，仅相对值可供参考。
 
 
 
@@ -94,14 +94,14 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name='db_resnet18',
-        model_epoch=None,
+        model_name: str = 'db_resnet18',
+        model_epoch: Optional[int] = None,
         *,
-        auto_rotate_whole_image=False,
-        rotated_bbox=True,
-        context='cpu',
-        model_fp=None,
-        root=data_dir(),
+        auto_rotate_whole_image: bool = False,
+        rotated_bbox: bool = True,
+        context: str = 'cpu',
+        model_fp: Optional[str] = None,
+        root: Union[str, Path] = data_dir(),
         **kwargs,
     ):
 ```
@@ -146,7 +146,7 @@ class CnStd(object):
         preserve_aspect_ratio: bool = True,
         min_box_size: int = 8,
         box_score_thresh: float = 0.3,
-        batch_size=20,
+        batch_size: int = 20,
         **kwargs,
     ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
 ```
