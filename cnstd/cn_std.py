@@ -82,6 +82,8 @@ class CnStd(object):
         check_model_name(model_name)
         check_context(context)
         self._model_name = model_name
+        if context == 'gpu':
+            context = 'cuda'
         self.context = context
         self.rotated_bbox = rotated_bbox
 
