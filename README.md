@@ -112,7 +112,7 @@ class CnStd(object):
 * `model_epoch`:  模型迭代次数。默认为 `None`，表示使用系统自带的模型对应的迭代次数。对于模型名称 `db_resnet18`就是 `29`。
 * `auto_rotate_whole_image`:  是否自动对整张图片进行旋转调整。默认为`False`。
 * `rotated_bbox`:  是否支持检测带角度的文本框；默认为 `True`，表示支持；取值为 `False` 时，只检测水平或垂直的文本。
-* `context`：预测使用的机器资源，可取值为字符串`cpu`、`gpu`。
+* `context`：预测使用的机器资源，可取值为字符串`cpu`、`gpu`、`cuda:0`等。
 * `model_fp`:  如果不使用系统自带的模型，可以通过此参数直接指定所使用的模型文件（`.ckpt`文件）。
 * `root`: 模型文件所在的根目录。
   
