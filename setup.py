@@ -41,7 +41,7 @@ required = [
     'tqdm',
     'unidecode',
     "torch>=1.7.0",
-    "torchvision",
+    "torchvision>=0.9.0",
     'numpy',
     'scipy',
     "pytorch-lightning",
