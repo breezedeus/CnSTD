@@ -59,6 +59,9 @@ urllib3==1.25.9           # via requests
 werkzeug==2.0.1           # via tensorboard
 wheel==0.37.0             # via tensorboard
 yarl==1.6.3               # via aiohttp
+streamlit
+cnstd
+cnocr
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
