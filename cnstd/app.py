@@ -66,9 +66,13 @@ def visualize_ocr(ocr, std_out):
     ocr_res['概率值'] = []
     for box_info in std_out['detected_texts']:
         cropped_img = box_info['cropped_img']  # 检测出的文本框
-        ocr_out = ocr.ocr_for_single_line(cropped_img)
-        ocr_res['概率值'].append(ocr_out[1])
-        ocr_res['文本'].append(''.join(ocr_out[0]))
+        try:
+            ocr_out = ocr.ocr_for_single_line(cropped_img)
+            prob, text = ocr_out[1], ''.join(ocr_out[0])
+        except:
+            prob, text = 0.0, ''
+        ocr_res['概率值'].append(prob)
+        ocr_res['文本'].append(text)
     st.table(ocr_res)
 
 
