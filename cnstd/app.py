@@ -94,18 +94,21 @@ def main():
     if content_file is None:
         st.stop()
 
-    img = Image.open(content_file)
+    try:
+        img = Image.open(content_file)
 
-    std_out = std.detect(
-        img,
-        resized_shape=(height, width),
-        preserve_aspect_ratio=preserve_aspect_ratio,
-        box_score_thresh=box_score_thresh,
-    )
-    visualize_std(img, std_out, box_score_thresh)
+        std_out = std.detect(
+            img,
+            resized_shape=(height, width),
+            preserve_aspect_ratio=preserve_aspect_ratio,
+            box_score_thresh=box_score_thresh,
+        )
+        visualize_std(img, std_out, box_score_thresh)
 
-    if cnocr_avalable:
-        visualize_ocr(ocr, std_out)
+        if cnocr_avalable:
+            visualize_ocr(ocr, std_out)
+    except Exception as e:
+        st.error(e)
 
 
 if __name__ == '__main__':
