@@ -93,6 +93,8 @@ def main():
         ocr_model_name = st.sidebar.selectbox('模型名称', ('densenet-s-fc', 'densenet-s-gru'))
         ocr = get_ocr_model(ocr_model_name)
 
+    st.markdown('# 开源文本检测和识别工具 [CnStd](https://github.com/breezedeus/cnstd) 和 '
+                '[CnOcr](https://github.com/breezedeus/cnocr) 演示 Demo')
     st.subheader('选择待检测图片')
     content_file = st.file_uploader('', type=["png", "jpg", "jpeg"])
     if content_file is None:
