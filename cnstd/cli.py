@@ -85,11 +85,15 @@ def train(
 ):
     """训练文本检测模型"""
     train_config = json.load(open(train_config_fp))
-
+    fpn_type = train_config.get('fpn_type', 'fpn')
     kwargs = dict(
         rotated_bbox=train_config['rotated_bbox'],
         auto_rotate_whole_image=train_config.get('auto_rotate_whole_image', False),
+        pretrained_backbone=True,
+        fpn_type=fpn_type,
     )
+    if model_name == 'db_shufflenet_v2':
+        kwargs['pretrained_backbone'] = False
     if 'resized_shape' in train_config:
         kwargs['input_shape'] = train_config['resized_shape']
     model = gen_model(model_name, **kwargs)
@@ -127,7 +131,7 @@ def train(
     # return
 
     trainer = PlTrainer(
-        train_config, ckpt_fn=['cnstd', 'v%s' % MODEL_VERSION, model_name]
+        train_config, ckpt_fn=['cnstd', 'v%s' % MODEL_VERSION, model_name, fpn_type]
     )
 
     if pretrained_model_fp is not None:

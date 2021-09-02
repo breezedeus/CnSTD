@@ -29,62 +29,12 @@ from torchvision.models._utils import IntermediateLayerGetter
 from torchvision.ops.deform_conv import DeformConv2d
 
 from .base import DBPostProcessor, _DBNet
+from .fpn import FeaturePyramidNetwork, PathAggregationNetwork
 
 __all__ = ['DBNet', 'gen_dbnet']
 
 
 logger = logging.getLogger(__name__)
-
-
-class FeaturePyramidNetwork(nn.Module):
-    def __init__(
-        self, in_channels: List[int], out_channels: int, deform_conv: bool = False,
-    ) -> None:
-
-        super().__init__()
-
-        out_chans = out_channels // len(in_channels)
-
-        conv_layer = DeformConv2d if deform_conv else nn.Conv2d
-
-        self.in_branches = nn.ModuleList(
-            [
-                nn.Sequential(
-                    conv_layer(chans, out_channels, 1, bias=False),
-                    nn.BatchNorm2d(out_channels),
-                    nn.ReLU(inplace=True),
-                )
-                for idx, chans in enumerate(in_channels)
-            ]
-        )
-        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        self.out_branches = nn.ModuleList(
-            [
-                nn.Sequential(
-                    conv_layer(out_channels, out_chans, 3, padding=1, bias=False),
-                    nn.BatchNorm2d(out_chans),
-                    nn.ReLU(inplace=True),
-                    nn.Upsample(
-                        scale_factor=2 ** idx, mode='bilinear', align_corners=True
-                    ),
-                )
-                for idx, chans in enumerate(in_channels)
-            ]
-        )
-
-    def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
-        if len(x) != len(self.out_branches):
-            raise AssertionError
-        # Conv1x1 to get the same number of channels
-        _x: List[torch.Tensor] = [branch(t) for branch, t in zip(self.in_branches, x)]
-        out: List[torch.Tensor] = [_x[-1]]
-        for t in _x[:-1][::-1]:
-            out.append(self.upsample(out[-1]) + t)
-
-        # Conv and final upsampling
-        out = [branch(t) for branch, t in zip(self.out_branches, out[::-1])]
-
-        return torch.cat(out, dim=1)
 
 
 class DBNet(_DBNet, nn.Module):
@@ -97,6 +47,7 @@ class DBNet(_DBNet, nn.Module):
         num_classes: int = 1,
         auto_rotate_whole_image=False,
         rotated_bbox: bool = False,
+        fpn_type: str = 'fpn',
         cfg: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> None:
@@ -112,7 +63,8 @@ class DBNet(_DBNet, nn.Module):
         self.rotated_bbox = rotated_bbox
 
         self.feat_extractor = feat_extractor
-        self.fpn = FeaturePyramidNetwork(fpn_channels, head_chans, deform_conv)
+        fpn_cls = FeaturePyramidNetwork if fpn_type == 'fpn' else PathAggregationNetwork
+        self.fpn = fpn_cls(fpn_channels, head_chans, deform_conv)
         # Conv1 map to channels
 
         self.prob_head = nn.Sequential(
