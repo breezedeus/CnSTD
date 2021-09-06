@@ -27,6 +27,7 @@ from torchvision.models import (
     mobilenet_v3_large,
     shufflenet_v2_x1_0,
     shufflenet_v2_x1_5,
+    shufflenet_v2_x2_0,
 )
 
 from .__version__ import __version__
@@ -71,15 +72,22 @@ MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
         'url': None,
     },
     'db_shufflenet_v2': {
-        'backbone': shufflenet_v2_x1_5,
+        'backbone': shufflenet_v2_x2_0,
         'backbone_submodule': None,
         'fpn_layers': ['maxpool', 'stage2', 'stage3', 'stage4'],
-        # 'fpn_channels': [24, 244, 488, 976],  # 2_0
-        'fpn_channels': [24, 176, 352, 704],
+        'fpn_channels': [24, 244, 488, 976],
         'input_shape': (3, 768, 768),
         'url': None,
     },
     'db_shufflenet_v2_small': {
+        'backbone': shufflenet_v2_x1_5,
+        'backbone_submodule': None,
+        'fpn_layers': ['maxpool', 'stage2', 'stage3', 'stage4'],
+        'fpn_channels': [24, 176, 352, 704],
+        'input_shape': (3, 768, 768),
+        'url': None,
+    },
+    'db_shufflenet_v2_tiny': {
         'backbone': shufflenet_v2_x1_0,
         'backbone_submodule': None,
         'fpn_layers': ['maxpool', 'stage2', 'stage3', 'stage4'],
