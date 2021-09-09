@@ -105,6 +105,8 @@ class StdDataset(Dataset):
 
     def __getitem__(self, item):
         img_fp = self.img_paths[item]
+        if self.mode != 'test':
+            lines = deepcopy(self.targets[item])
         pil_img = read_img(img_fp)
         # 等比例缩放，主要是为了避免后续transforms处理大图片时很耗时的问题
         pil_img, pre_resize_ratio = self._pre_resize(pil_img, self.resized_shape)
@@ -126,7 +128,6 @@ class StdDataset(Dataset):
         }
 
         if self.mode != 'test':
-            lines = self.targets[item]
             for line in lines:  # 转化到 0~1 之间的取值，去掉对resize的依赖
                 line['poly'][:, 0] *= pre_resize_ratio * resize_ratios[1]
                 line['poly'][:, 1] *= pre_resize_ratio * resize_ratios[0]
