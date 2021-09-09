@@ -17,6 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 # Credits: adapted from https://github.com/mindee/doctr
+# Credits: adapted from https://github.com/MhLiao/DB
 
 import logging
 from collections import OrderedDict

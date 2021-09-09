@@ -20,6 +20,7 @@
 import os
 import logging
 from pathlib import Path
+from copy import deepcopy
 from typing import Optional, Union, List, Dict, Any, Tuple
 
 from PIL import Image
@@ -28,7 +29,7 @@ import pytorch_lightning as pt
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from ..transforms import Resize
+from ..transforms import Resize, random_crop
 from ..utils import read_img, pil_to_numpy, normalize_img_array, get_resized_ratio
 from ..transforms.process_data import PROCESSOR_CLS
 
@@ -108,6 +109,8 @@ class StdDataset(Dataset):
         if self.mode != 'test':
             lines = deepcopy(self.targets[item])
         pil_img = read_img(img_fp)
+        if self.mode == 'train':
+            pil_img, lines = self._random_crop(pil_img, lines)
         # 等比例缩放，主要是为了避免后续transforms处理大图片时很耗时的问题
         pil_img, pre_resize_ratio = self._pre_resize(pil_img, self.resized_shape)
         try:
@@ -152,6 +155,36 @@ class StdDataset(Dataset):
 
             data['image'] = normalize_img_array(data['image'])
         return data
+
+    def _random_crop(
+        self, img: Image.Image, boxes: List[Dict[str, Any]]
+    ) -> Tuple[Image.Image, List[Dict[str, Any]]]:
+        w, h = img.size
+        h_array = np.zeros(h, dtype=np.int32)
+        w_array = np.zeros(w, dtype=np.int32)
+
+        for box in boxes:
+            box = box['poly']
+            box = np.round(box, decimals=0).astype(np.int32)
+            minx = np.min(box[:, 0])
+            maxx = np.max(box[:, 0])
+            w_array[minx:maxx] = 1
+            miny = np.min(box[:, 1])
+            maxy = np.max(box[:, 1])
+            h_array[miny:maxy] = 1
+
+        h_axis = np.where(h_array == 0)[0]
+        w_axis = np.where(w_array == 0)[0]
+        if len(h_axis) < 2 or len(w_axis) < 2:
+            return img, boxes
+        return random_crop(
+            img,
+            boxes,
+            max_tries=50,
+            w_axis=w_axis,
+            h_axis=h_axis,
+            min_crop_side_ratio=0.2,
+        )
 
     def _pre_resize(self, img: Image.Image, target_size) -> Tuple[Image.Image, float]:
         """等比例缩放，主要是为了避免后续transforms处理大图片时很耗时的问题"""
