@@ -226,7 +226,7 @@ def get_model_file(model_dir):
             raise NotImplementedError(
                 '%s is not an available downloaded model' % model_name
             )
-        url = AVAILABLE_MODELS[model_name][1]
+        url = AVAILABLE_MODELS[model_name]['url']
         download(url, path=zip_file_path, overwrite=True)
     with zipfile.ZipFile(zip_file_path) as zf:
         zf.extractall(par_dir)

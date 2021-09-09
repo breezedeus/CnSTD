@@ -19,6 +19,8 @@
 
 from pathlib import Path
 from typing import Dict, Any
+from copy import deepcopy
+from collections import OrderedDict
 
 from torchvision.models import (
     resnet50,
@@ -110,9 +112,42 @@ root_url = (
     'https://beiye-model.oss-cn-beijing.aliyuncs.com/models/cnstd/%s/' % MODEL_VERSION
 )
 # name: (epochs, url)
-AVAILABLE_MODELS = {
-    'db_resnet18': (29, root_url + 'db_resnet18.zip'),
-    'db_resnet34': (33, root_url + 'db_resnet34.zip'),
-    # 以上为免费模型，以下为付费模型
-    'db_mobilenet_v3': (30, root_url + 'db_mobilenet_v3.zip'),
-}
+# 免费模型
+FREE_MODELS = OrderedDict(
+    {
+        'db_resnet18': {
+            'model_epoch': 29,
+            'fpn_type': 'pan',
+            'url': root_url + 'db_resnet18.zip',
+        },
+        'db_resnet34': {
+            'model_epoch': 33,
+            'fpn_type': 'pan',
+            'url': root_url + 'db_resnet34.zip',
+        },
+        'db_shufflenet_v2': {
+            'model_epoch': 31,
+            'fpn_type': 'pan',
+            'url': root_url + 'db_shufflenet_v2-pan.zip',
+        },
+    }
+)
+
+# 付费模型
+PAID_MODELS = OrderedDict(
+    {
+        'db_mobilenet_v3': {
+            'model_epoch': 28,
+            'fpn_type': 'pan',
+            'url': root_url + 'db_mobilenet_v3-pan.zip',
+        },
+        'db_mobilenet_v3_small': {
+            'model_epoch': 32,
+            'fpn_type': 'pan',
+            'url': root_url + 'db_mobilenet_v3_small-pan.zip',
+        },
+    }
+)
+
+AVAILABLE_MODELS = deepcopy(FREE_MODELS)
+AVAILABLE_MODELS.update(PAID_MODELS)

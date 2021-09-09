@@ -53,7 +53,7 @@ class CnStd(object):
     def __init__(
         self,
         model_name: str = 'db_resnet18',
-        model_epoch: Optional[int] = None,
+        # model_epoch: Optional[int] = None,
         *,
         auto_rotate_whole_image: bool = False,
         rotated_bbox: bool = True,
@@ -65,7 +65,7 @@ class CnStd(object):
         """
         Args:
             model_name: 模型名称。可选值为 'db_resnet18', 'db_resnet34', 'db_resnet50', 'db_mobilenet_v3'
-            model_epoch: 模型迭代次数。默认为 None，表示使用系统自带的模型对应的迭代次数
+            # model_epoch: 模型迭代次数。默认为 None，表示使用系统自带的模型对应的迭代次数
             auto_rotate_whole_image: 是否自动对整张图片进行旋转调整。默认为False
             rotated_bbox: 是否支持检测带角度的文本框；默认为 True，表示支持；取值为 False 时，只检测水平或垂直的文本
             context: 'cpu', or 'gpu'。表明预测时是使用CPU还是GPU。默认为CPU
@@ -88,20 +88,19 @@ class CnStd(object):
         self.rotated_bbox = rotated_bbox
 
         self._model_file_prefix = '{}-{}'.format(self.MODEL_FILE_PREFIX, model_name)
-        self._model_epoch = (
-            model_epoch
-            if model_epoch is not None
-            else AVAILABLE_MODELS.get(model_name, [None])[0]
-        )
-        if self._model_epoch is not None:
-            self._model_file_prefix = '%s-epoch=%03d' % (
+        model_epoch = AVAILABLE_MODELS.get(model_name, {'model_epoch': None})[
+            'model_epoch'
+        ]
+        if model_epoch is not None:
+            self._model_file_prefix = '%s*-epoch=%03d' % (
                 self._model_file_prefix,
-                self._model_epoch,
+                model_epoch,
             )
 
         self._assert_and_prepare_model_files(model_fp, root)
 
-        self._model = self._get_model(auto_rotate_whole_image)
+        fpn_type = AVAILABLE_MODELS.get(model_name, {'fpn_type': 'fpn'})['fpn_type']
+        self._model = self._get_model(fpn_type, auto_rotate_whole_image)
         logger.info('CnStd is initialized, with context {}'.format(self.context))
 
     def _assert_and_prepare_model_files(self, model_fp, root):
@@ -127,11 +126,12 @@ class CnStd(object):
 
         self._model_fp = fps[0]
 
-    def _get_model(self, auto_rotate_whole_image):
+    def _get_model(self, fpn_type, auto_rotate_whole_image):
         logger.info('use model: %s' % self._model_fp)
         model = gen_model(
             self._model_name,
             pretrained_backbone=False,
+            fpn_type=fpn_type,
             auto_rotate_whole_image=auto_rotate_whole_image,
             rotated_bbox=self.rotated_bbox,
         )

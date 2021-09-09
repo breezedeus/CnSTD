@@ -20,3 +20,4 @@
 
 from .base import *
 from .resize import Resize
+from .random_crop import random_crop

@@ -25,6 +25,7 @@ import streamlit as st
 
 from cnstd import CnStd
 from cnstd.utils import plot_for_debugging, pil_to_numpy
+from cnstd.consts import AVAILABLE_MODELS as STD_MODELS
 
 try:
     from cnocr import CnOcr
@@ -42,9 +43,10 @@ def get_ocr_model(ocr_model_name):
 
 
 @st.cache(allow_output_mutation=True)
-def get_std_model(std_model_name):
+def get_std_model(std_model_name, rotated_bbox):
     return CnStd(
         std_model_name,
+        rotated_bbox=rotated_bbox,
     )
 
 
@@ -78,14 +80,15 @@ def visualize_ocr(ocr, std_out):
 
 def main():
     st.sidebar.header('CnStd 设置')
-    std_model_name = st.sidebar.selectbox('模型名称', ('db_resnet18', 'db_resnet34'))
+    std_model_name = st.sidebar.selectbox('模型名称', list(STD_MODELS.keys()))
+    rotated_bbox = st.sidebar.checkbox('是否检测带角度文本框', value=True)
     st.sidebar.subheader('resize 后图片大小')
     height = st.sidebar.select_slider('height', options=[384, 512, 768, 896, 1024], value=768)
     width = st.sidebar.select_slider('width', options=[384, 512, 768, 896, 1024], value=768)
     preserve_aspect_ratio = st.sidebar.checkbox('resize 时是否等比例缩放', value=True)
     st.sidebar.subheader('检测分数阈值')
     box_score_thresh = st.sidebar.slider('（低于阈值的结果会被过滤掉）', min_value=0.05, max_value=0.95, value=0.3)
-    std = get_std_model(std_model_name)
+    std = get_std_model(std_model_name, rotated_bbox)
 
     if cnocr_avalable:
         st.sidebar.markdown("""---""")

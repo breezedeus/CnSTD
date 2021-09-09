@@ -127,7 +127,9 @@ def train(
     )
 
     # train_ds = data_mod.train
-    # visualize_example(train_ds[8])
+    # visualize_example(train_ds[8], '8-0')
+    # visualize_example(train_ds[8], '8-1')
+    # visualize_example(train_ds[8], '8-2')
     # return
 
     trainer = PlTrainer(
@@ -142,18 +144,22 @@ def train(
     )
 
 
-def visualize_example(example):
+def visualize_example(example, fp_prefix):
     image = example['image']
-    imsave(image, 'debug-image.jpg', normalized=True)
+    imsave(image, '%s-image.jpg' % fp_prefix, normalized=True)
 
     def _vis_bool(img, fp):
         img *= 255
         imsave(img, fp, normalized=False)
 
-    _vis_bool(example['gt'].transpose(1, 2, 0), 'debug-gt.jpg')
-    _vis_bool(np.expand_dims(example['mask'], -1), 'debug-mask.jpg')
-    _vis_bool(np.expand_dims(example['thresh_map'], -1), 'debug-thresh-map.jpg')
-    _vis_bool(np.expand_dims(example['thresh_mask'], -1), 'debug-thresh-mask.jpg')
+    _vis_bool(example['gt'].transpose(1, 2, 0), '%s-gt.jpg' % fp_prefix)
+    _vis_bool(np.expand_dims(example['mask'], -1), '%s-mask.jpg' % fp_prefix)
+    _vis_bool(
+        np.expand_dims(example['thresh_map'], -1), '%s-thresh-map.jpg' % fp_prefix
+    )
+    _vis_bool(
+        np.expand_dims(example['thresh_mask'], -1), '%s-thresh-mask.jpg' % fp_prefix
+    )
 
 
 @cli.command('predict')
