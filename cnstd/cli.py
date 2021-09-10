@@ -103,12 +103,12 @@ def train(
 
     train_transform = T.Compose(  # MUST NOT include `Resize`
         [
-            T.RandomInvert(p=0.2),
-            T.RandomPosterize(bits=4, p=0.3),
-            T.RandomAdjustSharpness(sharpness_factor=0.5, p=0.3),
-            T.ColorJitter(brightness=0.3, contrast=0.2, saturation=0.2, hue=0.2),
-            T.RandomEqualize(p=0.3),
-            T.RandomApply([T.GaussianBlur(kernel_size=3)], p=0.5),
+            T.RandomInvert(p=0.1),
+            T.RandomPosterize(bits=4, p=0.05),
+            T.RandomAdjustSharpness(sharpness_factor=0.05, p=0.1),
+            T.ColorJitter(brightness=0.05, contrast=0.05, saturation=0.05, hue=0.05),
+            T.RandomEqualize(p=0.05),
+            T.RandomApply([T.GaussianBlur(kernel_size=3)], p=0.05),
         ]
     )
     val_transform = None
@@ -226,7 +226,7 @@ def predict(
     """预测单个文件，或者指定目录下的所有图片"""
     std = CnStd(
         model_name,
-        model_epoch,
+        # model_epoch,
         model_fp=pretrained_model_fp,
         rotated_bbox=rotated_bbox,
         context=context,
