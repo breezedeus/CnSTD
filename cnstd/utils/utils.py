@@ -20,7 +20,7 @@ import os
 import hashlib
 import requests
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Union, List
 import logging
 import platform
 import zipfile
@@ -316,12 +316,13 @@ def imread(img_fp) -> np.ndarray:
     return im.transpose((2, 0, 1))
 
 
-def imsave(image, fp, normalized=True):
+def imsave(image: np.ndarray, fp, normalized=True):
     """
 
     Args:
         image: [H, W, C]
         fp:
+        normalized:
 
     Returns:
 
@@ -374,10 +375,41 @@ def load_model_params(model, param_fp, device='cpu'):
     return model
 
 
+def draw_polygons(
+    image: Union[np.ndarray, Image.Image],
+    polygons: List[np.ndarray],
+    ignore_tags: List[bool],
+):
+    """
+
+    Args:
+        image: [H, W, 3] for np.ndarray
+        polygons:
+        ignore_tags:
+
+    Returns:
+
+    """
+    image = image.copy()
+    if isinstance(image, Image.Image):
+        image = pil_to_numpy(image).transpose((1, 2, 0))  # [H, W, 3]
+    image = np.ascontiguousarray(image)
+    for i in range(len(polygons)):
+        polygon = polygons[i].reshape(-1, 2).astype(np.int32)
+        ignore = ignore_tags[i]
+        if ignore:
+            color = (255, 0, 0)  # depict ignorable polygons in red
+        else:
+            color = (0, 0, 255)  # depict polygons in blue
+        cv2.polylines(image, [polygon], True, color, 1)
+    return image
+
+
 def plot_for_debugging(rotated_img, one_out, box_score_thresh, prefix_fp):
     import matplotlib.pyplot as plt
     import math
 
+    rotated_img = rotated_img.copy()
     crops = [info['cropped_img'] for info in one_out]
     logger.info('%d boxes are found' % len(crops))
     ncols = 3

@@ -19,6 +19,8 @@
 # Credits: adapted from https://github.com/mindee/doctr
 # Credits: adapted from https://github.com/MhLiao/DB
 
+import os
+import time
 import logging
 from collections import OrderedDict
 from typing import Dict, Any
@@ -28,7 +30,7 @@ import cv2
 from shapely.geometry import Polygon
 import pyclipper
 
-from ..utils import imsave
+from ..utils import imsave, draw_polygons
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +50,12 @@ class MakeICDARData(object):
         ignore_tags = np.array(ignore_tags, dtype=np.uint8)
         filename = ''  # data.get('filename', data['data_id'])
         if self.debug:
-            boxed_image = self.draw_polygons(
+            boxed_image = draw_polygons(
                 data['image'].copy(), polygons, ignore_tags
             )
-            imsave(boxed_image, 'debug-polygons.jpg', normalized=False)
-        # shape = np.array(data['shape'])
+            if not os.path.exists('debugs'):
+                os.makedirs('debugs')
+            imsave(boxed_image, 'debugs/debug-%f.jpg' % time.time(), normalized=False)
         return OrderedDict(
             image=data['image'],
             polygons=polygons,
@@ -61,21 +64,6 @@ class MakeICDARData(object):
             filename=filename,
             is_training=data['is_training'],
         )
-
-    def draw_polygons(self, image, polygons, ignore_tags):
-        for i in range(len(polygons)):
-            polygon = polygons[i].reshape(-1, 2).astype(np.int32)
-            ignore = ignore_tags[i]
-            if ignore:
-                color = (255, 0, 0)  # depict ignorable polygons in red
-            else:
-                color = (0, 0, 255)  # depict polygons in blue
-
-            image = np.ascontiguousarray(image)
-            cv2.polylines(image, [polygon], True, color, 1)
-        return image
-
-    polylines = staticmethod(draw_polygons)
 
 
 class MakeSegDetectionData(object):
