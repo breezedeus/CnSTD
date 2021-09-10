@@ -111,6 +111,7 @@ class StdDataset(Dataset):
         pil_img = read_img(img_fp)
         if self.mode == 'train':
             pil_img, lines = self._random_crop(pil_img, lines)
+
         # 等比例缩放，主要是为了避免后续transforms处理大图片时很耗时的问题
         pil_img, pre_resize_ratio = self._pre_resize(pil_img, self.resized_shape)
         try:
@@ -131,7 +132,7 @@ class StdDataset(Dataset):
         }
 
         if self.mode != 'test':
-            for line in lines:  # 转化到 0~1 之间的取值，去掉对resize的依赖
+            for line in lines:
                 line['poly'][:, 0] *= pre_resize_ratio * resize_ratios[1]
                 line['poly'][:, 1] *= pre_resize_ratio * resize_ratios[0]
             data['lines'] = lines
@@ -195,7 +196,7 @@ class StdDataset(Dataset):
         actual_ratio = ori_h / ori_w
         if actual_ratio > target_ratio:
             ratio = new_h / ori_h
-            new_size = (int(ori_h / actual_ratio), new_h)  # W, H
+            new_size = (int(new_h / actual_ratio), new_h)  # W, H
         else:
             ratio = new_w / ori_w
             new_size = (new_w, int(new_w * actual_ratio))  # W, H
