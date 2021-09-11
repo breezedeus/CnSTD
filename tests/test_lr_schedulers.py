@@ -3,6 +3,8 @@ import torch.nn as nn
 from torch.optim import lr_scheduler
 import matplotlib.pyplot as plt
 
+from cnstd.lr_scheduler import WarmupCosineAnnealingRestarts
+
 
 class NullModule(nn.Module):
     def __init__(self):
@@ -28,14 +30,39 @@ def plot_lr(scheduler, step=900):
 
 def test_CosineAnnealingWarmRestarts():
     CAW = lr_scheduler.CosineAnnealingWarmRestarts(
-        optimizer, T_0=8, T_mult=1, eta_min=ori_lr / 10.0
+        optimizer, T_0=200, T_mult=1, eta_min=ori_lr / 10.0
     )
-    plot_lr(CAW, step=40)
+    plot_lr(CAW, step=1000)
+
+
+def test_WarmupCosineAnnealingRestarts():
+    CAW = WarmupCosineAnnealingRestarts(
+        optimizer,
+        first_cycle_steps=1000,
+        cycle_mult=1.0,
+        max_lr=0.1,
+        min_lr=0.001,
+        warmup_steps=100,
+        gamma=1.0,
+    )
+    plot_lr(CAW, step=1000)
 
 
 def test_CyclicLR():
-    Cyc = lr_scheduler.CyclicLR(optimizer,
-        base_lr=ori_lr / 10.0, max_lr=ori_lr, step_size_up=5, cycle_momentum=False,
+    Cyc = lr_scheduler.CyclicLR(
+        optimizer,
+        base_lr=ori_lr / 10.0,
+        max_lr=ori_lr,
+        step_size_up=200,
+        cycle_momentum=False,
     )
 
-    plot_lr(Cyc, 50)
+    plot_lr(Cyc, 1000)
+
+
+def test_OneCycleLR():
+    Cyc = lr_scheduler.OneCycleLR(
+        optimizer, max_lr=0.1, epochs=20, steps_per_epoch=50,
+    )
+
+    plot_lr(Cyc, 1000)

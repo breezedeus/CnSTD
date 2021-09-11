@@ -19,7 +19,6 @@
 # Credits: adapted from https://github.com/mindee/doctr
 
 import logging
-from copy import deepcopy
 from pathlib import Path
 from typing import Any, Optional, Union, List
 
@@ -28,16 +27,9 @@ import torch.optim as optim
 from torch import nn
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
-from torch.optim.lr_scheduler import (
-    StepLR,
-    LambdaLR,
-    CyclicLR,
-    CosineAnnealingWarmRestarts,
-    MultiStepLR,
-    OneCycleLR,
-)
 from torch.utils.data import DataLoader
 
+from .lr_scheduler import get_lr_scheduler
 from .utils import LocalizationConfusion
 
 logger = logging.getLogger(__name__)
@@ -70,45 +62,6 @@ def get_optimizer(name: str, model, learning_rate, weight_decay):
     return optimizer
 
 
-def get_lr_scheduler(config, optimizer):
-    orig_lr = config['learning_rate']
-    lr_sch_config = deepcopy(config['lr_scheduler'])
-    lr_sch_name = lr_sch_config.pop('name')
-
-    if lr_sch_name == 'multi_step':
-        return MultiStepLR(
-            optimizer,
-            milestones=lr_sch_config['milestones'],
-            gamma=lr_sch_config['gamma'],
-        )
-    elif lr_sch_name == 'cos_anneal':
-        # 5 个 epochs, 一个循环
-        return CosineAnnealingWarmRestarts(
-            optimizer, T_0=5, T_mult=1, eta_min=orig_lr / 10.0
-        )
-    elif lr_sch_name == 'cyclic':
-        return CyclicLR(
-            optimizer,
-            base_lr=orig_lr / 10.0,
-            max_lr=orig_lr,
-            step_size_up=5,  # 5 个 epochs, 从最小base_lr上升到最大max_lr
-            cycle_momentum=False,
-        )
-    elif lr_sch_name == 'one_cycle':
-        return OneCycleLR(
-            optimizer,
-            max_lr=orig_lr,
-            epochs=config['epochs'],
-            steps_per_epoch=1,
-        )
-
-    step_size = lr_sch_config['step_size']
-    gamma = lr_sch_config['gamma']
-    if step_size is None or gamma is None:
-        return LambdaLR(optimizer, lr_lambda=lambda _: 1)
-    return StepLR(optimizer, step_size, gamma=gamma)
-
-
 class WrapperLightningModule(pl.LightningModule):
     def __init__(self, config, model):
         super().__init__()
@@ -135,6 +88,11 @@ class WrapperLightningModule(pl.LightningModule):
         else:
             setattr(self.model, 'current_epoch', self.current_epoch)
         res = self.model.calculate_loss(batch)
+
+        # update lr scheduler
+        sch = self.lr_schedulers()
+        sch.step()
+
         losses = res['loss']
         self.log(
             'train_loss',
