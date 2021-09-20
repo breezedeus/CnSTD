@@ -52,8 +52,7 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name: str = 'db_resnet18',
-        # model_epoch: Optional[int] = None,
+        model_name: str = 'db_shufflenet_v2_small',
         *,
         auto_rotate_whole_image: bool = False,
         rotated_bbox: bool = True,
@@ -64,8 +63,7 @@ class CnStd(object):
     ):
         """
         Args:
-            model_name: 模型名称。可选值为 'db_resnet18', 'db_resnet34', 'db_resnet50', 'db_mobilenet_v3'
-            # model_epoch: 模型迭代次数。默认为 None，表示使用系统自带的模型对应的迭代次数
+            model_name: 模型名称。默认为 'db_shufflenet_v2_small'
             auto_rotate_whole_image: 是否自动对整张图片进行旋转调整。默认为False
             rotated_bbox: 是否支持检测带角度的文本框；默认为 True，表示支持；取值为 False 时，只检测水平或垂直的文本
             context: 'cpu', or 'gpu'。表明预测时是使用CPU还是GPU。默认为CPU

@@ -46,7 +46,7 @@ from . import CnStd
 _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
 
 logger = set_logger(log_level='INFO')
-DEFAULT_MODEL_NAME = 'db_resnet18'
+DEFAULT_MODEL_NAME = 'db_shufflenet_v2_small'
 
 
 @click.group(context_settings=_CONTEXT_SETTINGS)
@@ -92,7 +92,7 @@ def train(
         pretrained_backbone=True,
         fpn_type=fpn_type,
     )
-    if model_name == 'db_shufflenet_v2':
+    if 'db_shufflenet_v2' in model_name:
         kwargs['pretrained_backbone'] = False
     if 'resized_shape' in train_config:
         kwargs['input_shape'] = train_config['resized_shape']
@@ -127,9 +127,15 @@ def train(
     )
 
     # train_ds = data_mod.train
-    # visualize_example(train_ds[8], '8-0')
-    # visualize_example(train_ds[8], '8-1')
-    # visualize_example(train_ds[8], '8-2')
+    # for i in range(100):
+    #     visualize_example(train_ds[i], 'debugs/train-1-%d' % i)
+    #     visualize_example(train_ds[i], 'debugs/train-2-%d' % i)
+    #     visualize_example(train_ds[i], 'debugs/train-3-%d' % i)
+    # val_ds = data_mod.val
+    # for i in range(10):
+    #     visualize_example(val_ds[i], 'debugs/val-1-%d' % i)
+    #     visualize_example(val_ds[i], 'debugs/val-2-%d' % i)
+    #     visualize_example(val_ds[i], 'debugs/val-2-%d' % i)
     # return
 
     trainer = PlTrainer(
@@ -171,12 +177,6 @@ def visualize_example(example, fp_prefix):
     help='模型名称。默认值为 %s' % DEFAULT_MODEL_NAME,
 )
 @click.option(
-    "--model-epoch",
-    type=int,
-    default=None,
-    help="model epoch。默认为 `None`，表示使用系统自带的预训练模型",
-)
-@click.option(
     '-p',
     '--pretrained-model-fp',
     type=str,
@@ -213,7 +213,6 @@ def visualize_example(example, fp_prefix):
 )
 def predict(
     model_name,
-    model_epoch,
     pretrained_model_fp,
     rotated_bbox,
     resized_shape,
@@ -226,7 +225,6 @@ def predict(
     """预测单个文件，或者指定目录下的所有图片"""
     std = CnStd(
         model_name,
-        # model_epoch,
         model_fp=pretrained_model_fp,
         rotated_bbox=rotated_bbox,
         context=context,
@@ -254,9 +252,10 @@ def predict(
         preserve_aspect_ratio=preserve_aspect_ratio,
         box_score_thresh=box_score_thresh,
     )
+    time_cost = time.time() - start_time
     logger.info(
-        '%d files are predicted, total time cost: %f'
-        % (len(img_list), time.time() - start_time)
+        '%d files are predicted, total time cost: %f, mean time cost: %f'
+        % (len(img_list), time_cost, time_cost / len(img_list))
     )
 
     if not os.path.exists(output_dir):
@@ -273,13 +272,16 @@ def predict(
             rotated_img, std_out[idx]['detected_texts'], box_score_thresh, prefix_fp
         )
 
-    # from cnocr import CnOcr
-    #
-    # ocr = CnOcr(model_name='densenet-s-fc')
-    # for box_info in std_out[0]['detected_texts']:
-    #     cropped_img = box_info['cropped_img']  # 检测出的文本框
-    #     ocr_out = ocr.ocr_for_single_line(cropped_img)
-    #     logger.info('ocr result: %s' % str(ocr_out))
+    try:
+        from cnocr import CnOcr
+
+        ocr = CnOcr(model_name='densenet-s-fc')
+        for box_info in std_out[0]['detected_texts']:
+            cropped_img = box_info['cropped_img']  # 检测出的文本框
+            ocr_out = ocr.ocr_for_single_line(cropped_img)
+            logger.info('ocr result: %s' % str(ocr_out))
+    except ModuleNotFoundError as e:
+        logger.warning(e)
 
 
 @cli.command('resave')

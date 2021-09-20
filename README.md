@@ -8,17 +8,17 @@
 
 
 
-当前的 **v1.0.0** 已经从之前基于 MXNet 实现转为基于 **PyTorch** 实现。V1.0.0 模型的训练合并了  **ICPR MTWI 2018**、**ICDAR RCTW-17** 和 **ICDAR2019-LSVT** 三个数据集，包括了 **`46447`** 个训练样本，和 **`1534`** 个测试样本。
+自 **v1.0.0** 版本开始，**cnstd** 从之前基于 MXNet 实现转为基于 **PyTorch** 实现。新模型的训练合并了  **ICPR MTWI 2018**、**ICDAR RCTW-17** 和 **ICDAR2019-LSVT** 三个数据集，包括了 **`46447`** 个训练样本，和 **`1534`** 个测试样本。
 
 
 
-相较于 V0.1， **V1.0.0** 的变化主要包括：
+相较于 V1.0.0， **V1.1.0** 的变化主要包括：
 
-* MXNet 越来越小众化，故从基于 MXNet 的实现转为基于 **PyTorch** 的实现；
-* 检测速度得到极大提升，耗时几乎下降了一个量级；
-* 检测精度也得到较大的提升；
-* 实用性增强；检测接口中提供了更灵活的参数，不同应用场景可以尝试使用不同的参数以获得更好的检测效果；
-* 提供了更丰富的预训练模型，开箱即用。
+* bugfixes：修复了训练过程中发现的诸多问题；
+* 检测主类 **`CnStd`** 初始化接口略有调整，去掉了参数 `model_epoch`；
+* backbone 结构中加入了对 **ShuffleNet** 的支持；
+* 优化了训练中的超参数取值，提升了模型检测精度；
+* 提供了更多的预训练模型可供选择，最小模型降至 **7.5M** 文件大小。
 
 
 
@@ -61,34 +61,38 @@ pip install cnstd -i https://pypi.doubanio.com/simple
 
 ## 已有模型
 
-当前版本（**V1.0.0**）的文字检测模型使用的是 **[DBNet](https://github.com/MhLiao/DB)**，相较于 V0.1 使用的 [PSENet](https://github.com/whai362/PSENet) 模型， DBNet 的检测耗时几乎下降了一个量级，同时检测精度也得到了极大的提升。
+当前版本（**V1.1.0**）的文字检测模型使用的是 **[DBNet](https://github.com/MhLiao/DB)**，相较于 V0.1 使用的 [PSENet](https://github.com/whai362/PSENet) 模型， DBNet 的检测耗时几乎下降了一个量级，同时检测精度也得到了极大的提升。
 
 
 
-目前包含三个已训练好的模型，具体如下：
+目前包含以下已训练好的模型：
 
+| 模型名称     | 参数规模 | 模型文件大小 | 测试集精度（IoU） | 平均推断耗时<br />（秒/张） | 下载方式 |
+| ------------ |  -------- | -------- |------------ | -------- | -------- |
+| db_resnet34 |  22.5 M | 86 M     | **0.7322**   | 3.11          | 自动 |
+| db_resnet18 |  12.3 M | 47 M     | 0.7294      | 1.93          | 自动 |
+| db_mobilenet_v3 |  4.2 M    | 16 M         | **0.7269**  | 1.76          | 自动 |
+| db_mobilenet_v3_small |  2.0 M | 7.9 M | 0.7054 | 1.24 | 自动 |
+| db_shufflenet_v2 |   4.7 M | 18 M | 0.7238 | 1.73 | 自动 |
+| **db_shufflenet_v2_small** | 3.0 M | 12 M | 0.7190 | 1.29 | 自动 |
+| db_shufflenet_v2_tiny | **1.9 M** | **7.5 M** | **0.7172** | **1.14** | 下载方式 |
 
-| 模型名称     | 迭代次数 | 参数规模 | 模型文件大小 | 测试集精度（IoU） | 平均推断耗时<br />（秒/张） | 下载方式|
-| ------------ | ------------ | -------- | -------- |------------ | -------- | -------- |
-| db_resnet18 | 29 | 12.3 M   | 47 M         | 0.554             | 1.04                  | 自动     |
-| db_resnet34  | 33 | 22.5 M   | 86 M         | 0.6144            | 1.58                  | 自动     |
-| db_mobilenet_v3 | 30 | 4.2 M    | 16 M         | 0.5949            | 0.83                  | [下载链接](https://mp.weixin.qq.com/s/6ZDElQL-9mmy5WJlN7aLXg) |
 
 > 上表耗时基于本地 Mac 获得，绝对值无太大参考价值，相对值可供参考。IoU的计算方式经过调整，仅相对值可供参考。
 
 
 
-相对于两个基于 **ResNet** 的模型，基于 **MobileNet** 的模型 **`db_mobilenet_v3`** 体积更小，速度更快，建议在轻量级场景使用。
+相对于两个基于 **ResNet** 的模型，基于 **MobileNet** 和 **ShuffleNet** 的模型体积更小，速度更快，建议在轻量级场景使用。
 
 
 
 ## 使用方法
 
-首次使用 **cnstd** 时，系统会自动从 [贝叶智能](https://www.behye.com) 的CDN上下载zip格式的模型压缩文件，并存放于 `~/.cnstd`目录（Windows下默认路径为 `C:\Users\<username>\AppData\Roaming\cnstd`）。下载速度超快。下载后的zip文件代码会自动对其解压，然后把解压后的模型相关目录放于`~/.cnstd/1.0`目录中。
+首次使用 **cnstd** 时，系统会自动从 [贝叶智能](https://www.behye.com) 的CDN上下载zip格式的模型压缩文件，并存放于 `~/.cnstd`目录（Windows下默认路径为 `C:\Users\<username>\AppData\Roaming\cnstd`）。下载速度超快。下载后的zip文件代码会自动对其解压，然后把解压后的模型相关目录放于`~/.cnstd/1.1`目录中。
 
 
 
-如果系统无法自动成功下载zip文件，则需要手动从 [百度云盘](https://pan.baidu.com/s/1w2nTNfImXRGa1F-jXlDbOw)（提取码为 `7cju`）下载对应的zip文件并把它存放于 `~/.cnstd/1.0`（Windows下为 `C:\Users\<username>\AppData\Roaming\cnstd\1.0`）目录中。放置好zip文件后，后面的事代码就会自动执行了。
+如果系统无法自动成功下载zip文件，则需要手动从 [百度云盘](https://pan.baidu.com/s/11_83ydAwJ1u8RnyyZtBKjw)（提取码为 `56ji`）下载对应的zip文件并把它存放于 `~/.cnstd/1.1`（Windows下为 `C:\Users\<username>\AppData\Roaming\cnstd\1.1`）目录中。模型也可从 **[cnstd-cnocr-models](https://github.com/breezedeus/cnstd-cnocr-models)** 中下载。放置好zip文件后，后面的事代码就会自动执行了。
 
 
 
@@ -104,8 +108,7 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name: str = 'db_resnet18',
-        model_epoch: Optional[int] = None,
+        model_name: str = 'db_shufflenet_v2_small',
         *,
         auto_rotate_whole_image: bool = False,
         rotated_bbox: bool = True,
@@ -118,15 +121,14 @@ class CnStd(object):
 
 其中的几个参数含义如下：
 
-* `model_name`:  模型名称，即上面表格第一列中的值，目前仅支持取值为 `db_resnet18`, `db_resnet34`, `db_resnet50`, `db_mobilenet_v3`。默认为 **`db_resnet18`** 。
-* `model_epoch`:  模型迭代次数。默认为 `None`，表示使用系统自带的模型对应的迭代次数。对于模型名称 `db_resnet18`就是 `29`。
+* `model_name`:  模型名称，即上面表格第一列中的值。默认为 **db_shufflenet_v2_small** 。
 * `auto_rotate_whole_image`:  是否自动对整张图片进行旋转调整。默认为`False`。
 * `rotated_bbox`:  是否支持检测带角度的文本框；默认为 `True`，表示支持；取值为 `False` 时，只检测水平或垂直的文本。
 * `context`：预测使用的机器资源，可取值为字符串`cpu`、`gpu`、`cuda:0`。
 * `model_fp`:  如果不使用系统自带的模型，可以通过此参数直接指定所使用的模型文件（`.ckpt`文件）。
 * `root`: 模型文件所在的根目录。
   
-  * Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.0/db_resnet18`。
+  * Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.1/db_shufflenet_v2_small`。
   * Windows下默认值为 `C:\Users\<username>\AppData\Roaming\cnstd`。
 
 
@@ -282,8 +284,8 @@ Usage: cnstd predict [OPTIONS]
   预测单个文件，或者指定目录下的所有图片
 
 Options:
-  -m, --model-name [db_resnet50|db_resnet34|db_resnet18|db_mobilenet_v3]
-                                  模型名称。默认值为 `db_resnet18`
+  -m, --model-name [db_resnet50|db_resnet34|db_resnet18|db_mobilenet_v3|db_mobilenet_v3_small|db_shufflenet_v2|db_shufflenet_v2_small|db_shufflenet_v2_tiny]
+                                  模型名称。默认值为 `db_shufflenet_v2_small`
   --model-epoch INTEGER           model epoch。默认为 `None`，表示使用系统自带的预训练模型
   -p, --pretrained-model-fp TEXT  导入的训练好的模型，作为初始模型。默认为 `None`，表示使用系统自带的预训练模型
   -r, --rotated-bbox              是否检测带角度（非水平和垂直）的文本框。默认为 `True`
@@ -325,9 +327,9 @@ Usage: cnstd train [OPTIONS]
   训练文本检测模型
 
 Options:
-  -m, --model-name [db_resnet50|db_resnet34|db_resnet18|db_mobilenet_v3]
-                                  模型名称。默认值为 db_resnet18
-  -i, --index-dir TEXT            索引文件所在的文件夹，会读取文件夹中的 train.tsv 和 dev.tsv 文件
+  -m, --model-name [db_resnet50|db_resnet34|db_resnet18|db_mobilenet_v3|db_mobilenet_v3_small|db_shufflenet_v2|db_shufflenet_v2_small|db_shufflenet_v2_tiny]
+                                  模型名称。默认值为 `db_shufflenet_v2_small`
+  -i, --index-dir TEXT            索引文件所在的文件夹，会读取文件夹中的 `train.tsv` 和 `dev.tsv` 文件
                                   [required]
 
   --train-config-fp TEXT          训练使用的json配置文件  [required]
@@ -369,7 +371,7 @@ Options:
 
 
 
-* [ ] 进一步精简模型结构，降低模型大小。
+* [x] 进一步精简模型结构，降低模型大小。
 * [x] PSENet速度上还是比较慢，尝试更快的STD算法。
 * [x] 加入更多的训练数据。
-
+* [ ] 加入对文档结构与表格的检测

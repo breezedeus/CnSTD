@@ -38,14 +38,14 @@ def test_CosineAnnealingWarmRestarts():
 def test_WarmupCosineAnnealingRestarts():
     CAW = WarmupCosineAnnealingRestarts(
         optimizer,
-        first_cycle_steps=1000,
+        first_cycle_steps=95600,
         cycle_mult=1.0,
-        max_lr=0.1,
-        min_lr=0.001,
+        max_lr=0.001,
+        min_lr=0.0001,
         warmup_steps=100,
         gamma=1.0,
     )
-    plot_lr(CAW, step=1000)
+    plot_lr(CAW, step=95600)
 
 
 def test_CyclicLR():

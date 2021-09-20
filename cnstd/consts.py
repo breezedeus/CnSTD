@@ -115,20 +115,35 @@ root_url = (
 # 免费模型
 FREE_MODELS = OrderedDict(
     {
-        'db_resnet18': {
-            'model_epoch': 29,
-            'fpn_type': 'pan',
-            'url': root_url + 'db_resnet18.zip',
-        },
         'db_resnet34': {
-            'model_epoch': 33,
+            'model_epoch': 41,
             'fpn_type': 'pan',
-            'url': root_url + 'db_resnet34.zip',
+            'url': root_url + 'db_resnet34-pan.zip',
+        },
+        'db_resnet18': {
+            'model_epoch': 34,
+            'fpn_type': 'pan',
+            'url': root_url + 'db_resnet18-pan.zip',
+        },
+        'db_mobilenet_v3': {
+            'model_epoch': 47,
+            'fpn_type': 'pan',
+            'url': root_url + 'db_mobilenet_v3-pan.zip',
+        },
+        'db_mobilenet_v3_small': {
+            'model_epoch': 37,
+            'fpn_type': 'pan',
+            'url': root_url + 'db_mobilenet_v3_small-pan.zip',
         },
         'db_shufflenet_v2': {
-            'model_epoch': 31,
+            'model_epoch': 41,
             'fpn_type': 'pan',
             'url': root_url + 'db_shufflenet_v2-pan.zip',
+        },
+        'db_shufflenet_v2_small': {
+            'model_epoch': 34,
+            'fpn_type': 'pan',
+            'url': root_url + 'db_shufflenet_v2_small-pan.zip',
         },
     }
 )
@@ -136,15 +151,10 @@ FREE_MODELS = OrderedDict(
 # 付费模型
 PAID_MODELS = OrderedDict(
     {
-        'db_mobilenet_v3': {
-            'model_epoch': 28,
+        'db_shufflenet_v2_tiny': {
+            'model_epoch': 48,
             'fpn_type': 'pan',
-            'url': root_url + 'db_mobilenet_v3-pan.zip',
-        },
-        'db_mobilenet_v3_small': {
-            'model_epoch': 32,
-            'fpn_type': 'pan',
-            'url': root_url + 'db_mobilenet_v3_small-pan.zip',
+            'url': root_url + 'db_shufflenet_v2_tiny-pan.zip',
         },
     }
 )
