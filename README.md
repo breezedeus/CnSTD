@@ -75,7 +75,7 @@ pip install cnstd -i https://pypi.doubanio.com/simple
 | db_mobilenet_v3_small |  2.0 M | 7.9 M | 0.7054 | 1.24 | 自动 |
 | db_shufflenet_v2 |   4.7 M | 18 M | 0.7238 | 1.73 | 自动 |
 | **db_shufflenet_v2_small** | 3.0 M | 12 M | 0.7190 | 1.29 | 自动 |
-| db_shufflenet_v2_tiny | **1.9 M** | **7.5 M** | **0.7172** | **1.14** | [下载方式](https://mp.weixin.qq.com/s/fHPNoGyo72EFApVhEgR6Nw) |
+| db_shufflenet_v2_tiny | **1.9 M** | **7.5 M** | **0.7172** | **1.14** | [下载链接](https://mp.weixin.qq.com/s/fHPNoGyo72EFApVhEgR6Nw) |
 
 
 > 上表耗时基于本地 Mac 获得，绝对值无太大参考价值，相对值可供参考。IoU的计算方式经过调整，仅相对值可供参考。
