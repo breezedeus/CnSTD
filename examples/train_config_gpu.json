@@ -1,26 +1,24 @@
 {
-    "version": "1.0.0",
     "debug": false,
     "preserve_aspect_ratio": true,
 
     "vocab_fp": "label_cn.txt",
     "data_root_dir": "/home/ein/jinlong/std_data",
 
+    "fpn_type": "fpn",
     "rotated_bbox": true,
     "resized_shape": [3, 768, 768],
 
     "gpus": [1],
-    "epochs": 40,
-    "batch_size": 20,
+    "epochs": 50,
+    "batch_size": 16,
     "num_workers": 10,
     "pin_memory": true,
     "optimizer": "adam",
-    "learning_rate": 5e-4,
+    "learning_rate": 1e-3,
     "weight_decay": 0,
     "lr_scheduler": {
-        "name": "multi_step",
-        "milestones": [10, 22, 30],
-        "gamma": 0.5
+        "name": "cos_warmup",
     },
     "precision": 16,
     "limit_train_batches": 1.0,
