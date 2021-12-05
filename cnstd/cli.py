@@ -254,7 +254,7 @@ def predict(
     )
     time_cost = time.time() - start_time
     logger.info(
-        '%d files are predicted, total time cost: %f, mean time cost: %f'
+        '%d files are detected by cnstd, total time cost: %f, mean time cost: %f'
         % (len(img_list), time_cost, time_cost / len(img_list))
     )
 
@@ -275,11 +275,20 @@ def predict(
     try:
         from cnocr import CnOcr
 
-        ocr = CnOcr(model_name='densenet-s-fc')
-        for box_info in std_out[0]['detected_texts']:
-            cropped_img = box_info['cropped_img']  # 检测出的文本框
-            ocr_out = ocr.ocr_for_single_line(cropped_img)
-            logger.info('ocr result: %s' % str(ocr_out))
+        ocr = CnOcr()
+
+        logger.info('use cnocr to predict texts from the FIRST image, as an example')
+        cropped_img_list = [
+            box_info['cropped_img'] for box_info in std_out[0]['detected_texts']
+        ]
+        start_time = time.time()
+        ocr_out = ocr.ocr_for_single_lines(cropped_img_list, batch_size=1)
+        time_cost = time.time() - start_time
+        logger.info(
+            '%d cropped text boxes are recognized by cnocr, total time cost: %f, mean time cost: %f'
+            % (len(cropped_img_list), time_cost, time_cost / len(cropped_img_list))
+        )
+        logger.info('ocr result: %s' % str(ocr_out))
     except ModuleNotFoundError as e:
         logger.warning(e)
 
