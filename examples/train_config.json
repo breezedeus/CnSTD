@@ -1,5 +1,4 @@
 {
-    "version": "1.0.0",
     "debug": false,
     "preserve_aspect_ratio": true,
 
@@ -20,9 +19,9 @@
     "learning_rate": 3e-3,
     "weight_decay": 0,
     "lr_scheduler": {
-        "name": "multi_step",
-        "milestones": [5, 10, 16, 22, 30],
-        "gamma": 0.5
+        "name": "cos_warmup",
+        "min_lr_mult_factor": 0.1,
+        "warmup_epochs": 0.1
     },
     "precision": 32,
     "limit_train_batches": 1.0,

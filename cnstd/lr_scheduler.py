@@ -45,12 +45,14 @@ def get_lr_scheduler(config, optimizer):
             optimizer, milestones=milestones, gamma=lr_sch_config['gamma'],
         )
     elif lr_sch_name == 'cos_warmup':
+        min_lr_mult_factor = lr_sch_config.get('min_lr_mult_factor', 0.1)
+        warmup_epochs = lr_sch_config.get('warmup_epochs', 0.1)
         return WarmupCosineAnnealingRestarts(
             optimizer,
             first_cycle_steps=steps_per_epoch * epochs,
             max_lr=orig_lr,
-            min_lr=orig_lr * 0.1,
-            warmup_steps=int(steps_per_epoch * 0.1),
+            min_lr=orig_lr * min_lr_mult_factor,
+            warmup_steps=int(steps_per_epoch * warmup_epochs),
         )
     elif lr_sch_name == 'cos_anneal':
         # 5 个 epochs, 一个循环
