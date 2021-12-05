@@ -222,7 +222,7 @@ class DetectionPredictor(NestedObject):
                 if min(crop.shape[:2]) < min_box_size:
                     continue
                 one_out.append(dict(box=box, score=score, cropped_img=crop))
-            results.append({'rotated_angle': angle, 'detected_texts': one_out})
+            results.append({'rotated_angle': angle, 'detected_texts': one_out[::-1]})
 
         return results
 
