@@ -254,7 +254,7 @@ box_infos = std.detect('examples/taobao.jpg')
 for box_info in box_infos['detected_texts']:
     cropped_img = box_info['cropped_img']
     ocr_res = cn_ocr.ocr_for_single_line(cropped_img)
-    print('ocr result: %s' % str(ocr_out))
+    print('ocr result: %s' % str(ocr_res))
 ```
 
 
