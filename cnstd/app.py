@@ -40,7 +40,8 @@ except ModuleNotFoundError:
 def get_ocr_model(ocr_model_name):
     if not cnocr_avalable:
         return None
-    return CnOcr(ocr_model_name)
+    model_name, model_backend = ocr_model_name
+    return CnOcr(model_name, model_backend=model_backend)
 
 
 @st.cache(allow_output_mutation=True)
@@ -68,7 +69,7 @@ def visualize_ocr(ocr, std_out):
         cropped_img = box_info['cropped_img']  # 检测出的文本框
         try:
             ocr_out = ocr.ocr_for_single_line(cropped_img)
-            prob, text = ocr_out[1], ''.join(ocr_out[0])
+            prob, text = ocr_out[1], ocr_out[0]
         except:
             prob, text = 0.0, ''
         ocr_res['概率值'].append(prob)
@@ -100,7 +101,10 @@ def main():
     if cnocr_avalable:
         st.sidebar.markdown("""---""")
         st.sidebar.header('CnOcr 设置')
-        ocr_model_name = st.sidebar.selectbox('模型名称', AVAILABLE_MODELS.keys())
+        all_models = list(AVAILABLE_MODELS.all_models())
+        all_models.sort()
+        idx = all_models.index(('densenet_lite_136-fc', 'onnx'))
+        ocr_model_name = st.sidebar.selectbox('选择模型', all_models, index=idx)
         ocr = get_ocr_model(ocr_model_name)
 
     st.markdown(
