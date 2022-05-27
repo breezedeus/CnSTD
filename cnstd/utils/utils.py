@@ -434,7 +434,7 @@ def plot_for_debugging(rotated_img, one_out, box_score_thresh, prefix_fp):
             box = np.int0(box)
             cv2.drawContours(rotated_img, [box], 0, (255, 0, 0), 2)
         else:  # len(box) == 4, rotated_box == False
-            xmin, ymin, xmax, ymax = box.astype('float32')
+            xmin, ymin, xmax, ymax = box.astype('int')
             cv2.rectangle(rotated_img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
     result_fp = '%s-result.png' % prefix_fp
     imsave(rotated_img, result_fp, normalized=False)

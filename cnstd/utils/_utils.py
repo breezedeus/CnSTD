@@ -95,6 +95,9 @@ def extract_rcrops(img: np.ndarray, boxes: np.ndarray, dtype=np.float32) -> List
 
 def _process_horizontal_box(img, box, dtype):
     x, y, w, h, alpha = box.astype(dtype)
+    if alpha > 80 and w < h:  # for opencv-python >= 4.5.2
+        alpha -= 90
+        w, h = h, w
     clockwise = False
     if w > h:
         clockwise = True
