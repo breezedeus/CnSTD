@@ -61,7 +61,7 @@ wheel==0.37.0             # via tensorboard
 yarl==1.6.3               # via aiohttp
 streamlit
 cnstd==1.1.1
-cnocr==2.1.0
+cnocr==2.1.2
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
