@@ -19,26 +19,36 @@
 
 from __future__ import absolute_import
 
+import os
 import logging
+from glob import glob
 from pathlib import Path
 from typing import Tuple, List, Dict, Union, Any, Optional
 
 from PIL import Image
 import numpy as np
 
-from .consts import AVAILABLE_MODELS
-from .detector import Detector
-from .ppocr import PP_SPACE, PPDetector
-from .ppocr.angle_classifier import AngleClassifier
-from .utils import data_dir
+from .consts import MODEL_VERSION, AVAILABLE_MODELS
+from .model import gen_model
+from .model.core import DetectionPredictor
+from .utils import (
+    data_dir,
+    check_model_name,
+    check_context,
+    get_model_file,
+    load_model_params,
+    read_img,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class CnStd(object):
+class Detector(object):
     """
     场景文字检测器（Scene Text Detection）。虽然名字中有个"Cn"（Chinese），但其实也可以轻松识别英文的。
     """
+
+    MODEL_FILE_PREFIX = 'cnstd-v{}'.format(MODEL_VERSION)
 
     def __init__(
         self,
@@ -50,8 +60,6 @@ class CnStd(object):
         model_fp: Optional[str] = None,
         model_backend: str = 'pytorch',  # ['pytorch', 'onnx']
         root: Union[str, Path] = data_dir(),
-        use_angle_clf: bool = False,
-        angle_clf_configs: Optional[dict] = None,
         **kwargs,
     ):
         """
@@ -62,42 +70,100 @@ class CnStd(object):
             context: 'cpu', or 'gpu'。表明预测时是使用CPU还是GPU。默认为CPU
             model_fp: 如果不使用系统自带的模型，可以通过此参数直接指定所使用的模型文件（'.ckpt' 文件）
             model_backend (str): 'pytorch', or 'onnx'。表明预测时是使用 PyTorch 版本模型，还是使用 ONNX 版本模型。
-                同样的模型，ONNX 版本的预测速度一般是 PyTorch 版本的2倍左右。默认为 'pytorch'。
+                同样的模型，ONNX 版本的预测速度一般是 PyTorch 版本的2倍左右。
             root: 模型文件所在的根目录。
                 Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.0/db_resnet18`
                 Windows下默认值为 `C:/Users/<username>/AppData/Roaming/cnstd`。
-            use_angle_clf (bool): 对于检测出的文本框，是否使用角度分类模型进行调整（检测出的文本框可能会存在倒转180度的情况）。
-                默认为 `False`
-            angle_clf_configs (dict): 角度分类模型对应的参数取值，主要包含以下值：
-                - model_name: 模型名称。默认为 'ch_ppocr_mobile_v2.0_cls'
-                - model_fp: 如果不使用系统自带的模型，可以通过此参数直接指定所使用的模型文件（'.onnx' 文件）。默认为 `None`
-                具体可参考类 `AngleClassifier` 的说明
         """
-        self.space = AVAILABLE_MODELS.get_space(model_name, model_backend)
-        if self.space == AVAILABLE_MODELS.CNSTD_SPACE:
-            det_cls = Detector
-        elif self.space == PP_SPACE:
-            det_cls = PPDetector
-        else:
-            raise NotImplementedError(
-                '%s is not supported currently' % ((model_name, model_backend),)
+        model_backend = model_backend.lower()
+        assert model_backend in ('pytorch', 'onnx')
+        check_model_name(model_name)
+        check_context(context)
+        if 'name' in kwargs:
+            logger.warning(
+                'param `name` is useless and deprecated since version %s'
+                % MODEL_VERSION
             )
 
-        self.det_model = det_cls(
-            model_name=model_name,
-            auto_rotate_whole_image=auto_rotate_whole_image,
-            rotated_bbox=rotated_bbox,
-            context=context,
-            model_fp=model_fp,
-            model_backend=model_backend,
-            root=root,
-        )
+        self._model_name = model_name
+        self._model_backend = model_backend
+        if context == 'gpu':
+            context = 'cuda'
+        self.context = context
+        self.rotated_bbox = rotated_bbox
 
-        self.use_angle_clf = use_angle_clf
-        if self.use_angle_clf:
-            angle_clf_configs = angle_clf_configs or dict()
-            angle_clf_configs['root'] = root
-            self.angle_clf = AngleClassifier(**angle_clf_configs)
+        try:
+            self._assert_and_prepare_model_files(model_fp, root)
+        except NotImplementedError:
+            logger.warning(
+                'no available model is found for name %s and backend %s'
+                % (self._model_name, self._model_backend)
+            )
+            self._model_backend = (
+                'onnx' if self._model_backend == 'pytorch' else 'pytorch'
+            )
+            logger.warning(
+                'trying to use name %s and backend %s'
+                % (self._model_name, self._model_backend)
+            )
+            self._assert_and_prepare_model_files(model_fp, root)
+
+        fpn_type = AVAILABLE_MODELS.get_fpn_type(model_name, self._model_backend) or 'fpn'
+        self._model = self._get_model(fpn_type, auto_rotate_whole_image)
+        logger.info('CnStd is initialized, with context {}'.format(self.context))
+
+    def _assert_and_prepare_model_files(self, model_fp, root):
+        self._model_file_prefix = '{}-{}'.format(self.MODEL_FILE_PREFIX, self._model_name)
+        model_epoch = AVAILABLE_MODELS.get_epoch(self._model_name, self._model_backend)
+        if model_epoch is not None:
+            self._model_file_prefix = '%s*-epoch=%03d' % (
+                self._model_file_prefix,
+                model_epoch,
+            )
+
+        if model_fp is not None and not os.path.isfile(model_fp):
+            raise FileNotFoundError('can not find model file %s' % model_fp)
+
+        if model_fp is not None:
+            self._model_fp = model_fp
+            return
+
+        root = os.path.join(root, MODEL_VERSION)
+        self._model_dir = os.path.join(root, self._model_name)
+        fps = glob('%s/%s*.ckpt' % (self._model_dir, self._model_file_prefix))
+        if len(fps) > 1:
+            raise ValueError(
+                'multiple ckpt files are found in %s, not sure which one should be used'
+                % self._model_dir
+            )
+        elif len(fps) < 1:
+            logger.warning('no ckpt file is found in %s' % self._model_dir)
+            if (self._model_name, self._model_backend) not in AVAILABLE_MODELS:
+                raise NotImplementedError(
+                    '%s is not a downloadable model'
+                    % ((self._model_name, self._model_backend),)
+                )
+            url = AVAILABLE_MODELS.get_url(self._model_name, self._model_backend)
+            get_model_file(url, self._model_dir)  # download the .zip file and unzip
+            fps = glob('%s/%s*.ckpt' % (self._model_dir, self._model_file_prefix))
+
+        self._model_fp = fps[0]
+
+    def _get_model(self, fpn_type, auto_rotate_whole_image):
+        logger.info('use model: %s' % self._model_fp)
+        model = gen_model(
+            self._model_name,
+            pretrained_backbone=False,
+            fpn_type=fpn_type,
+            auto_rotate_whole_image=auto_rotate_whole_image,
+            rotated_bbox=self.rotated_bbox,
+        )
+        model.eval()
+        model.to(self.context)
+        load_model_params(model, self._model_fp, self.context)
+
+        predictor = DetectionPredictor(model, context=self.context)
+        return predictor
 
     def detect(
         self,
@@ -162,20 +228,54 @@ class CnStd(object):
         else:
             raise TypeError('type %s is not supported now' % str(type(img_list)))
 
-        outs = self.det_model.detect(
+        idx = 0
+        out = []
+        while idx * batch_size < len(img_list):
+            imgs = img_list[idx * batch_size : (idx + 1) * batch_size]
+            res = self._detect_batch(
+                imgs,
+                resized_shape=resized_shape,
+                preserve_aspect_ratio=preserve_aspect_ratio,
+                min_box_size=min_box_size,
+                box_score_thresh=box_score_thresh,
+                **kwargs,
+            )
+            out.extend(res)
+            idx += 1
+
+        return out[0] if single else out
+
+    def _detect_batch(
+        self,
+        img_list: List[Union[str, Path, Image.Image, np.ndarray]],
+        resized_shape: Tuple[int, int],
+        preserve_aspect_ratio: bool,
+        min_box_size: int,
+        box_score_thresh: float,
+        **kwargs,
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        img_list = self._preprocess_images(img_list)
+        return self._model(
             img_list,
             resized_shape=resized_shape,
             preserve_aspect_ratio=preserve_aspect_ratio,
             min_box_size=min_box_size,
             box_score_thresh=box_score_thresh,
-            batch_size=batch_size,
         )
 
-        if self.use_angle_clf:
-            for out in outs:
-                crop_img_list = [info['cropped_img'] for info in out['detected_texts']]
-                crop_img_list, _ = self.angle_clf(crop_img_list)
-                for info, crop_img in zip(out['detected_texts'], crop_img_list):
-                    info['cropped_img'] = crop_img
-
-        return outs[0] if single else outs
+    @classmethod
+    def _preprocess_images(
+        cls, img_list: List[Union[str, Path, Image.Image, np.ndarray]]
+    ):
+        out_list = []
+        for img in img_list:
+            if isinstance(img, (str, Path)):
+                if not os.path.isfile(img):
+                    raise FileNotFoundError(img)
+                pil_img = read_img(img)
+                out_list.append(pil_img)
+            elif isinstance(img, (Image.Image, np.ndarray)):
+                out_list.append(img)
+            else:
+                raise TypeError('type %s is not supported now' % str(type(img)))
+        return out_list

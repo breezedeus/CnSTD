@@ -17,8 +17,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import logging
 from pathlib import Path
-from typing import Dict, Any
+from typing import Tuple, Set, Dict, Any, Optional, Union
 from copy import deepcopy
 from collections import OrderedDict
 
@@ -34,6 +35,8 @@ from torchvision.models import (
 )
 
 from .__version__ import __version__
+
+logger = logging.getLogger(__name__)
 
 
 # 模型版本只对应到第二层，第三层的改动表示模型兼容。
@@ -108,56 +111,123 @@ MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-root_url = (
-    'https://beiye-model.oss-cn-beijing.aliyuncs.com/models/cnstd/%s/' % MODEL_VERSION
-)
-# name: (epochs, url)
-# 免费模型
-FREE_MODELS = OrderedDict(
-    {
-        'db_resnet34': {
-            'model_epoch': 41,
-            'fpn_type': 'pan',
-            'url': root_url + 'db_resnet34-pan.zip',
-        },
-        'db_resnet18': {
-            'model_epoch': 34,
-            'fpn_type': 'pan',
-            'url': root_url + 'db_resnet18-pan.zip',
-        },
-        'db_mobilenet_v3': {
-            'model_epoch': 47,
-            'fpn_type': 'pan',
-            'url': root_url + 'db_mobilenet_v3-pan.zip',
-        },
-        'db_mobilenet_v3_small': {
-            'model_epoch': 37,
-            'fpn_type': 'pan',
-            'url': root_url + 'db_mobilenet_v3_small-pan.zip',
-        },
-        'db_shufflenet_v2': {
-            'model_epoch': 41,
-            'fpn_type': 'pan',
-            'url': root_url + 'db_shufflenet_v2-pan.zip',
-        },
-        'db_shufflenet_v2_small': {
-            'model_epoch': 34,
-            'fpn_type': 'pan',
-            'url': root_url + 'db_shufflenet_v2_small-pan.zip',
-        },
-    }
+ROOT_URL = (
+        'https://huggingface.co/breezedeus/cnstd-cnocr-models/resolve/main/models/cnstd/%s/'
+        % MODEL_VERSION
 )
 
-# 付费模型
-PAID_MODELS = OrderedDict(
-    {
-        'db_shufflenet_v2_tiny': {
-            'model_epoch': 48,
-            'fpn_type': 'pan',
-            'url': root_url + 'db_shufflenet_v2_tiny-pan.zip',
-        },
-    }
-)
 
-AVAILABLE_MODELS = deepcopy(FREE_MODELS)
-AVAILABLE_MODELS.update(PAID_MODELS)
+class AvailableModels(object):
+    CNSTD_SPACE = '__cnstd__'
+
+    # name: (epochs, url)
+    # 免费模型
+    FREE_MODELS = OrderedDict(
+        {
+            ('db_resnet34', 'pytorch'): {
+                'model_epoch': 41,
+                'fpn_type': 'pan',
+                'url': 'db_resnet34-pan.zip',
+            },
+            ('db_resnet18', 'pytorch'): {
+                'model_epoch': 34,
+                'fpn_type': 'pan',
+                'url': 'db_resnet18-pan.zip',
+            },
+            ('db_mobilenet_v3', 'pytorch'): {
+                'model_epoch': 47,
+                'fpn_type': 'pan',
+                'url': 'db_mobilenet_v3-pan.zip',
+            },
+            ('db_mobilenet_v3_small', 'pytorch'): {
+                'model_epoch': 37,
+                'fpn_type': 'pan',
+                'url': 'db_mobilenet_v3_small-pan.zip',
+            },
+            ('db_shufflenet_v2', 'pytorch'): {
+                'model_epoch': 41,
+                'fpn_type': 'pan',
+                'url': 'db_shufflenet_v2-pan.zip',
+            },
+            ('db_shufflenet_v2_small', 'pytorch'): {
+                'model_epoch': 34,
+                'fpn_type': 'pan',
+                'url': 'db_shufflenet_v2_small-pan.zip',
+            },
+        }
+    )
+
+    # 付费模型
+    PAID_MODELS = OrderedDict(
+        {
+            ('db_shufflenet_v2_tiny', 'pytorch'): {
+                'model_epoch': 48,
+                'fpn_type': 'pan',
+                'url': 'db_shufflenet_v2_tiny-pan.zip',
+            },
+        }
+    )
+
+    CNSTD_MODELS = deepcopy(FREE_MODELS)
+    CNSTD_MODELS.update(PAID_MODELS)
+
+    OUTER_MODELS = {}
+
+    def all_models(self) -> Set[Tuple[str, str]]:
+        return set(self.CNSTD_MODELS.keys()) | set(self.OUTER_MODELS.keys())
+
+    def __contains__(self, model_name_backend: Tuple[str, str]) -> bool:
+        return model_name_backend in self.all_models()
+
+    def register_models(self, model_dict: Dict[Tuple[str, str], Any], space: str):
+        assert not space.startswith('__')
+        for key, val in model_dict.items():
+            if key in self.CNSTD_MODELS or key in self.OUTER_MODELS:
+                logger.warning(
+                    'model %s has already existed, and will be ignored' % key
+                )
+                continue
+            val = deepcopy(val)
+            val['space'] = space
+            self.OUTER_MODELS[key] = val
+
+    def get_space(self, model_name, model_backend) -> Optional[str]:
+        if (model_name, model_backend) in self.CNSTD_MODELS:
+            return self.CNSTD_SPACE
+        elif (model_name, model_backend) in self.OUTER_MODELS:
+            return self.OUTER_MODELS[(model_name, model_backend)]['space']
+        return None
+
+    def get_value(self, model_name, model_backend, key) -> Optional[Any]:
+        if (model_name, model_backend) in self.CNSTD_MODELS:
+            info = self.CNSTD_MODELS[(model_name, model_backend)]
+        elif (model_name, model_backend) in self.OUTER_MODELS:
+            info = self.OUTER_MODELS[(model_name, model_backend)]
+        else:
+            logger.warning(
+                'no url is found for model %s' % ((model_name, model_backend),)
+            )
+            return None
+        return info.get(key)
+
+    def get_epoch(self, model_name, model_backend) -> Optional[int]:
+        return self.get_value(model_name, model_backend, 'model_epoch')
+
+    def get_fpn_type(self, model_name, model_backend) -> Optional[int]:
+        return self.get_value(model_name, model_backend, 'fpn_type')
+
+    def get_url(self, model_name, model_backend) -> Optional[str]:
+        url = self.get_value(model_name, model_backend, 'url')
+        if url:
+            url = ROOT_URL + url
+
+        return url
+
+
+AVAILABLE_MODELS = AvailableModels()
+
+ANGLE_CLF_MODELS = {
+    ('ch_ppocr_mobile_v2.0_cls', 'onnx'): {
+        'url': ROOT_URL + 'ch_ppocr_mobile_v2.0_cls_infer-onnx.zip'
+    }
+}

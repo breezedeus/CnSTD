@@ -199,7 +199,7 @@ def download(url, path=None, overwrite=False, sha1_hash=None):
     return fname
 
 
-def get_model_file(model_dir):
+def get_model_file(url, model_dir):
     r"""Return location for the downloaded models on local file system.
 
     This function will download from online model zoo when model cannot be found or has mismatch.
@@ -207,6 +207,7 @@ def get_model_file(model_dir):
 
     Parameters
     ----------
+    url: str, url for downloading the model
     model_dir : str, default $CNSTD_HOME
         Location for keeping the model parameters.
 
@@ -219,14 +220,8 @@ def get_model_file(model_dir):
     par_dir = os.path.dirname(model_dir)
     os.makedirs(par_dir, exist_ok=True)
 
-    zip_file_path = model_dir + '.zip'
+    zip_file_path = os.path.join(par_dir, os.path.basename(url))
     if not os.path.exists(zip_file_path):
-        model_name = os.path.basename(model_dir)
-        if model_name not in AVAILABLE_MODELS:
-            raise NotImplementedError(
-                '%s is not an available downloaded model' % model_name
-            )
-        url = AVAILABLE_MODELS[model_name]['url']
         download(url, path=zip_file_path, overwrite=True)
     with zipfile.ZipFile(zip_file_path) as zf:
         zf.extractall(par_dir)
@@ -296,6 +291,61 @@ def pil_to_numpy(img: Image.Image) -> np.ndarray:
 
     """
     return np.asarray(img.convert('RGB'), dtype='float32').transpose((2, 0, 1))
+
+
+def transform_rbbox_to_bbox(self, x, y, w, h, alpha):
+    points = cv2.boxPoints((x, y), (w, h), alpha)
+    return sort_box_points(points)
+
+
+def sort_box_points(points):
+    """
+
+    Args:
+        points (): shape of [4, 2]
+
+    Returns:
+
+    """
+    points = sorted(list(points), key=lambda x: x[0])
+    index_1, index_2, index_3, index_4 = 0, 1, 2, 3
+    if points[1][1] > points[0][1]:
+        index_1 = 0
+        index_4 = 1
+    else:
+        index_1 = 1
+        index_4 = 0
+    if points[3][1] > points[2][1]:
+        index_2 = 2
+        index_3 = 3
+    else:
+        index_2 = 3
+        index_3 = 2
+
+    box = [points[index_1], points[index_2], points[index_3], points[index_4]]
+    return box
+
+
+def sorted_boxes(dt_boxes: List[Tuple[np.ndarray, float]]) -> List[np.ndarray]:
+    """
+    Sort text boxes in order from top to bottom, left to right
+    args:
+        dt_boxes(array): list of (box, score), box with shape [4, 2]
+    return:
+        sorted boxes(array): list of (box, score), box with shape [4, 2]
+    """
+    num_boxes = len(dt_boxes)
+    _boxes = sorted(dt_boxes, key=lambda x: (x[0][0][1], x[0][0][0]))
+    # _boxes = list(sorted_boxes)
+
+    for i in range(num_boxes - 1):
+        if abs(_boxes[i + 1][0][0][1] - _boxes[i][0][0][1]) < 10 and (
+            _boxes[i + 1][0][0][0] < _boxes[i][0][0][0]
+        ):
+            tmp = _boxes[i]
+            _boxes[i] = _boxes[i + 1]
+            _boxes[i + 1] = tmp
+    return _boxes
 
 
 def imread(img_fp) -> np.ndarray:
