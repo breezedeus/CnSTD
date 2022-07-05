@@ -470,7 +470,6 @@ def plot_for_debugging(rotated_img, one_out, box_score_thresh, prefix_fp):
         if i >= len(crops):
             break
         axi.imshow(crops[i])
-    plt.tight_layout(True)
     crop_fp = '%s-crops.png' % prefix_fp
     plt.savefig(crop_fp)
     logger.info('cropped results are save to file %s' % crop_fp)
