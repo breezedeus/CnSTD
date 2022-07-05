@@ -28,7 +28,7 @@ from typing import Union, Optional, Any, List, Dict
 import cv2
 import numpy as np
 
-from ..consts import MODEL_VERSION, ANGLE_CLF_MODELS
+from ..consts import MODEL_VERSION, ANGLE_CLF_MODELS, ANGLE_CLF_SPACE
 from ..utils import data_dir, get_model_file
 from .postprocess import build_post_process
 from .utility import (
@@ -78,7 +78,7 @@ class AngleClassifier(object):
             self._model_fp = model_fp
             return
 
-        self._model_dir = os.path.join(root, MODEL_VERSION)
+        self._model_dir = os.path.join(root, MODEL_VERSION, ANGLE_CLF_SPACE)
         model_fp = os.path.join(self._model_dir, '%s_infer.onnx' % self._model_name)
         if not os.path.isfile(model_fp):
             logger.warning('can not find model file %s' % model_fp)
@@ -87,7 +87,7 @@ class AngleClassifier(object):
                     '%s is not a downloadable model'
                     % ((self._model_name, self._model_backend),)
                 )
-            url = ANGLE_CLF_MODELS[(self._model_name, self._model_backend)]
+            url = ANGLE_CLF_MODELS[(self._model_name, self._model_backend)]['url']
 
             get_model_file(url, self._model_dir)  # download the .zip file and unzip
 

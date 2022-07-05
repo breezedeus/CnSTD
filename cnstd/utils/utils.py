@@ -16,6 +16,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+
 import os
 import hashlib
 import requests
@@ -293,9 +294,9 @@ def pil_to_numpy(img: Image.Image) -> np.ndarray:
     return np.asarray(img.convert('RGB'), dtype='float32').transpose((2, 0, 1))
 
 
-def transform_rbbox_to_bbox(self, x, y, w, h, alpha):
-    points = cv2.boxPoints((x, y), (w, h), alpha)
-    return sort_box_points(points)
+def transform_rbbox_to_bbox(x, y, w, h, alpha):
+    points = cv2.boxPoints(((x, y), (w, h), alpha))
+    return np.array(sort_box_points(points))
 
 
 def sort_box_points(points):
@@ -478,14 +479,8 @@ def plot_for_debugging(rotated_img, one_out, box_score_thresh, prefix_fp):
         box, score = info['box'], info['score']
         if score < box_score_thresh:  # score < 0.5
             continue
-        if len(box) == 5:  # rotated_box == True
-            x, y, w, h, alpha = box.astype('float32')
-            box = cv2.boxPoints(((x, y), (w, h), alpha))
-            box = np.int0(box)
-            cv2.drawContours(rotated_img, [box], 0, (255, 0, 0), 2)
-        else:  # len(box) == 4, rotated_box == False
-            xmin, ymin, xmax, ymax = box.astype('int')
-            cv2.rectangle(rotated_img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
+        box = box.astype(int).reshape(-1, 2)
+        cv2.polylines(rotated_img, [box], True, color=(255, 0, 0), thickness=2)
     result_fp = '%s-result.png' % prefix_fp
     imsave(rotated_img, result_fp, normalized=False)
     logger.info('boxes results are save to file %s' % result_fp)

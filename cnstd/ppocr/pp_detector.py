@@ -252,8 +252,8 @@ class PPDetector(object):
                 raise FileNotFoundError(img)
             return cv2.imread(img, cv2.IMREAD_COLOR)
         elif isinstance(img, Image.Image):
-            return np.asarray(img.convert('BGR'), dtype='float32')
-        elif isinstance(img, np.ndarray):
+            img = np.asarray(img.convert('RGB'), dtype='float32')
+        if isinstance(img, np.ndarray):
             return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         else:
             raise TypeError('type %s is not supported now' % str(type(img)))

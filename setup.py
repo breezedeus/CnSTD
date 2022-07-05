@@ -51,6 +51,8 @@ required = [
     'Polygon3',
     'pyclipper',
     'matplotlib',
+    "onnx",
+    "onnxruntime",
 ]
 
 extras_require = {

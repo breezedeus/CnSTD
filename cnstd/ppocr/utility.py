@@ -179,7 +179,7 @@ def get_output_tensors(args, mode, predictor):
 def draw_e2e_res(dt_boxes, strs, img_path):
     src_im = cv2.imread(img_path)
     for box, str in zip(dt_boxes, strs):
-        box = box.astype(np.int32).reshape((-1, 1, 2))
+        box = box.astype(int).reshape((-1, 1, 2))
         cv2.polylines(src_im, [box], True, color=(255, 255, 0), thickness=2)
         cv2.putText(
             src_im,
@@ -196,7 +196,7 @@ def draw_e2e_res(dt_boxes, strs, img_path):
 def draw_text_det_res(dt_boxes, img_path):
     src_im = cv2.imread(img_path)
     for box in dt_boxes:
-        box = np.array(box).astype(np.int32).reshape(-1, 2)
+        box = np.array(box).astype(int).reshape(-1, 2)
         cv2.polylines(src_im, [box], True, color=(255, 255, 0), thickness=2)
     return src_im
 
@@ -239,7 +239,7 @@ def draw_ocr(
     for i in range(box_num):
         if scores is not None and (scores[i] < drop_score or math.isnan(scores[i])):
             continue
-        box = np.reshape(np.array(boxes[i]), [-1, 1, 2]).astype(np.int64)
+        box = np.reshape(np.array(boxes[i]), [-1, 1, 2]).astype(int)
         image = cv2.polylines(np.array(image), [box], True, (255, 0, 0), 2)
     if txts is not None:
         img = np.array(resize_img(image, input_size=600))
@@ -368,7 +368,7 @@ def text_visual(
         ), "The number of txts and corresponding scores must match"
 
     def create_blank_img():
-        blank_img = np.ones(shape=[img_h, img_w], dtype=np.int8) * 255
+        blank_img = np.ones(shape=[img_h, img_w], dtype=int) * 255
         blank_img[:, img_w - 1 :] = 0
         blank_img = Image.fromarray(blank_img).convert("RGB")
         draw_txt = ImageDraw.Draw(blank_img)
@@ -438,7 +438,7 @@ def draw_boxes(image, boxes, scores=None, drop_score=0.5):
     for (box, score) in zip(boxes, scores):
         if score < drop_score:
             continue
-        box = np.reshape(np.array(box), [-1, 1, 2]).astype(np.int64)
+        box = np.reshape(np.array(box), [-1, 1, 2]).astype(int)
         image = cv2.polylines(np.array(image), [box], True, (255, 0, 0), 2)
     return image
 

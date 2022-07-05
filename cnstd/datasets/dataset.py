@@ -27,6 +27,7 @@ from PIL import Image
 import numpy as np
 import pytorch_lightning as pt
 import torch
+from PIL.Image import Resampling
 from torch.utils.data import DataLoader, Dataset
 
 from ..transforms import Resize, random_crop
@@ -200,7 +201,7 @@ class StdDataset(Dataset):
         else:
             ratio = new_w / ori_w
             new_size = (new_w, int(new_w * actual_ratio))  # W, H
-        return img.resize(new_size, Image.BILINEAR), ratio
+        return img.resize(new_size, Resampling.BILINEAR), ratio
 
     def _resize(self, img: np.ndarray) -> Tuple[np.ndarray, Tuple[float, float]]:
         """

@@ -226,6 +226,7 @@ class AvailableModels(object):
 
 AVAILABLE_MODELS = AvailableModels()
 
+ANGLE_CLF_SPACE = 'angle_clf'
 ANGLE_CLF_MODELS = {
     ('ch_ppocr_mobile_v2.0_cls', 'onnx'): {
         'url': ROOT_URL + 'ch_ppocr_mobile_v2.0_cls_infer-onnx.zip'

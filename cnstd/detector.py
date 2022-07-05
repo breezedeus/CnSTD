@@ -199,9 +199,7 @@ class Detector(object):
             List[Dict], 每个Dict对应一张图片的检测结果。Dict 中包含以下 keys：
                * 'rotated_angle': float, 整张图片旋转的角度。只有 auto_rotate_whole_image==True 才可能非0。
                * 'detected_texts': list, 每个元素存储了检测出的一个框的信息，使用词典记录，包括以下几个值：
-                   'box'：检测出的文字对应的矩形框；4个 (rotated_bbox==False) 或者 5个 (rotated_bbox==True) 元素;
-                       * 4个元素时的含义：对应 rotated_bbox==False，取值为：[xmin, ymin, xmax, ymax] ;
-                       * 5个元素时的含义：对应 rotated_bbox==True，取值为：[x, y, w, h, angle]。
+                   'box'：检测出的文字对应的矩形框；np.ndarray, shape: (4, 2)，对应 box 4个点的坐标值 (x, y) ;
                    'score'：得分；float 类型；分数越高表示越可靠；
                    'cropped_img'：对应'box'中的图片patch（RGB格式），会把倾斜的图片旋转为水平。
                           np.ndarray 类型，shape: (height, width, 3), 取值范围：[0, 255]；
