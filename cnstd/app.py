@@ -31,14 +31,14 @@ try:
     from cnocr import CnOcr
     from cnocr.consts import AVAILABLE_MODELS
 
-    cnocr_avalable = True
+    cnocr_available = True
 except ModuleNotFoundError:
-    cnocr_avalable = False
+    cnocr_available = False
 
 
 @st.cache(allow_output_mutation=True)
 def get_ocr_model(ocr_model_name):
-    if not cnocr_avalable:
+    if not cnocr_available:
         return None
     model_name, model_backend = ocr_model_name
     return CnOcr(model_name, model_backend=model_backend)
@@ -46,7 +46,8 @@ def get_ocr_model(ocr_model_name):
 
 @st.cache(allow_output_mutation=True)
 def get_std_model(std_model_name, rotated_bbox):
-    return CnStd(std_model_name, rotated_bbox=rotated_bbox,)
+    model_name, model_backend = std_model_name
+    return CnStd(model_name, model_backend=model_backend, rotated_bbox=rotated_bbox)
 
 
 def visualize_std(img, std_out, box_score_thresh):
@@ -79,9 +80,10 @@ def visualize_ocr(ocr, std_out):
 
 def main():
     st.sidebar.header('CnStd 设置')
-    models = list(STD_MODELS.keys())
+    models = list(STD_MODELS.all_models())
+    models.sort()
     std_model_name = st.sidebar.selectbox(
-        '模型名称', models, index=models.index('db_shufflenet_v2_small')
+        '模型名称', models, index=models.index(('db_shufflenet_v2_small', 'pytorch'))
     )
     rotated_bbox = st.sidebar.checkbox('是否检测带角度文本框', value=True)
     st.sidebar.subheader('resize 后图片大小')
@@ -98,7 +100,7 @@ def main():
     )
     std = get_std_model(std_model_name, rotated_bbox)
 
-    if cnocr_avalable:
+    if cnocr_available:
         st.sidebar.markdown("""---""")
         st.sidebar.header('CnOcr 设置')
         all_models = list(AVAILABLE_MODELS.all_models())
@@ -127,7 +129,7 @@ def main():
         )
         visualize_std(img, std_out, box_score_thresh)
 
-        if cnocr_avalable:
+        if cnocr_available:
             visualize_ocr(ocr, std_out)
     except Exception as e:
         st.error(e)

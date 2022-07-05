@@ -23,6 +23,7 @@ import json
 import time
 import glob
 
+from pprint import pformat
 import numpy as np
 import torchvision.transforms as T
 
@@ -288,7 +289,7 @@ def predict(
             '%d cropped text boxes are recognized by cnocr, total time cost: %f, mean time cost: %f'
             % (len(cropped_img_list), time_cost, time_cost / len(cropped_img_list))
         )
-        logger.info('ocr result: %s' % str(ocr_out))
+        logger.info('ocr result: \n%s' % pformat(ocr_out))
     except ModuleNotFoundError as e:
         logger.warning(e)
 
