@@ -32,7 +32,7 @@ try:
     from cnocr.consts import AVAILABLE_MODELS
 
     cnocr_available = True
-except ModuleNotFoundError:
+except Exception:
     cnocr_available = False
 
 

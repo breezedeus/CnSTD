@@ -229,7 +229,7 @@ class PPDetector(object):
             img_crop = get_rotate_crop_image(ori_im, deepcopy(box))
             img_crop = cv2.cvtColor(img_crop, cv2.COLOR_BGR2RGB)
             detected_results.append(
-                {'box': box, 'score': score, 'cropped_img': img_crop}
+                {'box': box, 'score': score, 'cropped_img': img_crop.astype(int)}
             )
 
         return dict(rotated_angle=0.0, detected_texts=detected_results)
