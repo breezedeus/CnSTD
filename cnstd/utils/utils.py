@@ -414,6 +414,39 @@ def get_resized_ratio(
         return new_h / ori_h, new_w / ori_w
 
 
+def get_resized_shape(
+    ori_hw: Tuple[int, int],
+    target_hw: Union[int, Tuple[int, int]],
+    preserve_aspect_ratio: bool,
+    divided_by: int = 32,
+) -> Tuple[int, int]:
+    """
+    获得满足要求的新图片尺寸： (height, weight)
+    Args:
+        ori_hw ():
+        target_hw ():
+        preserve_aspect_ratio ():
+        divided_by (int): `>0` 表示最终尺寸能被此数整除，`<0` 则表示无此要求。默认为 `32`
+
+    Returns:
+
+    """
+    if isinstance(target_hw, int):
+        target_hw = (target_hw, target_hw)
+    ratio = get_resized_ratio(
+        ori_hw, target_hw, preserve_aspect_ratio=preserve_aspect_ratio
+    )
+    new_hw = (max(1, int(ori_hw[0] * ratio[0])), max(1, int(ori_hw[1] * ratio[1])))
+
+    if divided_by <= 0:
+        return new_hw
+
+    def calibrate(ori):
+        return max(int(round(ori / divided_by) * divided_by), divided_by)
+
+    return calibrate(new_hw[0]), calibrate(new_hw[1])
+
+
 def load_model_params(model, param_fp, device='cpu'):
     checkpoint = torch.load(param_fp, map_location=device)
     state_dict = checkpoint['state_dict']

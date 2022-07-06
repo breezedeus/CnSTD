@@ -21,7 +21,7 @@
 import os
 import time
 from copy import deepcopy
-from typing import Union, Optional, Any, List, Dict
+from typing import Union, Optional, Any, List, Dict, Tuple
 from pathlib import Path
 import logging
 import json
@@ -32,7 +32,7 @@ import numpy as np
 
 from .consts import PP_SPACE
 from ..consts import MODEL_VERSION, AVAILABLE_MODELS
-from ..utils import data_dir, get_model_file, sorted_boxes
+from ..utils import data_dir, get_model_file, sorted_boxes, get_resized_shape
 from .utility import (
     get_image_file_list,
     check_and_read_gif,
@@ -43,6 +43,7 @@ from .utility import (
 )
 from .opt_utils import transform, create_operators
 from .postprocess import build_post_process
+from .img_operators import DetResizeForTest
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,6 @@ class PPDetector(object):
         root: Union[str, Path] = data_dir(),
         bin_thresh: float = 0.3,
         box_thresh: float = 0.6,
-        limit_side_len=960,
         limit_type='max',
         unclip_ratio=1.5,
         use_dilation=False,
@@ -85,6 +85,7 @@ class PPDetector(object):
             self.config,
         ) = create_predictor(self._model_fp, 'det', logger)
 
+        limit_side_len = 960  # 这个值没用了， `detect()` 时用的是 `image_shape`
         pre_process_list = [
             {
                 'DetResizeForTest': {
@@ -131,6 +132,7 @@ class PPDetector(object):
             get_model_file(url, self._model_dir)  # download the .zip file and unzip
 
         self._model_fp = model_fp
+        logger.info('use model: %s' % self._model_fp)
 
     def order_points_clockwise(self, pts):
         """
@@ -185,6 +187,8 @@ class PPDetector(object):
             np.ndarray,
             List[Union[str, Path, Image.Image, np.ndarray]],
         ],
+        resized_shape: Union[int, Tuple[int, int]] = (768, 768),
+        preserve_aspect_ratio: bool = True,
         box_score_thresh: float = 0.3,
         min_box_size: int = 4,
         **kwargs,
@@ -192,16 +196,34 @@ class PPDetector(object):
         outs = []
         for img in img_list:
             img = self._preprocess_images(img)
-            outs.append(self.detect_one(img, box_score_thresh, min_box_size))
+            outs.append(
+                self.detect_one(
+                    img,
+                    resized_shape,
+                    preserve_aspect_ratio,
+                    box_score_thresh,
+                    min_box_size,
+                )
+            )
 
         return outs
 
     def detect_one(
-        self, img, box_score_thresh: float = 0.6, min_box_size: int = 4,
+        self,
+        img: np.ndarray,
+        resized_shape: Union[int, Tuple[int, int]],
+        preserve_aspect_ratio: bool,
+        box_score_thresh: float = 0.6,
+        min_box_size: int = 4,
     ):
         ori_im = img.copy()
         data = {'image': img}
 
+        if isinstance(self.preprocess_op[0], DetResizeForTest):
+            self.preprocess_op[0].resize_type = 1
+            self.preprocess_op[0].image_shape = get_resized_shape(
+                img.shape[:2], resized_shape, preserve_aspect_ratio, divided_by=32
+            )
         data = transform(data, self.preprocess_op)
         img, shape_list = data
         if img is None:
@@ -229,7 +251,7 @@ class PPDetector(object):
             img_crop = get_rotate_crop_image(ori_im, deepcopy(box))
             img_crop = cv2.cvtColor(img_crop, cv2.COLOR_BGR2RGB)
             detected_results.append(
-                {'box': box, 'score': score, 'cropped_img': img_crop.astype(int)}
+                {'box': box, 'score': score, 'cropped_img': img_crop.astype('uint8')}
             )
 
         return dict(rotated_angle=0.0, detected_texts=detected_results)

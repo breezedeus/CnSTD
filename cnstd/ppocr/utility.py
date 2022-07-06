@@ -481,7 +481,7 @@ def get_rotate_crop_image(img, points):
         borderMode=cv2.BORDER_REPLICATE,
         flags=cv2.INTER_CUBIC,
     )
-    dst_img = np.clip(dst_img, 0.0, 255.0)
+    dst_img = np.clip(dst_img, 0.0, 255.0).astype('float32')
     dst_img_height, dst_img_width = dst_img.shape[0:2]
     if dst_img_height * 1.0 / dst_img_width >= 1.5:
         dst_img = np.rot90(dst_img)

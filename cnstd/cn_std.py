@@ -20,6 +20,7 @@
 from __future__ import absolute_import
 
 import logging
+import traceback
 from pathlib import Path
 from typing import Tuple, List, Dict, Union, Any, Optional
 
@@ -42,13 +43,13 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name: str = 'db_shufflenet_v2_small',
+        model_name: str = 'ch_PP-OCRv3_det',
         *,
         auto_rotate_whole_image: bool = False,
         rotated_bbox: bool = True,
         context: str = 'cpu',
         model_fp: Optional[str] = None,
-        model_backend: str = 'pytorch',  # ['pytorch', 'onnx']
+        model_backend: str = 'onnx',  # ['pytorch', 'onnx']
         root: Union[str, Path] = data_dir(),
         use_angle_clf: bool = False,
         angle_clf_configs: Optional[dict] = None,
@@ -56,13 +57,13 @@ class CnStd(object):
     ):
         """
         Args:
-            model_name: 模型名称。默认为 'db_shufflenet_v2_small'
+            model_name: 模型名称。默认为 'ch_PP-OCRv3_det'
             auto_rotate_whole_image: 是否自动对整张图片进行旋转调整。默认为False
             rotated_bbox: 是否支持检测带角度的文本框；默认为 True，表示支持；取值为 False 时，只检测水平或垂直的文本
             context: 'cpu', or 'gpu'。表明预测时是使用CPU还是GPU。默认为CPU
             model_fp: 如果不使用系统自带的模型，可以通过此参数直接指定所使用的模型文件（'.ckpt' 文件）
             model_backend (str): 'pytorch', or 'onnx'。表明预测时是使用 PyTorch 版本模型，还是使用 ONNX 版本模型。
-                同样的模型，ONNX 版本的预测速度一般是 PyTorch 版本的2倍左右。默认为 'pytorch'。
+                同样的模型，ONNX 版本的预测速度一般是 PyTorch 版本的2倍左右。默认为 'onnx'。
             root: 模型文件所在的根目录。
                 Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.0/db_resnet18`
                 Windows下默认值为 `C:/Users/<username>/AppData/Roaming/cnstd`。
@@ -74,6 +75,17 @@ class CnStd(object):
                 具体可参考类 `AngleClassifier` 的说明
         """
         self.space = AVAILABLE_MODELS.get_space(model_name, model_backend)
+        if self.space is None:
+            logger.warning(
+                'no available model is found for name %s and backend %s'
+                % (model_name, model_backend)
+            )
+            model_backend = 'onnx' if model_backend == 'pytorch' else 'pytorch'
+            logger.warning(
+                'trying to use name %s and backend %s' % (model_name, model_backend)
+            )
+            self.space = AVAILABLE_MODELS.get_space(model_name, model_backend)
+
         if self.space == AVAILABLE_MODELS.CNSTD_SPACE:
             det_cls = Detector
         elif self.space == PP_SPACE:
@@ -108,7 +120,7 @@ class CnStd(object):
             np.ndarray,
             List[Union[str, Path, Image.Image, np.ndarray]],
         ],
-        resized_shape: Tuple[int, int] = (768, 768),
+        resized_shape: Union[int, Tuple[int, int]] = (768, 768),
         preserve_aspect_ratio: bool = True,
         min_box_size: int = 8,
         box_score_thresh: float = 0.3,
@@ -120,8 +132,9 @@ class CnStd(object):
         Args:
             img_list: 支持对单个图片或者多个图片（列表）的检测。每个值可以是图片路径，或者已经读取进来 PIL.Image.Image 或 np.ndarray,
                 格式应该是 RGB 3通道，shape: (height, width, 3), 取值：[0, 255]
-            resized_shape: (height, width), 检测前，先把原始图片resize到此大小。默认为 `(768, 768)`。
-                注：其中取值必须都能整除32。这个取值对检测结果的影响较大，可以针对自己的应用多尝试几组值，再选出最优值。
+            resized_shape: `int` or `tuple`, `tuple` 含义为 (height, width), `int` 则表示高宽都为此值；
+                检测前，先把原始图片resize到接近此大小（只是接近，未必相等）。默认为 `(768, 768)`。
+                注：这个取值对检测结果的影响较大，可以针对自己的应用多尝试几组值，再选出最优值。
                     例如 (512, 768), (768, 768), (768, 1024)等。
             preserve_aspect_ratio: 对原始图片resize时是否保持高宽比不变。默认为 `True`。
             min_box_size: 如果检测出的文本框高度或者宽度低于此值，此文本框会被过滤掉。默认为 `8`，也即高或者宽低于 `8` 的文本框会被过滤去掉。
@@ -162,7 +175,7 @@ class CnStd(object):
 
         outs = self.det_model.detect(
             img_list,
-            resized_shape=resized_shape,
+            resized_shape=calibrate_resized_shape(resized_shape),
             preserve_aspect_ratio=preserve_aspect_ratio,
             min_box_size=min_box_size,
             box_score_thresh=box_score_thresh,
@@ -172,8 +185,22 @@ class CnStd(object):
         if self.use_angle_clf:
             for out in outs:
                 crop_img_list = [info['cropped_img'] for info in out['detected_texts']]
-                crop_img_list, _ = self.angle_clf(crop_img_list)
-                for info, crop_img in zip(out['detected_texts'], crop_img_list):
-                    info['cropped_img'] = crop_img
+                try:
+                    crop_img_list, angle_list = self.angle_clf(crop_img_list)
+                    for info, crop_img in zip(out['detected_texts'], crop_img_list):
+                        info['cropped_img'] = crop_img
+                except Exception as e:
+                    logger.info(traceback.format_exc())
+                    logger.info(e)
 
         return outs[0] if single else outs
+
+
+def calibrate_resized_shape(resized_shape):
+    if isinstance(resized_shape, int):
+        resized_shape = (resized_shape, resized_shape)
+
+    def calibrate(ori):
+        return max(int(round(ori / 32) * 32), 32)
+
+    return calibrate(resized_shape[0]), calibrate(resized_shape[1])

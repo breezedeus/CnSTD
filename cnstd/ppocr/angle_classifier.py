@@ -92,6 +92,7 @@ class AngleClassifier(object):
             get_model_file(url, self._model_dir)  # download the .zip file and unzip
 
         self._model_fp = model_fp
+        logger.info('use model: %s' % self._model_fp)
 
     def resize_norm_img(self, img):
         imgC, imgH, imgW = self.clf_image_shape
