@@ -1,6 +1,13 @@
 # Release Notes
 
 
+# Update 2022.07.07：发布 cnstd V1.2
+
+主要变更：
+* 加入了对 [**PaddleOCR**](https://github.com/PaddlePaddle/PaddleOCR) 检测模型的支持；
+* 部分调整了检测结果中 `box` 的表达方式，统一为 `4` 个点的坐标值；
+* 修复了已知bugs。
+ 
 
 # Update 2022.05.27：发布 cnstd V1.1.2
 
