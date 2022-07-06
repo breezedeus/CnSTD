@@ -81,7 +81,7 @@ cnstd 从 **V1.2** 开始，可直接使用的模型包含两类：1）cnstd 自
 
 首次使用 **cnstd** 时，系统会自动下载zip格式的模型压缩文件，并存放于 `~/.cnstd`目录（Windows下默认路径为 `C:\Users\<username>\AppData\Roaming\cnstd`）。下载速度超快。下载后的zip文件代码会自动对其解压，然后把解压后的模型相关目录放于`~/.cnstd/1.2`目录中。
 
-如果系统无法自动成功下载zip文件，则需要手动从 [百度云盘](https://pan.baidu.com/s/11_83ydAwJ1u8RnyyZtBKjw)（提取码为 `56ji`）下载对应的zip文件并把它存放于 `~/.cnstd/1.2`（Windows下为 `C:\Users\<username>\AppData\Roaming\cnstd\1.2`）目录中。模型也可从 **[cnstd-cnocr-models](https://huggingface.co/breezedeus/cnstd-cnocr-models)** 中下载。放置好zip文件后，后面的事代码就会自动执行了。
+如果系统无法自动成功下载zip文件，则需要手动从 [百度云盘](https://pan.baidu.com/s/1zDMzArCDrrXHWL0AWxwYQQ?pwd=nstd)（提取码为 `nstd`）下载对应的zip文件并把它存放于 `~/.cnstd/1.2`（Windows下为 `C:\Users\<username>\AppData\Roaming\cnstd\1.2`）目录中。模型也可从 **[cnstd-cnocr-models](https://huggingface.co/breezedeus/cnstd-cnocr-models)** 中下载。放置好zip文件后，后面的事代码就会自动执行了。
 
 ### 图片预测
 
@@ -168,9 +168,9 @@ class CnStd(object):
 
 - `resized_shape`: `int` or `tuple`, `tuple` 含义为 `(height, width)`, `int` 则表示高宽都为此值；  
    检测前，先把原始图片resize到接近此大小（只是接近，未必相等）。默认为 `(768, 768)`。
-
+  
   > **Note** **（注意）**
-  > 这个取值对检测结果的影响较大，可以针对自己的应用多尝试几组值，再选出最优值。例如 `(512, 768)`, `(768, 768)`, `(768, 1024)`等。
+  > > 这个取值对检测结果的影响较大，可以针对自己的应用多尝试几组值，再选出最优值。例如 `(512, 768)`, `(768, 768)`, `(768, 1024)`等。
 
 - `preserve_aspect_ratio`: 对原始图片 resize 时是否保持高宽比不变。默认为 `True`。
 
