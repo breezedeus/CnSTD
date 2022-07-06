@@ -45,9 +45,14 @@ def get_ocr_model(ocr_model_name):
 
 
 @st.cache(allow_output_mutation=True)
-def get_std_model(std_model_name, rotated_bbox):
+def get_std_model(std_model_name, rotated_bbox, use_angle_clf):
     model_name, model_backend = std_model_name
-    return CnStd(model_name, model_backend=model_backend, rotated_bbox=rotated_bbox)
+    return CnStd(
+        model_name,
+        model_backend=model_backend,
+        rotated_bbox=rotated_bbox,
+        use_angle_clf=use_angle_clf,
+    )
 
 
 def visualize_std(img, std_out, box_score_thresh):
@@ -83,22 +88,20 @@ def main():
     models = list(STD_MODELS.all_models())
     models.sort()
     std_model_name = st.sidebar.selectbox(
-        '模型名称', models, index=models.index(('db_shufflenet_v2_small', 'pytorch'))
+        '模型名称', models, index=models.index(('ch_PP-OCRv3_det', 'onnx'))
     )
     rotated_bbox = st.sidebar.checkbox('是否检测带角度文本框', value=True)
-    st.sidebar.subheader('resize 后图片大小')
-    height = st.sidebar.select_slider(
-        'height', options=[384, 512, 768, 896, 1024], value=768
-    )
-    width = st.sidebar.select_slider(
-        'width', options=[384, 512, 768, 896, 1024], value=768
-    )
-    preserve_aspect_ratio = st.sidebar.checkbox('resize 时是否等比例缩放', value=True)
-    st.sidebar.subheader('检测分数阈值')
+    use_angle_clf = st.sidebar.checkbox('是否使用角度预测模型校正文本框', value=False)
+    st.sidebar.subheader('resize 后图片（长边）大小')
+    new_size = st.sidebar.slider('高宽尺寸', min_value=124, max_value=4096, value=768)
+    st.sidebar.subheader('检测参数')
     box_score_thresh = st.sidebar.slider(
-        '（低于阈值的结果会被过滤掉）', min_value=0.05, max_value=0.95, value=0.3
+        '得分阈值（低于阈值的结果会被过滤掉）', min_value=0.05, max_value=0.95, value=0.3
     )
-    std = get_std_model(std_model_name, rotated_bbox)
+    min_box_size = st.sidebar.slider(
+        '框大小阈值（更小的文本框会被过滤掉）', min_value=4, max_value=50, value=10
+    )
+    std = get_std_model(std_model_name, rotated_bbox, use_angle_clf)
 
     if cnocr_available:
         st.sidebar.markdown("""---""")
@@ -123,9 +126,10 @@ def main():
 
         std_out = std.detect(
             img,
-            resized_shape=(height, width),
-            preserve_aspect_ratio=preserve_aspect_ratio,
+            resized_shape=new_size,
+            preserve_aspect_ratio=True,
             box_score_thresh=box_score_thresh,
+            min_box_size=min_box_size,
         )
         visualize_std(img, std_out, box_score_thresh)
 
