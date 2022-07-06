@@ -170,8 +170,7 @@ class CnStd(object):
    检测前，先把原始图片resize到接近此大小（只是接近，未必相等）。默认为 `(768, 768)`。
   
   > **Note** **（注意）**
-  > 
-  > > 这个取值对检测结果的影响较大，可以针对自己的应用多尝试几组值，再选出最优值。例如 `(512, 768)`, `(768, 768)`, `(768, 1024)`等。
+  > 这个取值对检测结果的影响较大，可以针对自己的应用多尝试几组值，再选出最优值。例如 `(512, 768)`, `(768, 768)`, `(768, 1024)`等。
 
 - `preserve_aspect_ratio`: 对原始图片 resize 时是否保持高宽比不变。默认为 `True`。
 
@@ -274,10 +273,11 @@ Usage: cnstd predict [OPTIONS]
   预测单个文件，或者指定目录下的所有图片
 
 Options:
-  -m, --model-name [db_resnet50|db_resnet34|db_resnet18|db_mobilenet_v3|db_mobilenet_v3_small|db_shufflenet_v2|db_shufflenet_v2_small|db_shufflenet_v2_tiny]
-                                  模型名称。默认值为 `db_shufflenet_v2_small`
-  --model-epoch INTEGER           model epoch。默认为 `None`，表示使用系统自带的预训练模型
-  -p, --pretrained-model-fp TEXT  导入的训练好的模型，作为初始模型。默认为 `None`，表示使用系统自带的预训练模型
+  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|db_shufflenet_v2_tiny|en_PP-OCRv3_det]
+                                  模型名称。默认值为 db_shufflenet_v2_small
+  -b, --model-backend [pytorch|onnx]
+                                  模型类型。默认值为 `onnx`
+  -p, --pretrained-model-fp TEXT  使用训练好的模型。默认为 `None`，表示使用系统自带的预训练模型
   -r, --rotated-bbox              是否检测带角度（非水平和垂直）的文本框。默认为 `True`
   --resized-shape TEXT            格式："height,width";
                                   预测时把图片resize到此大小再进行预测。两个值都需要是32的倍数。默认为
@@ -286,7 +286,9 @@ Options:
   --box-score-thresh FLOAT        检测结果只保留分数大于此值的文本框。默认值为 `0.3`
   --preserve-aspect-ratio BOOLEAN
                                   resize时是否保留图片原始比例。默认值为 `True`
-  --context TEXT                  使用cpu还是 `gpu` 运行代码，也可指定为特定gpu，如`cuda:0`。默认为 `cpu`
+  --context TEXT                  使用cpu还是 `gpu` 运行代码，也可指定为特定gpu，如`cuda:0`。默认为
+                                  `cpu`
+
   -i, --img-file-or-dir TEXT      输入图片的文件路径或者指定的文件夹
   -o, --output-dir TEXT           检测结果存放的文件夹。默认为 `./predictions`
   -h, --help                      Show this message and exit.
