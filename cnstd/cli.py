@@ -28,7 +28,7 @@ import numpy as np
 import torchvision.transforms as T
 
 from .utils import rotate_page
-from .consts import MODEL_VERSION, MODEL_CONFIGS
+from .consts import MODEL_VERSION, MODEL_CONFIGS, AVAILABLE_MODELS
 from .utils import (
     set_logger,
     data_dir,
@@ -169,11 +169,15 @@ def visualize_example(example, fp_prefix):
     )
 
 
+MODELS, _ = zip(*AVAILABLE_MODELS.all_models())
+MODELS = sorted(MODELS)
+
+
 @cli.command('predict')
 @click.option(
     '-m',
     '--model-name',
-    type=click.Choice(MODEL_CONFIGS.keys()),
+    type=click.Choice(MODELS),
     default=DEFAULT_MODEL_NAME,
     help='模型名称。默认值为 %s' % DEFAULT_MODEL_NAME,
 )
