@@ -30,8 +30,8 @@ from ..transforms import Resize
 from ..utils import (
     pil_to_numpy,
     normalize_img_array,
-    imsave,
     get_resized_ratio,
+    transform_rbbox_to_bbox,
 )
 from ..utils.repr import NestedObject
 from ..utils._utils import rotate_page, get_bitmap_angle, extract_crops, extract_rcrops
@@ -221,6 +221,13 @@ class DetectionPredictor(NestedObject):
                     continue
                 if min(crop.shape[:2]) < min_box_size:
                     continue
+                if len(box) == 4:  # (xmin, ymin, xmax, ymax)
+                    xmin, ymin, xmax, ymax = box
+                    box = np.array(
+                        [[xmin, ymin], [xmax, ymin], [xmax, ymax], [xmin, ymax]]
+                    )
+                else:
+                    box = transform_rbbox_to_bbox(*list(box))
                 one_out.append(dict(box=box, score=score, cropped_img=crop))
             results.append({'rotated_angle': angle, 'detected_texts': one_out[::-1]})
 

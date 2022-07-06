@@ -1,5 +1,5 @@
 # coding: utf-8
-# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
+# Copyright (C) 2022, [Breezedeus](https://github.com/breezedeus).
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,4 +17,17 @@
 # specific language governing permissions and limitations
 # under the License.
 
-__version__ = '1.2'
+
+MODEL_LABELS_FILE_DICT = {
+    ('ch_PP-OCRv3_det', 'onnx'): {
+        'url': 'ch_PP-OCRv3_det_infer-onnx.zip',
+    },
+    ('ch_PP-OCRv2_det', 'onnx'): {
+        'url': 'ch_PP-OCRv2_det_infer-onnx.zip',
+    },
+    ('en_PP-OCRv3_det', 'onnx'): {
+        'url': 'en_PP-OCRv3_det_infer-onnx.zip',
+    },
+}
+
+PP_SPACE = 'ppocr'

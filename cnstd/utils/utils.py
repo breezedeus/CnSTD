@@ -16,6 +16,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+
 import os
 import hashlib
 import requests
@@ -199,7 +200,7 @@ def download(url, path=None, overwrite=False, sha1_hash=None):
     return fname
 
 
-def get_model_file(model_dir):
+def get_model_file(url, model_dir):
     r"""Return location for the downloaded models on local file system.
 
     This function will download from online model zoo when model cannot be found or has mismatch.
@@ -207,6 +208,7 @@ def get_model_file(model_dir):
 
     Parameters
     ----------
+    url: str, url for downloading the model
     model_dir : str, default $CNSTD_HOME
         Location for keeping the model parameters.
 
@@ -219,14 +221,8 @@ def get_model_file(model_dir):
     par_dir = os.path.dirname(model_dir)
     os.makedirs(par_dir, exist_ok=True)
 
-    zip_file_path = model_dir + '.zip'
+    zip_file_path = os.path.join(par_dir, os.path.basename(url))
     if not os.path.exists(zip_file_path):
-        model_name = os.path.basename(model_dir)
-        if model_name not in AVAILABLE_MODELS:
-            raise NotImplementedError(
-                '%s is not an available downloaded model' % model_name
-            )
-        url = AVAILABLE_MODELS[model_name]['url']
         download(url, path=zip_file_path, overwrite=True)
     with zipfile.ZipFile(zip_file_path) as zf:
         zf.extractall(par_dir)
@@ -298,6 +294,61 @@ def pil_to_numpy(img: Image.Image) -> np.ndarray:
     return np.asarray(img.convert('RGB'), dtype='float32').transpose((2, 0, 1))
 
 
+def transform_rbbox_to_bbox(x, y, w, h, alpha):
+    points = cv2.boxPoints(((x, y), (w, h), alpha))
+    return np.array(sort_box_points(points))
+
+
+def sort_box_points(points):
+    """
+
+    Args:
+        points (): shape of [4, 2]
+
+    Returns:
+
+    """
+    points = sorted(list(points), key=lambda x: x[0])
+    index_1, index_2, index_3, index_4 = 0, 1, 2, 3
+    if points[1][1] > points[0][1]:
+        index_1 = 0
+        index_4 = 1
+    else:
+        index_1 = 1
+        index_4 = 0
+    if points[3][1] > points[2][1]:
+        index_2 = 2
+        index_3 = 3
+    else:
+        index_2 = 3
+        index_3 = 2
+
+    box = [points[index_1], points[index_2], points[index_3], points[index_4]]
+    return box
+
+
+def sorted_boxes(dt_boxes: List[Tuple[np.ndarray, float]]) -> List[np.ndarray]:
+    """
+    Sort text boxes in order from top to bottom, left to right
+    args:
+        dt_boxes(array): list of (box, score), box with shape [4, 2]
+    return:
+        sorted boxes(array): list of (box, score), box with shape [4, 2]
+    """
+    num_boxes = len(dt_boxes)
+    _boxes = sorted(dt_boxes, key=lambda x: (x[0][0][1], x[0][0][0]))
+    # _boxes = list(sorted_boxes)
+
+    for i in range(num_boxes - 1):
+        if abs(_boxes[i + 1][0][0][1] - _boxes[i][0][0][1]) < 10 and (
+            _boxes[i + 1][0][0][0] < _boxes[i][0][0][0]
+        ):
+            tmp = _boxes[i]
+            _boxes[i] = _boxes[i + 1]
+            _boxes[i + 1] = tmp
+    return _boxes
+
+
 def imread(img_fp) -> np.ndarray:
     """
     返回RGB格式的numpy数组
@@ -363,6 +414,39 @@ def get_resized_ratio(
         return new_h / ori_h, new_w / ori_w
 
 
+def get_resized_shape(
+    ori_hw: Tuple[int, int],
+    target_hw: Union[int, Tuple[int, int]],
+    preserve_aspect_ratio: bool,
+    divided_by: int = 32,
+) -> Tuple[int, int]:
+    """
+    获得满足要求的新图片尺寸： (height, weight)
+    Args:
+        ori_hw ():
+        target_hw ():
+        preserve_aspect_ratio ():
+        divided_by (int): `>0` 表示最终尺寸能被此数整除，`<0` 则表示无此要求。默认为 `32`
+
+    Returns:
+
+    """
+    if isinstance(target_hw, int):
+        target_hw = (target_hw, target_hw)
+    ratio = get_resized_ratio(
+        ori_hw, target_hw, preserve_aspect_ratio=preserve_aspect_ratio
+    )
+    new_hw = (max(1, int(ori_hw[0] * ratio[0])), max(1, int(ori_hw[1] * ratio[1])))
+
+    if divided_by <= 0:
+        return new_hw
+
+    def calibrate(ori):
+        return max(int(round(ori / divided_by) * divided_by), divided_by)
+
+    return calibrate(new_hw[0]), calibrate(new_hw[1])
+
+
 def load_model_params(model, param_fp, device='cpu'):
     checkpoint = torch.load(param_fp, map_location=device)
     state_dict = checkpoint['state_dict']
@@ -419,7 +503,6 @@ def plot_for_debugging(rotated_img, one_out, box_score_thresh, prefix_fp):
         if i >= len(crops):
             break
         axi.imshow(crops[i])
-    plt.tight_layout(True)
     crop_fp = '%s-crops.png' % prefix_fp
     plt.savefig(crop_fp)
     logger.info('cropped results are save to file %s' % crop_fp)
@@ -428,14 +511,8 @@ def plot_for_debugging(rotated_img, one_out, box_score_thresh, prefix_fp):
         box, score = info['box'], info['score']
         if score < box_score_thresh:  # score < 0.5
             continue
-        if len(box) == 5:  # rotated_box == True
-            x, y, w, h, alpha = box.astype('float32')
-            box = cv2.boxPoints(((x, y), (w, h), alpha))
-            box = np.int0(box)
-            cv2.drawContours(rotated_img, [box], 0, (255, 0, 0), 2)
-        else:  # len(box) == 4, rotated_box == False
-            xmin, ymin, xmax, ymax = box.astype('int')
-            cv2.rectangle(rotated_img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
+        box = box.astype(int).reshape(-1, 2)
+        cv2.polylines(rotated_img, [box], True, color=(255, 0, 0), thickness=2)
     result_fp = '%s-result.png' % prefix_fp
     imsave(rotated_img, result_fp, normalized=False)
     logger.info('boxes results are save to file %s' % result_fp)

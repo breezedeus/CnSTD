@@ -23,11 +23,12 @@ import json
 import time
 import glob
 
+from pprint import pformat
 import numpy as np
 import torchvision.transforms as T
 
 from .utils import rotate_page
-from .consts import MODEL_VERSION, MODEL_CONFIGS
+from .consts import MODEL_VERSION, MODEL_CONFIGS, AVAILABLE_MODELS
 from .utils import (
     set_logger,
     data_dir,
@@ -168,13 +169,24 @@ def visualize_example(example, fp_prefix):
     )
 
 
+MODELS, _ = zip(*AVAILABLE_MODELS.all_models())
+MODELS = sorted(MODELS)
+
+
 @cli.command('predict')
 @click.option(
     '-m',
     '--model-name',
-    type=click.Choice(MODEL_CONFIGS.keys()),
+    type=click.Choice(MODELS),
     default=DEFAULT_MODEL_NAME,
     help='模型名称。默认值为 %s' % DEFAULT_MODEL_NAME,
+)
+@click.option(
+    '-b',
+    '--model-backend',
+    type=click.Choice(['pytorch', 'onnx']),
+    default='onnx',
+    help='模型类型。默认值为 `onnx`',
 )
 @click.option(
     '-p',
@@ -213,6 +225,7 @@ def visualize_example(example, fp_prefix):
 )
 def predict(
     model_name,
+    model_backend,
     pretrained_model_fp,
     rotated_bbox,
     resized_shape,
@@ -225,6 +238,7 @@ def predict(
     """预测单个文件，或者指定目录下的所有图片"""
     std = CnStd(
         model_name,
+        model_backend=model_backend,
         model_fp=pretrained_model_fp,
         rotated_bbox=rotated_bbox,
         context=context,
@@ -288,7 +302,7 @@ def predict(
             '%d cropped text boxes are recognized by cnocr, total time cost: %f, mean time cost: %f'
             % (len(cropped_img_list), time_cost, time_cost / len(cropped_img_list))
         )
-        logger.info('ocr result: %s' % str(ocr_out))
+        logger.info('ocr result: \n%s' % pformat(ocr_out))
     except ModuleNotFoundError as e:
         logger.warning(e)
 
