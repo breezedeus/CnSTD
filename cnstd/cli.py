@@ -178,6 +178,13 @@ def visualize_example(example, fp_prefix):
     help='模型名称。默认值为 %s' % DEFAULT_MODEL_NAME,
 )
 @click.option(
+    '-b',
+    '--model-backend',
+    type=click.Choice(['pytorch', 'onnx']),
+    default='onnx',
+    help='模型类型。默认值为 `onnx`',
+)
+@click.option(
     '-p',
     '--pretrained-model-fp',
     type=str,
@@ -214,6 +221,7 @@ def visualize_example(example, fp_prefix):
 )
 def predict(
     model_name,
+    model_backend,
     pretrained_model_fp,
     rotated_bbox,
     resized_shape,
@@ -226,6 +234,7 @@ def predict(
     """预测单个文件，或者指定目录下的所有图片"""
     std = CnStd(
         model_name,
+        model_backend=model_backend,
         model_fp=pretrained_model_fp,
         rotated_bbox=rotated_bbox,
         context=context,
