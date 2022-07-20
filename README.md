@@ -8,7 +8,6 @@
 ![last-commit](https://img.shields.io/github/last-commit/breezedeus/cnstd)
 [![Twitter](https://img.shields.io/twitter/url?url=https%3A%2F%2Ftwitter.com%2Fbreezedeus)](https://twitter.com/breezedeus)
 
-
 </div>
 
 # cnstd
@@ -367,3 +366,13 @@ Options:
 * [x] 加入更多的训练数据。
 * [x] 加入对外部模型的支持。
 * [ ] 加入对文档结构与表格的检测
+
+
+
+## 给作者来杯咖啡
+
+开源不易，如果此项目对您有帮助，可以考虑 [给作者来杯咖啡 ☕️](https://dun.mianbaoduo.com/@breezedeus) 。
+
+---
+
+官方代码库：[https://github.com/breezedeus/cnstd](https://github.com/breezedeus/cnstd)。
