@@ -78,6 +78,14 @@ setup(
     packages=find_packages(),
     entry_points=entry_points,
     include_package_data=True,
+    data_files=[
+        (
+            '',
+            [
+                'cnstd/yolov7/yolov7-tiny.yaml',
+            ],
+        )
+    ],
     install_requires=required,
     extras_require=extras_require,
     zip_safe=False,
