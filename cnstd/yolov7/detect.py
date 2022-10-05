@@ -1,11 +1,11 @@
 # coding: utf-8
 
-import argparse
 import time
 import logging
 from pathlib import Path
 
 import cv2
+import numpy as np
 import torch
 from torch import nn
 import torch.backends.cudnn as cudnn
@@ -15,7 +15,7 @@ from cnstd.yolov7.yolo import Model
 from .consts import CATEGORIES
 from .common import Conv, DWConv
 from .datasets import LoadStreams, LoadImages
-from .general import check_img_size, check_requirements, check_imshow, non_max_suppression, apply_classifier, \
+from .general import check_img_size, check_imshow, non_max_suppression, xyxy24p, apply_classifier, \
     scale_coords, xyxy2xywh, strip_optimizer, increment_path
 from .torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 from .plots import plot_one_box
@@ -38,11 +38,8 @@ class Ensemble(nn.ModuleList):
         return y, None  # inference, train output
 
 
-def attempt_load(weights, map_location=None):
+def attempt_load(weights, cfg_fp = Path(__file__).parent / 'yolov7-tiny.yaml', map_location=None):
     # Loads an ensemble of models weights=[a,b,c] or a single model weights=[a] or weights=a
-    from pathlib import Path
-    cfg_fp = Path(__file__).parent / 'yolov7-tiny.yaml'
-
     inner_model = Model(cfg_fp, ch=3, nc=len(CATEGORIES), anchors=None).to(map_location)  # create
     state_dict = torch.load(weights[0], map_location=map_location)  # load
     inner_model.load_state_dict(state_dict)
@@ -186,8 +183,7 @@ def detect(weights, imgsz, source, view_img, device='cpu', save_img=False):
                     #     line = (cls, *xywh, conf) if opt.save_conf else (cls, *xywh)  # label format
                     #     with open(txt_path + '.txt', 'a') as f:
                     #         f.write(('%g ' * len(line)).rstrip() % line + '\n')
-                    breakpoint()
-                    one_out.append({'type': names[int(cls)], 'box': xyxy, 'score': float(conf)})
+                    one_out.append({'type': names[int(cls)], 'box': xyxy24p(xyxy, np.array), 'score': float(conf)})
 
                     if save_img or view_img:  # Add bbox to image
                         label = f'{names[int(cls)]} {conf:.2f}'
@@ -232,6 +228,7 @@ def detect(weights, imgsz, source, view_img, device='cpu', save_img=False):
 
 
 if __name__ == '__main__':
+    import argparse
     from ..utils import set_logger
     logger = set_logger()
 

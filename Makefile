@@ -9,7 +9,8 @@ predict:
 
 detect:
 	#python detect.py --weights yolov7-tiny.pt --conf 0.25 --img-size 640 --source inference/images/horses.jpg
-	python -m cnstd.yolov7.detect --no-trace --weights models/best.pt --conf 0.25 --img-size 800 --source examples/val_0646.jpg
+	#python -m cnstd.yolov7.detect --no-trace --weights models/best.pt --conf 0.25 --img-size 800 --source examples/val_0646.jpg
+	python -m cnstd.yolov7.layout_analyzer --model-fp models/best.pt --conf 0.25 --img-size 800 --source examples/val_0646.jpg
 
 demo:
 	pip install streamlit

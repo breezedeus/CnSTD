@@ -232,3 +232,11 @@ ANGLE_CLF_MODELS = {
         'url': ROOT_URL + 'ch_ppocr_mobile_v2.0_cls_infer-onnx.zip'
     }
 }
+
+LAYOUT_SPACE = 'layout'
+LAYOUT_MODELS = {
+    ('yolov7_tiny', 'pytorch'): {
+        'url': ROOT_URL + 'yolov7_tiny_layout-pytorch.zip',
+        'arch_yaml': Path(__file__).parent / 'yolov7' / 'yolov7-tiny.yaml',
+    }
+}

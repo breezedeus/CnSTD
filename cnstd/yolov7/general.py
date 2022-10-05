@@ -290,6 +290,14 @@ def xyn2xy(x, w=640, h=640, padw=0, padh=0):
     return y
 
 
+def xyxy24p(x, ret_type=torch.Tensor):
+    xmin, ymin, xmax, ymax = [float(_x) for _x in x]
+    out = [xmin, ymin, xmax, ymin, xmax, ymax, xmin, ymax]
+    if ret_type is not None:
+        return ret_type(out).reshape((4, 2))
+    return out
+
+
 def segment2box(segment, width=640, height=640):
     # Convert 1 segment label to 1 box label, applying inside-image constraint, i.e. (xy1, xy2, ...) to (xyxy)
     x, y = segment.T  # segment xy
