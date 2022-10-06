@@ -17,4 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from .detector import Detector
+from .ppocr import PPDetector
+from .yolov7.layout_analyzer import LayoutAnalyzer
+
 from .cn_std import CnStd

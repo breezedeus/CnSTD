@@ -7,10 +7,8 @@ predict:
 	cnstd predict -m $(MODEL_NAME) --model_epoch 29 --rotated-bbox --box-score-thresh 0.3 --resized-shape 768,768 \
 	--context cpu -i examples -o prediction
 
-detect:
-	#python detect.py --weights yolov7-tiny.pt --conf 0.25 --img-size 640 --source inference/images/horses.jpg
-	#python -m cnstd.yolov7.detect --no-trace --weights models/best.pt --conf 0.25 --img-size 800 --source examples/val_0646.jpg
-	python -m cnstd.yolov7.layout_analyzer --model-fp models/best.pt --conf 0.25 --img-size 800 --source examples/val_0646.jpg
+layout:
+	cnstd layout --conf-thresh 0.25 --resized-shape 800 --img-fp examples/val_0646.jpg
 
 demo:
 	pip install streamlit
@@ -19,9 +17,9 @@ demo:
 package:
 	python setup.py sdist bdist_wheel
 
-VERSION = 1.2
+VERSION = 1.2.1
 upload:
 	python -m twine upload  dist/cnstd-$(VERSION)* --verbose
 
 
-.PHONY: train predict demo package upload
+.PHONY: train predict layout demo package upload

@@ -39,11 +39,13 @@ exec(
 required = [
     'click',
     'tqdm',
+    'pyyaml',
     'unidecode',
     "torch>=1.8.0",
     "torchvision>=0.9.0",
     'numpy',
     'scipy',
+    'pandas',
     "pytorch-lightning",
     'pillow>=5.3.0',
     'opencv-python>=4.0.0',
@@ -51,6 +53,7 @@ required = [
     'Polygon3',
     'pyclipper',
     'matplotlib',
+    'seaborn',
     "onnx",
     "onnxruntime",
 ]

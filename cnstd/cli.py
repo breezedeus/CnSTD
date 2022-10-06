@@ -1,5 +1,5 @@
 # coding: utf-8
-# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
+# Copyright (C) 2022, [Breezedeus](https://github.com/breezedeus).
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -24,6 +24,7 @@ import time
 import glob
 
 from pprint import pformat
+import cv2
 import numpy as np
 import torchvision.transforms as T
 
@@ -41,8 +42,7 @@ from .utils import (
 from .datasets import StdDataModule
 from .trainer import PlTrainer, resave_model
 from .model import gen_model
-from . import CnStd
-
+from . import CnStd, LayoutAnalyzer
 
 _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
 
@@ -85,6 +85,7 @@ def train(
     model_name, index_dir, train_config_fp, resume_from_checkpoint, pretrained_model_fp
 ):
     """训练文本检测模型"""
+    logger = set_logger(log_level='DEBUG')
     train_config = json.load(open(train_config_fp))
     fpn_type = train_config.get('fpn_type', 'fpn')
     kwargs = dict(
@@ -315,6 +316,68 @@ def resave_model_file(
 ):
     """训练好的模型会存储训练状态，使用此命令去掉预测时无关的数据，降低模型大小"""
     resave_model(input_model_fp, output_model_fp, map_location='cpu')
+
+
+@cli.command('layout')
+@click.option(
+    '-m',
+    '--model-name',
+    type=str,
+    default='yolov7_tiny',
+    help='模型名称。目前仅支持 `yolov7_tiny`',
+)
+@click.option(
+    '-b',
+    '--model-backend',
+    type=click.Choice(['pytorch', 'onnx']),
+    default='pytorch',
+    help='模型类型。目前仅支持 `pytorch`',
+)
+@click.option(
+    '-p',
+    '--model-fp',
+    type=str,
+    default=None,
+    help='使用训练好的模型。默认为 `None`，表示使用系统自带的预训练模型',
+)
+@click.option('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+@click.option(
+    '--img-fp', type=str, default='./examples/val_0646.jpg', help='image file path'
+)  # file/folder, 0 for webcam
+@click.option(
+    "--resized-shape", type=int, default=800, help='分析时把图片resize到此大小再进行。默认为 `800`',
+)
+@click.option(
+    '--conf-thresh', type=float, default=0.25, help='Confidence Threshold。默认值为 `0.25`'
+)
+@click.option(
+    '--iou-thresh', type=float, default=0.45, help='IOU threshold for NMS。默认值为 `0.45`'
+)
+def layout_analyze(
+    model_name,
+    model_backend,
+    model_fp,
+    device,
+    img_fp,
+    resized_shape,
+    conf_thresh,
+    iou_thresh,
+):
+    """对给定图片进行版面分析。"""
+    analyzer = LayoutAnalyzer(
+        model_name=model_name,
+        model_backend=model_backend,
+        model_fp=model_fp,
+        device=device,
+    )
+    out = analyzer.analyze(
+        img_fp,
+        resized_shape=resized_shape,
+        conf_threshold=conf_thresh,
+        iou_threshold=iou_thresh,
+    )
+    img0 = cv2.imread(img_fp, cv2.IMREAD_COLOR)
+    analyzer.save_img(img0, out, 'out-' + os.path.basename(img_fp))
 
 
 if __name__ == '__main__':

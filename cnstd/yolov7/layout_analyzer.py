@@ -1,4 +1,22 @@
 # coding: utf-8
+# Copyright (C) 2022, [Breezedeus](https://github.com/breezedeus).
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+# Credits to: https://github.com/WongKinYiu/yolov7, forked to https://github.com/breezedeus/yolov7
 
 import os
 import logging
@@ -147,8 +165,28 @@ class LayoutAnalyzer(object):
         ],
         resized_shape: int = 800,
         box_margin: int = 2,
+        conf_threshold: float = 0.25,
+        iou_threshold: float = 0.45,
         **kwargs,
-    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+    ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
+        """
+        对指定图片（列表）进行版面分析。
+
+        Args:
+            img_list (str or list): 待识别图片或图片列表
+            resized_shape (int): 把图片resize到此大小再做分析
+            box_margin (int): 对识别出的内容框往外扩展的像素大小
+            conf_threshold (float): 分数阈值
+            iou_threshold (float): IOU阈值
+            **kwargs ():
+
+        Returns: 一张图片的结果为一个list，其中每个元素表示识别出的版面中的一个元素，包含以下信息：
+            * type: 版面元素对应的类型；可选值：`['_background_', 'Text', 'Title', 'Figure', 'Figure caption',
+                    'Table', 'Table caption', 'Header', 'Footer', 'Reference', 'Equation']` ;
+            * box: 版面元素对应的矩形框；np.ndarray, shape: (4, 2)，对应 box 4个点的坐标值 (x, y) ;
+            * score: 得分，越高表示越可信 。
+
+        """
         outs = []
         single = False
         if not isinstance(img_list, list):
@@ -157,7 +195,9 @@ class LayoutAnalyzer(object):
 
         for img in img_list:
             img, img0 = self._preprocess_images(img, resized_shape)
-            outs.append(self.analyze_one(img, img0, box_margin))
+            outs.append(
+                self._analyze_one(img, img0, box_margin, conf_threshold, iou_threshold)
+            )
 
         return outs[0] if single else outs
 
@@ -197,8 +237,8 @@ class LayoutAnalyzer(object):
         return img, img0
 
     @torch.no_grad()
-    def analyze_one(
-        self, img, img0, box_margin: int = 2,
+    def _analyze_one(
+        self, img, img0, box_margin, conf_threshold, iou_threshold,
     ):
         img = torch.from_numpy(img).to(self.device)
         img = img.float()  # uint8 to fp16/32
@@ -208,16 +248,16 @@ class LayoutAnalyzer(object):
 
         # Inference
         t1 = time_synchronized()
-        pred = self.model(img, augment=opt.augment)[0]
+        pred = self.model(img, augment=False)[0]
         t2 = time_synchronized()
 
         # Apply NMS
         pred = non_max_suppression(
             pred,
-            opt.conf_thres,
-            opt.iou_thres,
-            classes=opt.classes,
-            agnostic=opt.agnostic_nms,
+            conf_thres=conf_threshold,
+            iou_thres=iou_threshold,
+            classes=None,
+            agnostic=False,
         )
         t3 = time_synchronized()
 
@@ -253,6 +293,7 @@ class LayoutAnalyzer(object):
         return [xmin, ymin, xmax, ymax]
 
     def save_img(self, img0, one_out, save_path):
+        """可视化版面分析结果。"""
         colors = [[random.randint(0, 255) for _ in range(3)] for _ in self.categories]
         for one_box in one_out:
             _type = one_box['type']
@@ -270,68 +311,3 @@ class LayoutAnalyzer(object):
 
         cv2.imwrite(save_path, img0)
         logger.info(f" The image with the result is saved in: {save_path}")
-
-
-if __name__ == '__main__':
-    import argparse
-    from ..utils import set_logger
-
-    logger = set_logger()
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--model-fp', type=str, default='yolov7.pt', help='model.pt path(s)'
-    )
-    parser.add_argument(
-        '--weights', nargs='+', type=str, default='yolov7.pt', help='model.pt path(s)'
-    )
-    parser.add_argument(
-        '--source', type=str, default='inference/images', help='source'
-    )  # file/folder, 0 for webcam
-    parser.add_argument(
-        '--img-size', type=int, default=640, help='inference size (pixels)'
-    )
-    parser.add_argument(
-        '--conf-thres', type=float, default=0.25, help='object confidence threshold'
-    )
-    parser.add_argument(
-        '--iou-thres', type=float, default=0.45, help='IOU threshold for NMS'
-    )
-    parser.add_argument(
-        '--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu'
-    )
-    parser.add_argument('--view-img', action='store_true', help='display results')
-    parser.add_argument('--save-txt', action='store_true', help='save results to *.txt')
-    parser.add_argument(
-        '--save-conf', action='store_true', help='save confidences in --save-txt labels'
-    )
-    parser.add_argument(
-        '--nosave', action='store_true', help='do not save images/videos'
-    )
-    parser.add_argument(
-        '--classes',
-        nargs='+',
-        type=int,
-        help='filter by class: --class 0, or --class 0 2 3',
-    )
-    parser.add_argument(
-        '--agnostic-nms', action='store_true', help='class-agnostic NMS'
-    )
-    parser.add_argument('--augment', action='store_true', help='augmented inference')
-    parser.add_argument('--update', action='store_true', help='update all models')
-    parser.add_argument(
-        '--project', default='runs/detect', help='save results to project/name'
-    )
-    parser.add_argument('--name', default='exp', help='save results to project/name')
-    parser.add_argument(
-        '--exist-ok',
-        action='store_true',
-        help='existing project/name ok, do not increment',
-    )
-    opt = parser.parse_args()
-    logger.info(opt)
-
-    analyzer = LayoutAnalyzer(model_fp=opt.model_fp)
-    out = analyzer.analyze(opt.source, resized_shape=opt.img_size)
-    img0 = cv2.imread(opt.source, cv2.IMREAD_COLOR)
-    analyzer.save_img(img0, out, 'out-' + os.path.basename(opt.source))
