@@ -96,6 +96,27 @@ def attempt_load(
         return model  # return ensemble
 
 
+def sort_boxes(dt_boxes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Sort resulting boxes in order from top to bottom, left to right
+    args:
+        dt_boxes(array): list of dict, box with shape [4, 2]
+    return:
+        sorted boxes(array): list of dict, box with shape [4, 2]
+    """
+    num_boxes = len(dt_boxes)
+    _boxes = sorted(dt_boxes, key=lambda x: (x['box'][0][1], x['box'][0][0]))
+
+    for i in range(num_boxes - 1):
+        if abs(_boxes[i + 1]['box'][0][1] - _boxes[i]['box'][0][1]) < 10 and (
+                _boxes[i + 1]['box'][0][0] < _boxes[i]['box'][0][0]
+        ):
+            tmp = _boxes[i]
+            _boxes[i] = _boxes[i + 1]
+            _boxes[i + 1] = tmp
+    return _boxes
+
+
 class LayoutAnalyzer(object):
     def __init__(
         self,
@@ -154,6 +175,10 @@ class LayoutAnalyzer(object):
 
         self._model_fp = model_fp
 
+    def __call__(self, *args, **kwargs):
+        """参考函数 `self.analyze()` 。"""
+        return self.analyze(*args, **kwargs)
+
     def analyze(
         self,
         img_list: Union[
@@ -167,13 +192,12 @@ class LayoutAnalyzer(object):
         box_margin: int = 2,
         conf_threshold: float = 0.25,
         iou_threshold: float = 0.45,
-        **kwargs,
     ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
         """
         对指定图片（列表）进行版面分析。
 
         Args:
-            img_list (str or list): 待识别图片或图片列表
+            img_list (str or list): 待识别图片或图片列表；如果是 `np.ndarray`，则应该是shape为 `[H, W, 3]` 的 RGB 格式数组
             resized_shape (int): 把图片resize到此大小再做分析
             box_margin (int): 对识别出的内容框往外扩展的像素大小
             conf_threshold (float): 分数阈值
@@ -282,7 +306,7 @@ class LayoutAnalyzer(object):
                 f'Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS'
             )
 
-        return one_out
+        return sort_boxes(one_out)
 
     def _expand(self, xyxy, box_margin, shape):
         xmin, ymin, xmax, ymax = [float(_x) for _x in xyxy]
