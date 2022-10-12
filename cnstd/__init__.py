@@ -19,6 +19,6 @@
 
 from .detector import Detector
 from .ppocr import PPDetector
-from .yolov7.layout_analyzer import LayoutAnalyzer
+from .yolov7.layout_analyzer import LayoutAnalyzer, save_layout_img
 
 from .cn_std import CnStd

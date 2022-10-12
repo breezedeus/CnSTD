@@ -35,11 +35,12 @@ import numpy as np
 import pandas as pd
 import torch
 import torchvision
-import yaml
 
 # from utils.google_utils import gsutil_getsize
 # from utils.metrics import fitness
 from .torch_utils import init_torch_seeds
+
+logger = logging.getLogger(__name__)
 
 # Settings
 torch.set_printoptions(linewidth=320, precision=5, profile='long')
@@ -721,7 +722,7 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
 
         output[xi] = x[i]
         if (time.time() - t) > time_limit:
-            print(f'WARNING: NMS time limit {time_limit}s exceeded')
+            logger.warning(f'WARNING: NMS time limit {time_limit}s exceeded')
             break  # time limit exceeded
 
     return output

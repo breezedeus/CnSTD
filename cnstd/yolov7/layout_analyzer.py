@@ -41,6 +41,7 @@ from .general import (
     non_max_suppression,
     xyxy24p,
     scale_coords,
+    box_iou,
 )
 from .torch_utils import select_device, time_synchronized
 from .plots import plot_one_box
@@ -115,6 +116,29 @@ def sort_boxes(dt_boxes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             _boxes[i] = _boxes[i + 1]
             _boxes[i + 1] = tmp
     return _boxes
+
+
+def dedup_boxes(one_out, threshold):
+    def _to_iou_box(ori):
+        return torch.tensor([ori[0][0], ori[0][1], ori[2][0], ori[2][1]]).unsqueeze(0)
+
+    keep = [True] * len(one_out)
+    for idx, info in enumerate(one_out):
+        box = _to_iou_box(info['box'])
+        scores = [(idx, info['score'])]
+        for l in range(idx + 1, len(one_out)):
+            iou = float(box_iou(box, _to_iou_box(one_out[l]['box'])).squeeze())
+            if iou >= threshold:
+                scores.append((l, one_out[l]['score']))
+        if len(scores) > 1:
+            scores.sort(key = lambda x: x[1], reverse=True)
+            if scores[0][0] == idx:
+                for l, _ in scores[1:]:
+                    keep[l] = False
+            else:
+                keep[idx] = False
+
+    return [info for idx, info in enumerate(one_out) if keep[idx]]
 
 
 class LayoutAnalyzer(object):
@@ -306,7 +330,8 @@ class LayoutAnalyzer(object):
                 f'Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS'
             )
 
-        return sort_boxes(one_out)
+        one_out = sort_boxes(one_out)
+        return dedup_boxes(one_out, threshold=0.1)
 
     def _expand(self, xyxy, box_margin, shape):
         xmin, ymin, xmax, ymax = [float(_x) for _x in xyxy]
@@ -317,21 +342,28 @@ class LayoutAnalyzer(object):
         return [xmin, ymin, xmax, ymax]
 
     def save_img(self, img0, one_out, save_path):
-        """可视化版面分析结果。"""
-        colors = [[random.randint(0, 255) for _ in range(3)] for _ in self.categories]
-        for one_box in one_out:
-            _type = one_box['type']
-            conf = one_box['score']
-            box = one_box['box']
-            xyxy = [box[0, 0], box[0, 1], box[2, 0], box[2, 1]]
-            label = f'{_type} {conf:.2f}'
-            plot_one_box(
-                xyxy,
-                img0,
-                label=label,
-                color=colors[self.categories.index(_type)],
-                line_thickness=1,
-            )
+        save_layout_img(img0, self.categories, one_out, save_path)
 
-        cv2.imwrite(save_path, img0)
-        logger.info(f" The image with the result is saved in: {save_path}")
+
+def save_layout_img(img0, categories, one_out, save_path):
+    """可视化版面分析结果。"""
+    if isinstance(img0, Image.Image):
+        img0 = cv2.cvtColor(np.asarray(img0.convert('RGB')), cv2.COLOR_RGB2BGR)
+
+    colors = [[random.randint(0, 255) for _ in range(3)] for _ in categories]
+    for one_box in one_out:
+        _type = one_box['type']
+        conf = one_box['score']
+        box = one_box['box']
+        xyxy = [box[0, 0], box[0, 1], box[2, 0], box[2, 1]]
+        label = f'{_type} {conf:.2f}'
+        plot_one_box(
+            xyxy,
+            img0,
+            label=label,
+            color=colors[categories.index(_type)],
+            line_thickness=1,
+        )
+
+    cv2.imwrite(save_path, img0)
+    logger.info(f" The image with the result is saved in: {save_path}")
