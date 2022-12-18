@@ -494,6 +494,21 @@ def box_iou(box1, box2):
     return inter / (area1[:, None] + area2 - inter)  # iou = inter / (area1 + area2 - inter)
 
 
+def box_partial_overlap(box1, cond_box):
+    """ intersection / area(cand_box) """
+
+    def box_area(box):
+        # box = 4xn
+        return (box[2] - box[0]) * (box[3] - box[1])
+
+    # area1 = box_area(box1.T)
+    area2 = box_area(cond_box.T)
+
+    # inter(N,M) = (rb(N,M,2) - lt(N,M,2)).clamp(0).prod(2)
+    inter = (torch.min(box1[:, None, 2:], cond_box[:, 2:]) - torch.max(box1[:, None, :2], cond_box[:, :2])).clamp(0).prod(2)
+    return inter / (area2[:, None] + 1e-6)  # iou = inter / area2
+
+
 def wh_iou(wh1, wh2):
     # Returns the nxm IoU matrix. wh1 is nx2, wh2 is mx2
     wh1 = wh1[:, None]  # [N,1,2]
