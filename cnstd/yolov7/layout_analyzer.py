@@ -125,18 +125,21 @@ def dedup_boxes(one_out, threshold):
     keep = [True] * len(one_out)
     for idx, info in enumerate(one_out):
         box = _to_iou_box(info['box'])
-        scores = [(idx, info['score'])]
+        if not keep[idx]:
+            continue
         for l in range(idx + 1, len(one_out)):
-            iou = float(box_iou(box, _to_iou_box(one_out[l]['box'])).squeeze())
-            if iou >= threshold:
-                scores.append((l, one_out[l]['score']))
-        if len(scores) > 1:
-            scores.sort(key = lambda x: x[1], reverse=True)
-            if scores[0][0] == idx:
-                for l, _ in scores[1:]:
+            if not keep[l]:
+                continue
+            box2 = _to_iou_box(one_out[l]['box'])
+            v1 = float(box_cond_overlap(box, box2).squeeze())
+            v2 = float(box_cond_overlap(box2, box).squeeze())
+            if v1 >= v2:
+                if v1 >= threshold:
                     keep[l] = False
             else:
-                keep[idx] = False
+                if v2 >= threshold:
+                    keep[idx] = False
+                    break
 
     return [info for idx, info in enumerate(one_out) if keep[idx]]
 
