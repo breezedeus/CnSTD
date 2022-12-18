@@ -18,17 +18,20 @@
 # under the License.
 # Credits to: CDLA Dataset --- https://github.com/buptlihang/CDLA
 
-
-CATEGORIES = [
-    '_background_',
-    'Text',
-    'Title',
-    'Figure',
-    'Figure caption',
-    'Table',
-    'Table caption',
-    'Header',
-    'Footer',
-    'Reference',
-    'Equation',
-]
+# Analysis
+CATEGORY_DICT = {
+    'layout': [  # Layout Analysis
+        '_background_',
+        'Text',
+        'Title',
+        'Figure',
+        'Figure caption',
+        'Table',
+        'Table caption',
+        'Header',
+        'Footer',
+        'Reference',
+        'Equation',
+    ],
+    'mfd': ['embedding', 'isolated'],  # Mathematical Formula Detection
+}

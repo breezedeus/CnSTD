@@ -112,8 +112,8 @@ MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
 }
 
 ROOT_URL = (
-        'https://huggingface.co/breezedeus/cnstd-cnocr-models/resolve/main/models/cnstd/%s/'
-        % MODEL_VERSION
+    'https://huggingface.co/breezedeus/cnstd-cnocr-models/resolve/main/models/cnstd/%s/'
+    % MODEL_VERSION
 )
 
 
@@ -233,10 +233,18 @@ ANGLE_CLF_MODELS = {
     }
 }
 
-LAYOUT_SPACE = 'layout'
-LAYOUT_MODELS = {
-    ('yolov7_tiny', 'pytorch'): {
-        'url': ROOT_URL + 'yolov7_tiny_layout-pytorch.zip',
-        'arch_yaml': Path(__file__).parent / 'yolov7' / 'yolov7-tiny.yaml',
-    }
+ANALYSIS_SPACE = 'analysis'
+ANALYSIS_MODELS = {
+    'layout': {
+        ('yolov7_tiny', 'pytorch'): {
+            'url': ROOT_URL + 'yolov7_tiny_layout-pytorch.zip',
+            'arch_yaml': Path(__file__).parent / 'yolov7' / 'yolov7-tiny-layout.yaml',
+        }
+    },
+    'mfd': {
+        ('yolov7_tiny', 'pytorch'): {
+            'url': ROOT_URL + 'yolov7_tiny_mfd-pytorch.zip',
+            'arch_yaml': Path(__file__).parent / 'yolov7' / 'yolov7-tiny-mfd.yaml',
+        }
+    },
 }
