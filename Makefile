@@ -8,7 +8,10 @@ predict:
 	--context cpu -i examples -o prediction
 
 layout:
-	cnstd layout --conf-thresh 0.25 --resized-shape 800 --img-fp examples/val_0646.jpg
+	cnstd layout -m layout --conf-thresh 0.25 --resized-shape 800 --img-fp examples/mfd/zh.jpg
+
+mfd:
+	cnstd layout -m mfd --conf-thresh 0.25 --resized-shape 700 --img-fp examples/mfd/zh4.jpg
 
 demo:
 	pip install streamlit
