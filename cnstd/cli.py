@@ -43,6 +43,7 @@ from .datasets import StdDataModule
 from .trainer import PlTrainer, resave_model
 from .model import gen_model
 from . import CnStd, LayoutAnalyzer
+from .yolov7.consts import CATEGORY_DICT
 
 _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
 
@@ -322,6 +323,13 @@ def resave_model_file(
 @click.option(
     '-m',
     '--model-name',
+    type=click.Choice(['layout', 'mfd']),
+    default='mfd',
+    help='模型类型。默认为：`mfd`',
+)
+@click.option(
+    '-t',
+    '--model-type',
     type=str,
     default='yolov7_tiny',
     help='模型名称。目前仅支持 `yolov7_tiny`',
@@ -355,6 +363,7 @@ def resave_model_file(
 )
 def layout_analyze(
     model_name,
+    model_type,
     model_backend,
     model_fp,
     device,
@@ -366,6 +375,7 @@ def layout_analyze(
     """对给定图片进行版面分析。"""
     analyzer = LayoutAnalyzer(
         model_name=model_name,
+        model_type=model_type,
         model_backend=model_backend,
         model_fp=model_fp,
         device=device,

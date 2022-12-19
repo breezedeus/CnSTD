@@ -30,10 +30,10 @@ import torch
 from torch import nn
 from numpy import random
 
-from ..consts import MODEL_VERSION, LAYOUT_SPACE, LAYOUT_MODELS
+from ..consts import MODEL_VERSION, ANALYSIS_SPACE, ANALYSIS_MODELS
 from ..utils import data_dir, get_model_file
 from .yolo import Model
-from .consts import CATEGORIES
+from .consts import CATEGORY_DICT
 from .common import Conv
 from .datasets import letterbox
 from .general import (
@@ -41,7 +41,7 @@ from .general import (
     non_max_suppression,
     xyxy24p,
     scale_coords,
-    box_iou,
+    box_partial_overlap,
 )
 from .torch_utils import select_device, time_synchronized
 from .plots import plot_one_box
@@ -66,10 +66,10 @@ class Ensemble(nn.ModuleList):
 
 @torch.no_grad()
 def attempt_load(
-    model_fp, cfg_fp=Path(__file__).parent / 'yolov7-tiny.yaml', map_location=None
+    categories, model_fp, cfg_fp, map_location=None,
 ):
     # Loads an ensemble of models weights=[a,b,c] or a single model weights=[a] or weights=a
-    inner_model = Model(cfg_fp, ch=3, nc=len(CATEGORIES), anchors=None).to(
+    inner_model = Model(cfg_fp, ch=3, nc=len(categories), anchors=None).to(
         map_location
     )  # create
     state_dict = torch.load(model_fp, map_location=map_location)  # load
@@ -97,7 +97,7 @@ def attempt_load(
         return model  # return ensemble
 
 
-def sort_boxes(dt_boxes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def sort_boxes(dt_boxes: List[Dict[str, Any]], key='box') -> List[Dict[str, Any]]:
     """
     Sort resulting boxes in order from top to bottom, left to right
     args:
@@ -106,11 +106,11 @@ def sort_boxes(dt_boxes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         sorted boxes(array): list of dict, box with shape [4, 2]
     """
     num_boxes = len(dt_boxes)
-    _boxes = sorted(dt_boxes, key=lambda x: (x['box'][0][1], x['box'][0][0]))
+    _boxes = sorted(dt_boxes, key=lambda x: (x[key][0][1], x[key][0][0]))
 
     for i in range(num_boxes - 1):
-        if abs(_boxes[i + 1]['box'][0][1] - _boxes[i]['box'][0][1]) < 10 and (
-                _boxes[i + 1]['box'][0][0] < _boxes[i]['box'][0][0]
+        if abs(_boxes[i + 1][key][0][1] - _boxes[i][key][0][1]) < 10 and (
+            _boxes[i + 1][key][0][0] < _boxes[i][key][0][0]
         ):
             tmp = _boxes[i]
             _boxes[i] = _boxes[i + 1]
@@ -131,8 +131,8 @@ def dedup_boxes(one_out, threshold):
             if not keep[l]:
                 continue
             box2 = _to_iou_box(one_out[l]['box'])
-            v1 = float(box_cond_overlap(box, box2).squeeze())
-            v2 = float(box_cond_overlap(box2, box).squeeze())
+            v1 = float(box_partial_overlap(box, box2).squeeze())
+            v2 = float(box_partial_overlap(box2, box).squeeze())
             if v1 >= v2:
                 if v1 >= threshold:
                     keep[l] = False
@@ -147,17 +147,33 @@ def dedup_boxes(one_out, threshold):
 class LayoutAnalyzer(object):
     def __init__(
         self,
-        model_name: str = 'yolov7_tiny',
+        model_name: str = 'mfd',  # 'layout' or 'mfd'
         *,
+        model_type: str = 'yolov7_tiny',
         model_backend: str = 'pytorch',  # ['pytorch', 'onnx']
         model_fp: Optional[str] = None,
         root: Union[str, Path] = data_dir(),
         device: str = 'cpu',
         **kwargs,
     ):
+        """
+
+        Args:
+            model_name (str): model name; valid values: 'layout' or 'mfd'; default: 'mfd'
+            model_type (str): model type; currently only valid value: 'yolov7_tiny'; default: 'yolov7_tiny'
+            model_backend (str): backend; currently only valid value: 'pytorch'; default: 'pytorch'
+            model_fp (str): model file path; default: `None`, means that the default fp will be used
+            root (str or Path): 模型文件所在的根目录。
+                Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.2/analysis`
+                Windows下默认值为 `C:/Users/<username>/AppData/Roaming/cnstd`。
+            device (str): 'cpu', or 'gpu'; default: 'cpu'
+            **kwargs ():
+        """
+        assert model_name in ('layout', 'mfd')
         model_backend = model_backend.lower()
         assert model_backend in ('pytorch', 'onnx')
         self._model_name = model_name
+        self._model_type = model_type
         self._model_backend = model_backend
 
         self.device = select_device(device)
@@ -165,12 +181,15 @@ class LayoutAnalyzer(object):
         self._assert_and_prepare_model_files(model_fp, root)
         logger.info('Use model: %s' % self._model_fp)
 
+        self.categories = CATEGORY_DICT[self._model_name]
         self.model = attempt_load(
-            self._model_fp, cfg_fp=self._arch_yaml, map_location=self.device
+            self.categories,
+            self._model_fp,
+            cfg_fp=self._arch_yaml,
+            map_location=self.device,
         )  # load FP32 model
         self.model.eval()
 
-        self.categories = CATEGORIES
         self.stride = int(self.model.stride.max())  # model stride
         # self.img_size = check_img_size(image_size, s=self.stride)  # check img_size
 
@@ -178,25 +197,28 @@ class LayoutAnalyzer(object):
         if model_fp is not None and not os.path.isfile(model_fp):
             raise FileNotFoundError('can not find model file %s' % model_fp)
 
-        if (self._model_name, self._model_backend) not in LAYOUT_MODELS:
+        VALID_MODELS = ANALYSIS_MODELS[self._model_name]
+        if (self._model_type, self._model_backend) not in VALID_MODELS:
             raise NotImplementedError(
                 'model %s is not supported currently'
-                % ((self._model_name, self._model_backend),)
+                % ((self._model_type, self._model_backend),)
             )
 
-        self._arch_yaml = LAYOUT_MODELS[(self._model_name, self._model_backend)][
+        self._arch_yaml = VALID_MODELS[(self._model_type, self._model_backend)][
             'arch_yaml'
         ]
         if model_fp is not None:
             self._model_fp = model_fp
             return
 
-        self._model_dir = os.path.join(root, MODEL_VERSION, LAYOUT_SPACE)
+        self._model_dir = os.path.join(root, MODEL_VERSION, ANALYSIS_SPACE)
         suffix = 'pt' if self._model_backend == 'pytorch' else 'onnx'
-        model_fp = os.path.join(self._model_dir, '%s.%s' % (self._model_name, suffix))
+        model_fp = os.path.join(
+            self._model_dir, '%s-%s.%s' % (self._model_name, self._model_type, suffix)
+        )
         if not os.path.isfile(model_fp):
             logger.warning('Can NOT find model file %s' % model_fp)
-            url = LAYOUT_MODELS[(self._model_name, self._model_backend)]['url']
+            url = VALID_MODELS[(self._model_type, self._model_backend)]['url']
 
             get_model_file(url, self._model_dir)  # download the .zip file and unzip
 
@@ -215,7 +237,7 @@ class LayoutAnalyzer(object):
             np.ndarray,
             List[Union[str, Path, Image.Image, np.ndarray]],
         ],
-        resized_shape: int = 800,
+        resized_shape: Union[int, Tuple[int, int]] = 700,
         box_margin: int = 2,
         conf_threshold: float = 0.25,
         iou_threshold: float = 0.45,
@@ -225,15 +247,14 @@ class LayoutAnalyzer(object):
 
         Args:
             img_list (str or list): 待识别图片或图片列表；如果是 `np.ndarray`，则应该是shape为 `[H, W, 3]` 的 RGB 格式数组
-            resized_shape (int): 把图片resize到此大小再做分析
+            resized_shape (int or tuple): (H, W); 把图片resize到此大小再做分析；默认值为 `700`
             box_margin (int): 对识别出的内容框往外扩展的像素大小
             conf_threshold (float): 分数阈值
             iou_threshold (float): IOU阈值
             **kwargs ():
 
         Returns: 一张图片的结果为一个list，其中每个元素表示识别出的版面中的一个元素，包含以下信息：
-            * type: 版面元素对应的类型；可选值：`['_background_', 'Text', 'Title', 'Figure', 'Figure caption',
-                    'Table', 'Table caption', 'Header', 'Footer', 'Reference', 'Equation']` ;
+            * type: 版面元素对应的类型；可选值来自：`self.categories` ;
             * box: 版面元素对应的矩形框；np.ndarray, shape: (4, 2)，对应 box 4个点的坐标值 (x, y) ;
             * score: 得分，越高表示越可信 。
 
@@ -253,7 +274,9 @@ class LayoutAnalyzer(object):
         return outs[0] if single else outs
 
     def _preprocess_images(
-        self, img: Union[str, Path, Image.Image, np.ndarray], resized_shape: int
+        self,
+        img: Union[str, Path, Image.Image, np.ndarray],
+        resized_shape: Union[int, Tuple[int, int]],
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
 
@@ -277,7 +300,11 @@ class LayoutAnalyzer(object):
         else:
             raise TypeError('type %s is not supported now' % str(type(img)))
 
-        img_size = check_img_size(resized_shape, s=self.stride)  # check img_size
+        if isinstance(resized_shape, int):
+            resized_shape = (resized_shape, resized_shape)
+        img_size = [
+            check_img_size(x, s=self.stride) for x in resized_shape
+        ]  # check img_size
         # Padded resize
         img = letterbox(img0, img_size, stride=self.stride)[0]
 
