@@ -14,7 +14,19 @@
 
 # CnSTD
 
-**CnSTD** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，支持**中文**、**英文**等语言的文字检测，自带了多个训练好的检测模型，安装后即可直接使用。欢迎扫码加入微信交流群：
+【Update 2022.12.21：发布v1.3】
+
+* 加入了**数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）模型。
+
+
+
+---
+
+
+
+**CnSTD** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，支持**中文**、**英文**等语言的文字检测，自带了多个训练好的检测模型，安装后即可直接使用。**CnSTD** 自 **v1.3** 版本开始，加入了**数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）模型。
+
+欢迎扫码加入微信交流群：
 
 <div align="center">
   <img src="https://huggingface.co/datasets/breezedeus/cnocr-wx-qr-code/resolve/main/wx-qr-code.JPG" alt="微信群二维码" width="300px"/>
@@ -34,7 +46,32 @@
 
 ## 示例
 
+### 文字检测（STD）
+
 ![文本检测示例](./docs/cases.png)
+
+### 数学公式检测（MFD）
+
+| MFD 结果 |
+| -------- |
+|
+<div align="center">
+  <img src="./examples/mfd/out-zh4.jpg" alt="中文MFD" width="600px"/>
+</div>  
+|
+| 
+<div align="center">
+  <img src="./examples/mfd/out-zh5.jpg" alt="中文MFD" width="600px"/>
+</div> 
+|
+| 
+<div align="center">
+  <img src="./examples/mfd/out-en2.jpg" alt="英文MFD" width="600px"/>
+</div>  
+|
+
+
+
 
 ## 安装
 

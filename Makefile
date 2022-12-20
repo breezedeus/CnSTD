@@ -20,7 +20,7 @@ demo:
 package:
 	python setup.py sdist bdist_wheel
 
-VERSION = 1.2.1
+VERSION = 1.3
 upload:
 	python -m twine upload  dist/cnstd-$(VERSION)* --verbose
 

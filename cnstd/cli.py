@@ -350,10 +350,10 @@ def resave_model_file(
 )
 @click.option('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
 @click.option(
-    '--img-fp', type=str, default='./examples/val_0646.jpg', help='image file path'
-)  # file/folder, 0 for webcam
+    '--img-fp', type=str, default='./examples/mfd/zh.jpg', help='image file path'
+)
 @click.option(
-    "--resized-shape", type=int, default=800, help='分析时把图片resize到此大小再进行。默认为 `800`',
+    "--resized-shape", type=int, default=700, help='分析时把图片resize到此大小再进行。默认为 `700`',
 )
 @click.option(
     '--conf-thresh', type=float, default=0.25, help='Confidence Threshold。默认值为 `0.25`'
