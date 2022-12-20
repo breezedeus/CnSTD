@@ -14,7 +14,7 @@
 
 # CnSTD
 
-【Update 2022.12.21：发布v1.3】
+【Update 2022.12.21：V1.3 发布】
 
 * 加入了**数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）模型。
 
@@ -24,7 +24,7 @@
 
 
 
-**CnSTD** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，支持**中文**、**英文**等语言的文字检测，自带了多个训练好的检测模型，安装后即可直接使用。**CnSTD** 自 **v1.3** 版本开始，加入了**数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）模型。
+**CnSTD** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，支持**中文**、**英文**等语言的文字检测，自带了多个训练好的检测模型，安装后即可直接使用。**CnSTD** 自 **V1.3** 版本开始，加入了**数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）模型。
 
 欢迎扫码加入微信交流群：
 
@@ -34,7 +34,7 @@
 
 作者也维护 **知识星球** [**CnOCR/CnSTD私享群**](https://t.zsxq.com/FEYZRJQ)，欢迎加入。**知识星球私享群**会陆续发布一些CnOCR/CnSTD相关的私有资料，包括**更详细的训练教程**，**未公开的模型**，使用过程中遇到的难题解答等。本群也会发布OCR/STD相关的最新研究资料。
 
-自 **v1.0.0** 版本开始，**CnSTD** 从之前基于 MXNet 实现转为基于 **PyTorch** 实现。新模型的训练合并了  **ICPR MTWI 2018**、**ICDAR RCTW-17** 和 **ICDAR2019-LSVT** 三个数据集，包括了 **`46447`** 个训练样本，和 **`1534`** 个测试样本。
+自 **V1.0.0** 版本开始，**CnSTD** 从之前基于 MXNet 实现转为基于 **PyTorch** 实现。新模型的训练合并了  **ICPR MTWI 2018**、**ICDAR RCTW-17** 和 **ICDAR2019-LSVT** 三个数据集，包括了 **`46447`** 个训练样本，和 **`1534`** 个测试样本。
 
 相较于之前版本， 新版本的变化主要包括：
 
@@ -54,7 +54,7 @@
 </div> 
 
 ### 数学公式检测（MFD）
-识别图片中包含的数学公式，其中行内的公式识别为 `embedding` 类别，独立行的公司识别为 `isolated`。
+识别图片中包含的数学公式，其中行内的公式识别为 `embedding` 类别，独立行的公式识别为 `isolated`。
 
 <div align="center">
   <img src="./examples/mfd/out-zh4.jpg" alt="中文MFD效果" width="700px"/>
