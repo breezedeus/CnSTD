@@ -54,21 +54,15 @@
 
 | MFD 结果 |
 | -------- |
-|
-<div align="center">
+|<div align="center">
   <img src="./examples/mfd/out-zh4.jpg" alt="中文MFD" width="600px"/>
-</div>  
-|
-| 
-<div align="center">
+</div>  |
+| <div align="center">
   <img src="./examples/mfd/out-zh5.jpg" alt="中文MFD" width="600px"/>
-</div> 
-|
-| 
-<div align="center">
+</div> |
+| <div align="center">
   <img src="./examples/mfd/out-en2.jpg" alt="英文MFD" width="600px"/>
-</div>  
-|
+</div> |
 
 
 
