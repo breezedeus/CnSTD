@@ -38,28 +38,32 @@
 
 相较于之前版本， 新版本的变化主要包括：
 
-* 加入了对 [**PaddleOCR**](https://github.com/PaddlePaddle/PaddleOCR) 检测模型的支持；  
+* 加入了对 [**PaddleOCR**](https://github.com/PaddlePaddle/PaddleOCR) 检测模型的支持；
 * 部分调整了检测结果中 `box` 的表达方式，统一为 `4` 个点的坐标值；  
 * 修复了已知bugs。
 
 如需要识别文本框中的文字，可以结合 **OCR** 工具包 **[cnocr](https://github.com/breezedeus/cnocr)** 一起使用。
 
+
 ## 示例
 
 ### 文字检测（STD）
 
-![文本检测示例](./docs/cases.png)
+<div align="center">
+  <img src="./docs/cases.png" alt="STD效果" width="700px"/>
+</div> 
 
 ### 数学公式检测（MFD）
+识别图片中包含的数学公式，其中行内的公式识别为 `embedding` 类别，独立行的公司识别为 `isolated`。
 
 <div align="center">
-  <img src="./examples/mfd/out-zh4.jpg" alt="中文MFD" width="700px"/>
+  <img src="./examples/mfd/out-zh4.jpg" alt="中文MFD效果" width="700px"/>
 </div>  
 <div align="center">
-  <img src="./examples/mfd/out-zh5.jpg" alt="中文MFD" width="700px"/>
+  <img src="./examples/mfd/out-zh5.jpg" alt="中文MFD效果" width="700px"/>
 </div>
 <div align="center">
-  <img src="./examples/mfd/out-en2.jpg" alt="英文MFD" width="700px"/>
+  <img src="./examples/mfd/out-en2.jpg" alt="英文MFD效果" width="700px"/>
 </div> 
 
 
