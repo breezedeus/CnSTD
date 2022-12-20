@@ -24,7 +24,7 @@
 
 
 
-**CnSTD** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，支持**中文**、**英文**等语言的文字检测，自带了多个训练好的检测模型，安装后即可直接使用。**CnSTD** 自 **V1.3** 版本开始，加入了**数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）模型。
+**CnSTD** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，支持**中文**、**英文**等语言的文字检测，自带了多个训练好的检测模型，安装后即可直接使用。**CnSTD** 自 **V1.3** 版本开始，加入了**数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）模型，可检测图片中包含的数学公式（行内公式与独立行公式）。
 
 欢迎扫码加入微信交流群：
 
@@ -54,7 +54,7 @@
 </div> 
 
 ### 数学公式检测（MFD）
-识别图片中包含的数学公式，其中行内的公式识别为 `embedding` 类别，独立行的公式识别为 `isolated`。
+检测图片中包含的数学公式，其中行内的公式检测为 `embedding` 类别，独立行的公式检测为 `isolated`。
 
 <div align="center">
   <img src="./examples/mfd/out-zh4.jpg" alt="中文MFD效果" width="700px"/>
