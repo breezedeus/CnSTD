@@ -53,13 +53,13 @@
 ### 数学公式检测（MFD）
 
 <div align="center">
-  <img src="./examples/mfd/out-zh4.jpg" alt="中文MFD" width="600px"/>
+  <img src="./examples/mfd/out-zh4.jpg" alt="中文MFD" width="700px"/>
 </div>  
 <div align="center">
-  <img src="./examples/mfd/out-zh5.jpg" alt="中文MFD" width="600px"/>
+  <img src="./examples/mfd/out-zh5.jpg" alt="中文MFD" width="700px"/>
 </div>
 <div align="center">
-  <img src="./examples/mfd/out-en2.jpg" alt="英文MFD" width="600px"/>
+  <img src="./examples/mfd/out-en2.jpg" alt="英文MFD" width="700px"/>
 </div> 
 
 
