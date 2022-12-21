@@ -14,9 +14,9 @@
 
 # CnSTD
 
-【Update 2022.12.21：V1.3 发布】
+【Update 2022.12.21：V1.2.1 发布】
 
-* 加入了**数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）模型。
+* 支持基于 **YOLOv7** 的 **数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）模型，并提供预训练好的模型可直接使用。
 
 
 
@@ -24,7 +24,7 @@
 
 
 
-**CnSTD** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，支持**中文**、**英文**等语言的文字检测，自带了多个训练好的检测模型，安装后即可直接使用。**CnSTD** 自 **V1.3** 版本开始，加入了**数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）模型，可检测图片中包含的数学公式（行内公式与独立行公式）。
+**CnSTD** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，支持**中文**、**英文**等语言的文字检测，自带了多个训练好的检测模型，安装后即可直接使用。**CnSTD** 自 **V1.2.1** 版本开始，加入了**数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）模型，并提供训练好的模型可直接用于检测图片中包含的数学公式（**行内公式** `embedding` 与**独立行公式** `isolated` ）。
 
 欢迎扫码加入微信交流群：
 
@@ -32,7 +32,7 @@
   <img src="https://huggingface.co/datasets/breezedeus/cnocr-wx-qr-code/resolve/main/wx-qr-code.JPG" alt="微信群二维码" width="300px"/>
 </div>
 
-作者也维护 **知识星球** [**CnOCR/CnSTD私享群**](https://t.zsxq.com/FEYZRJQ)，欢迎加入。**知识星球私享群**会陆续发布一些CnOCR/CnSTD相关的私有资料，包括**更详细的训练教程**，**未公开的模型**，使用过程中遇到的难题解答等。本群也会发布OCR/STD相关的最新研究资料。
+作者也维护 **知识星球** [**CnOCR/CnSTD/P2T私享群**](https://t.zsxq.com/FEYZRJQ)，欢迎加入。**知识星球私享群**会陆续发布一些CnOCR/CnSTD/P2T相关的私有资料，包括**更详细的训练教程**，**未公开的模型**，使用过程中遇到的难题解答等。本群也会发布OCR/STD相关的最新研究资料。
 
 自 **V1.0.0** 版本开始，**CnSTD** 从之前基于 MXNet 实现转为基于 **PyTorch** 实现。新模型的训练合并了  **ICPR MTWI 2018**、**ICDAR RCTW-17** 和 **ICDAR2019-LSVT** 三个数据集，包括了 **`46447`** 个训练样本，和 **`1534`** 个测试样本。
 
@@ -47,14 +47,14 @@
 
 ## 示例
 
-### 文字检测（STD）
+### 场景文字检测（STD）
 
 <div align="center">
   <img src="./docs/cases.png" alt="STD效果" width="700px"/>
 </div> 
 
 ### 数学公式检测（MFD）
-检测图片中包含的数学公式，其中行内的公式检测为 `embedding` 类别，独立行的公式检测为 `isolated`。
+MFD 模型检测图片中包含的数学公式，其中行内的公式检测为 `embedding` 类别，独立行的公式检测为 `isolated`。模型训练使用了英文 [IBEM](https://zenodo.org/record/4757865) 和中文 [CnMFD_Dataset](https://github.com/breezedeus/CnMFD_Dataset) 两个数据集。
 
 <div align="center">
   <img src="./examples/mfd/out-zh4.jpg" alt="中文MFD效果" width="700px"/>
@@ -406,7 +406,7 @@ Options:
 
 ## 给作者来杯咖啡
 
-开源不易，如果此项目对您有帮助，可以考虑 [给作者来杯咖啡 ☕️](https://dun.mianbaoduo.com/@breezedeus) 。
+开源不易，如果此项目对您有帮助，可以考虑 [给作者来杯咖啡 ☕️](https://cnocr.readthedocs.io/zh/latest/buymeacoffee/) 。
 
 ---
 
