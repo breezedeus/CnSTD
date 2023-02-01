@@ -25,4 +25,4 @@ upload:
 	python -m twine upload  dist/cnstd-$(VERSION)* --verbose
 
 
-.PHONY: train predict layout demo package upload
+.PHONY: train predict layout mfd demo package upload

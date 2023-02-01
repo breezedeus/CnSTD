@@ -324,7 +324,7 @@ pip install cnocr
 
 ### 数学公式检测（MFD）与 版面分析（Layout Analysis）
 
-数学公式检测（MFD）与 版面分析（Layout Analysis）都是检测图片中感兴趣的元素，它们使用的都是基于YOLOv7的检测架构，在CnSTD都来源于相同的类 `LayoutAnalyzer`，只是使用的训练模型不同。
+数学公式检测（MFD）与 版面分析（Layout Analysis）都是检测图片中感兴趣的元素，它们使用的都是基于YOLOv7的检测架构，在CnSTD都来源于相同的类 `LayoutAnalyzer`，差别只是训练模型使用的数据不同。
 
 > 这两个模型的训练代码在 [yolov7](https://github.com/breezedeus/yolov7) 中（Forked from [WongKinYiu/yolov7](https://github.com/WongKinYiu/yolov7)，感谢原作者。）
 
