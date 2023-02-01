@@ -319,27 +319,27 @@ def resave_model_file(
     resave_model(input_model_fp, output_model_fp, map_location='cpu')
 
 
-@cli.command('layout')
+@cli.command('analyze')
 @click.option(
     '-m',
     '--model-name',
-    type=click.Choice(['layout', 'mfd']),
+    type=click.Choice(['mfd', 'layout']),
     default='mfd',
-    help='模型类型。默认为：`mfd`',
+    help='模型类型。`mfd` 表示数学公式检测，`layout` 表示版面分析；默认为：`mfd`',
 )
 @click.option(
     '-t',
     '--model-type',
     type=str,
     default='yolov7_tiny',
-    help='模型名称。目前仅支持 `yolov7_tiny`',
+    help='模型类型。当前仅支持 `yolov7_tiny`',
 )
 @click.option(
     '-b',
     '--model-backend',
     type=click.Choice(['pytorch', 'onnx']),
     default='pytorch',
-    help='模型类型。目前仅支持 `pytorch`',
+    help='模型后端架构。当前仅支持 `pytorch`',
 )
 @click.option(
     '-p',
@@ -350,7 +350,15 @@ def resave_model_file(
 )
 @click.option('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
 @click.option(
-    '--img-fp', type=str, default='./examples/mfd/zh.jpg', help='image file path'
+    '-i', '--img-fp', type=str, default='./examples/mfd/zh.jpg', help='待分析的图片路径'
+)
+@click.option(
+    '-o',
+    '--output-fp',
+    type=str,
+    default=None,
+    help='分析结果输出的图片路径。默认为 `None`，会存储在当前文件夹，文件名称为输入文件名称前面增加`out-`；'
+         '如输入文件名为 `img.jpg`, 输出文件名即为 `out-img.jpg`',
 )
 @click.option(
     "--resized-shape", type=int, default=700, help='分析时把图片resize到此大小再进行。默认为 `700`',
@@ -368,11 +376,12 @@ def layout_analyze(
     model_fp,
     device,
     img_fp,
+    output_fp,
     resized_shape,
     conf_thresh,
     iou_thresh,
 ):
-    """对给定图片进行版面分析。"""
+    """对给定图片进行 MFD 或者 版面分析。"""
     analyzer = LayoutAnalyzer(
         model_name=model_name,
         model_type=model_type,
@@ -387,7 +396,9 @@ def layout_analyze(
         iou_threshold=iou_thresh,
     )
     img0 = cv2.imread(img_fp, cv2.IMREAD_COLOR)
-    analyzer.save_img(img0, out, 'out-' + os.path.basename(img_fp))
+    if output_fp is None:
+        output_fp = 'out-' + os.path.basename(img_fp)
+    analyzer.save_img(img0, out, output_fp)
 
 
 if __name__ == '__main__':

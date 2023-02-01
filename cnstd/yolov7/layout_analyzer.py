@@ -150,7 +150,7 @@ class LayoutAnalyzer(object):
         model_name: str = 'mfd',  # 'layout' or 'mfd'
         *,
         model_type: str = 'yolov7_tiny',
-        model_backend: str = 'pytorch',  # ['pytorch', 'onnx']
+        model_backend: str = 'pytorch',
         model_fp: Optional[str] = None,
         root: Union[str, Path] = data_dir(),
         device: str = 'cpu',
@@ -159,10 +159,10 @@ class LayoutAnalyzer(object):
         """
 
         Args:
-            model_name (str): model name; valid values: 'layout' or 'mfd'; default: 'mfd'
-            model_type (str): model type; currently only valid value: 'yolov7_tiny'; default: 'yolov7_tiny'
-            model_backend (str): backend; currently only valid value: 'pytorch'; default: 'pytorch'
-            model_fp (str): model file path; default: `None`, means that the default fp will be used
+            model_name (str): 模型类型。可选值：'mfd' 表示数学公式检测；'layout' 表示版面分析。默认值：'mfd'
+            model_type (str): 模型类型。当前仅支持 'yolov7_tiny'; 默认值: 'yolov7_tiny'
+            model_backend (str): backend; 当前仅支持: 'pytorch'; 默认值: 'pytorch'
+            model_fp (str): model file path; default: `None`, means that the default file path will be used
             root (str or Path): 模型文件所在的根目录。
                 Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.2/analysis`
                 Windows下默认值为 `C:/Users/<username>/AppData/Roaming/cnstd`。
