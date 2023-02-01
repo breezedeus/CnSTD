@@ -15,9 +15,9 @@
 
 # CnSTD
 
-【Update 2023.01.31：V1.2.1 发布】
+【Update 2023.02.01：V1.2.1 发布】
 
-* 支持基于 **YOLOv7** 的 **数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）模型，并提供预训练好的模型可直接使用。
+* 支持基于 **YOLOv7** 的 **数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）和 **版面分析**（**Layout Analysis**）模型，并提供预训练好的模型可直接使用。
 
 
 
