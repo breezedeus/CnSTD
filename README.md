@@ -2,6 +2,7 @@
 	<img src="./docs/logo.png" width="250px"/>
   <div>&nbsp;</div>
 
+[![Downloads](https://static.pepy.tech/personalized-badge/cnstd?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads)](https://github.com/breezedeus/CnSTD)
 [![license](https://img.shields.io/github/license/breezedeus/cnstd)](./LICENSE)
 [![PyPI version](https://badge.fury.io/py/cnstd.svg)](https://badge.fury.io/py/cnstd)
 [![forks](https://img.shields.io/github/forks/breezedeus/cnstd)](https://img.shields.io/github/forks/breezedeus/cnstd)
@@ -14,31 +15,76 @@
 
 # CnSTD
 
-**CnSTD** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，支持**中文**、**英文**等语言的文字检测，自带了多个训练好的检测模型，安装后即可直接使用。欢迎扫码加入微信交流群：
+【Update 2023.02.01：V1.2.1 发布】
+
+* 支持基于 **YOLOv7** 的 **数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）和 **版面分析**（**Layout Analysis**）模型，并提供预训练好的模型可直接使用。
+
+
+
+---
+
+
+
+**CnSTD** 是 **Python 3** 下的**场景文字检测**（**Scene Text Detection**，简称**STD**）工具包，支持**中文**、**英文**等语言的文字检测，自带了多个训练好的检测模型，安装后即可直接使用。**CnSTD** 自 **V1.2.1** 版本开始，加入了**数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）模型，并提供训练好的模型可直接用于检测图片中包含的数学公式（**行内公式** `embedding` 与**独立行公式** `isolated` ）。
+
+欢迎扫码加入微信交流群：
 
 <div align="center">
   <img src="https://huggingface.co/datasets/breezedeus/cnocr-wx-qr-code/resolve/main/wx-qr-code.JPG" alt="微信群二维码" width="300px"/>
 </div>
 
-作者也维护 **知识星球** [**CnOCR/CnSTD私享群**](https://t.zsxq.com/FEYZRJQ)，欢迎加入。**知识星球私享群**会陆续发布一些CnOCR/CnSTD相关的私有资料，包括**更详细的训练教程**，**未公开的模型**，使用过程中遇到的难题解答等。本群也会发布OCR/STD相关的最新研究资料。
+作者也维护 **知识星球** [**CnOCR/CnSTD/P2T私享群**](https://t.zsxq.com/FEYZRJQ)，欢迎加入。**知识星球私享群**会陆续发布一些CnOCR/CnSTD/P2T相关的私有资料，包括**更详细的训练教程**，**未公开的模型**，使用过程中遇到的难题解答等。本群也会发布OCR/STD相关的最新研究资料。
 
-自 **v1.0.0** 版本开始，**CnSTD** 从之前基于 MXNet 实现转为基于 **PyTorch** 实现。新模型的训练合并了  **ICPR MTWI 2018**、**ICDAR RCTW-17** 和 **ICDAR2019-LSVT** 三个数据集，包括了 **`46447`** 个训练样本，和 **`1534`** 个测试样本。
+自 **V1.0.0** 版本开始，**CnSTD** 从之前基于 MXNet 实现转为基于 **PyTorch** 实现。新模型的训练合并了  **ICPR MTWI 2018**、**ICDAR RCTW-17** 和 **ICDAR2019-LSVT** 三个数据集，包括了 **`46447`** 个训练样本，和 **`1534`** 个测试样本。
 
 相较于之前版本， 新版本的变化主要包括：
 
-* 加入了对 [**PaddleOCR**](https://github.com/PaddlePaddle/PaddleOCR) 检测模型的支持；  
+* 加入了对 [**PaddleOCR**](https://github.com/PaddlePaddle/PaddleOCR) 检测模型的支持；
 * 部分调整了检测结果中 `box` 的表达方式，统一为 `4` 个点的坐标值；  
 * 修复了已知bugs。
 
 如需要识别文本框中的文字，可以结合 **OCR** 工具包 **[cnocr](https://github.com/breezedeus/cnocr)** 一起使用。
 
+
 ## 示例
 
-![文本检测示例](./docs/cases.png)
+### 场景文字检测（STD）
+
+<div align="center">
+  <img src="./docs/cases.png" alt="STD效果" width="700px"/>
+</div>
+
+### 数学公式检测（MFD）
+
+MFD 模型检测图片中包含的数学公式，其中行内的公式检测为 `embedding` 类别，独立行的公式检测为 `isolated`。模型训练使用了英文 [IBEM](https://zenodo.org/record/4757865) 和中文 [CnMFD_Dataset](https://github.com/breezedeus/CnMFD_Dataset) 两个数据集。
+
+<div align="center">
+  <img src="./examples/mfd/out-zh4.jpg" alt="中文MFD效果" width="700px"/>
+</div>  
+<div align="center">
+  <img src="./examples/mfd/out-zh5.jpg" alt="中文MFD效果" width="700px"/>
+</div>
+<div align="center">
+  <img src="./examples/mfd/out-en2.jpg" alt="英文MFD效果" width="700px"/>
+</div> 
+
+
+### 版面分析（Layout Analysis）
+
+版面分析模型识别图片中的不同排版元素。模型训练使用的是 [CDLA](https://github.com/buptlihang/CDLA) 数据集。可识别以下10中版面元素：
+
+|正文|标题|图片|图片标题|表格|表格标题|页眉|页脚|注释|公式|
+|---|---|---|---|---|---|---|---|---|---|
+|Text|Title|Figure|Figure caption|Table|Table caption|Header|Footer|Reference|Equation|
+
+<div align="center">
+  <img src="./examples/layout/out-zh.jpg" alt="版面分析效果" width="700px"/>
+</div>  
+
 
 ## 安装
 
-嗯，安装真的很简单。
+嗯，顺利的话很简单（bless）。
 
 ```bash
 pip install cnstd
@@ -55,7 +101,7 @@ pip install cnstd -i https://pypi.doubanio.com/simple
 * 请使用 **Python3** (3.6以及之后版本应该都行)，没测过Python2下是否ok。
 * 依赖 **opencv**，所以可能需要额外安装opencv。
 
-## 已有模型
+## 已有STD模型
 
 CnSTD 从 **V1.2** 开始，可直接使用的模型包含两类：1）CnSTD 自己训练的模型，通常会包含 PyTorch 和 ONNX 版本；2）从其他ocr引擎搬运过来的训练好的外部模型，ONNX化后用于 CnSTD 中。
 
@@ -99,7 +145,7 @@ CnSTD 从 **V1.2** 开始，可直接使用的模型包含两类：1）CnSTD 自
 
 如果系统无法自动成功下载zip文件，则需要手动从 [百度云盘](https://pan.baidu.com/s/1zDMzArCDrrXHWL0AWxwYQQ?pwd=nstd)（提取码为 `nstd`）下载对应的zip文件并把它存放于 `~/.cnstd/1.2`（Windows下为 `C:\Users\<username>\AppData\Roaming\cnstd\1.2`）目录中。模型也可从 **[cnstd-cnocr-models](https://huggingface.co/breezedeus/cnstd-cnocr-models)** 中下载。放置好zip文件后，后面的事代码就会自动执行了。
 
-### 图片预测
+### 场景文字检测（STD）
 
 使用类 `CnStd` 进行场景文字的检测。类 `CnStd` 的初始化函数如下：
 
@@ -274,11 +320,102 @@ for box_info in box_infos['detected_texts']:
 pip install cnocr
 ```
 
+
+
+### 数学公式检测（MFD）与 版面分析（Layout Analysis）
+
+数学公式检测（MFD）与 版面分析（Layout Analysis）都是检测图片中感兴趣的元素，它们使用的都是基于YOLOv7的检测架构，在CnSTD都来源于相同的类 `LayoutAnalyzer`，差别只是训练模型使用的数据不同。
+
+> 这两个模型的训练代码在 [yolov7](https://github.com/breezedeus/yolov7) 中（Forked from [WongKinYiu/yolov7](https://github.com/WongKinYiu/yolov7)，感谢原作者。）
+
+
+
+类 `LayoutAnalyzer` 的初始化函数如下：
+
+```python
+class LayoutAnalyzer(object):
+    def __init__(
+        self,
+        model_name: str = 'mfd',  # 'layout' or 'mfd'
+        *,
+        model_type: str = 'yolov7_tiny',
+        model_backend: str = 'pytorch',
+        model_fp: Optional[str] = None,
+        root: Union[str, Path] = data_dir(),
+        device: str = 'cpu',
+        **kwargs,
+    ):
+```
+
+其中的参数含义如下：
+
+- `model_name`: 字符串类型，表示模型类型。可选值：'mfd' 表示数学公式检测；'layout' 表示版面分析。默认值：'mfd'
+
+- `model_type`: 字符串类型，表示模型类型。当前仅支持 'yolov7_tiny'；默认值：'yolov7_tiny'
+
+- `model_backend`: 字符串类型，表示backend。当前仅支持: 'pytorch'；默认值：'pytorch'
+
+- `model_fp`: 字符串类型，表示模型文件的路径。默认值：`None`，表示使用默认的文件路径
+
+- `root`: 字符串或`Path`类型，表示模型文件所在的根目录。
+  - Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.2/analysis`
+  - Windows下默认值为 `C:/Users/<username>/AppData/Roaming/cnstd`。
+  
+- `device`: 字符串类型，表示运行模型的设备，可选值：'cpu' 或 'gpu'；默认值：'cpu'
+
+- `**kwargs`: 额外的参数。
+
+
+
+函数输出结果为一个`list`，其中每个元素表示识别出的版面中的一个元素，包含以下信息：
+
+* type: 版面元素对应的类型；可选值来自：`self.categories` ;
+* box: 版面元素对应的矩形框；`np.ndarray`, shape: (4, 2)，对应 box 4个点的坐标值 `(x, y)` ;
+* score: 得分，越高表示越可信 。
+
+
+
+#### 类函数`LayoutAnalyzer.analyze()`
+
+对指定图片（列表）进行版面分析。
+
+```python
+def analyze(
+    self,
+    img_list: Union[
+        str,
+        Path,
+        Image.Image,
+        np.ndarray,
+        List[Union[str, Path, Image.Image, np.ndarray]],
+    ],
+    resized_shape: Union[int, Tuple[int, int]] = 700,
+    box_margin: int = 2,
+    conf_threshold: float = 0.25,
+    iou_threshold: float = 0.45,
+) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
+```
+
+
+
+**函数说明**：
+
+函数输入参数包括：
+
+* `img_list` (str or list): 待识别图片或图片列表；如果是 `np.ndarray`，则应该是shape为 `[H, W, 3]` 的 RGB 格式数组
+* `resized_shape` (int or tuple): (H, W); 把图片resize到此大小再做分析；默认值为 `700`
+* `box_margin` (int): 对识别出的内容框往外扩展的像素大小；默认值为 `2`
+* `conf_threshold` (float): 分数阈值；默认值为 `0.25`
+* `iou_threshold` (float): IOU阈值；默认值为 `0.45`
+* `**kwargs`: 额外的参数。
+
+
+
 ### 脚本使用
 
 **cnstd** 包含了几个命令行工具，安装 **cnstd** 后即可使用。
 
-#### 预测单个文件或文件夹中所有图片
+#### STD 预测单个文件或文件夹中所有图片
 
 使用命令 **`cnstd predict`** 预测单个文件或文件夹中所有图片，以下是使用说明：
 
@@ -314,6 +451,44 @@ Options:
 
 ```bash
 cnstd predict -i examples/taobao.jpg -o outputs
+```
+
+具体使用也可参考文件 [Makefile](./Makefile) 。
+
+
+
+#### MFD or Layout Analysis 预测单个文件
+
+使用命令 **`cnstd analyze`** 获得单个文件的 MFD 或者 Layout Analysis 结果，以下是使用说明：
+
+```bash
+(venv) ➜  cnstd git:(master) ✗ cnstd analyze -h
+Usage: cnstd analyze [OPTIONS]
+
+  对给定图片进行 MFD 或者 版面分析。
+
+Options:
+  -m, --model-name [mfd|layout]   模型类型。`mfd` 表示数学公式检测，`layout`
+                                  表示版面分析；默认为：`mfd`
+  -t, --model-type TEXT           模型类型。当前仅支持 `yolov7_tiny`
+  -b, --model-backend [pytorch|onnx]
+                                  模型后端架构。当前仅支持 `pytorch`
+  -p, --model-fp TEXT             使用训练好的模型。默认为 `None`，表示使用系统自带的预训练模型
+  --device TEXT                   cuda device, i.e. 0 or 0,1,2,3 or cpu
+  -i, --img-fp TEXT               待分析的图片路径
+  -o, --output-fp TEXT            分析结果输出的图片路径。默认为 `None`，会存储在当前文件夹，文件名称为输入文件名称
+                                  前面增加`out-`；如输入文件名为 `img.jpg`, 输出文件名即为 `out-
+                                  img.jpg`
+  --resized-shape INTEGER         分析时把图片resize到此大小再进行。默认为 `700`
+  --conf-thresh FLOAT             Confidence Threshold。默认值为 `0.25`
+  --iou-thresh FLOAT              IOU threshold for NMS。默认值为 `0.45`
+  -h, --help                      Show this message and exit.
+```
+
+例如可以使用以下命令对图片 `examples/mfd/zh.jpg` 进行 MFD，并把检测结果存放在文件 `out-zh.jpg` 中：
+
+```bash
+(venv) ➜  cnstd analyze -m mfd --conf-thresh 0.25 --resized-shape 800 -i examples/mfd/zh.jpg -o out-zh.jpg
 ```
 
 具体使用也可参考文件 [Makefile](./Makefile) 。
@@ -363,17 +538,18 @@ Options:
 
 ## 未来工作
 
-* [x] 进一步精简模型结构，降低模型大小。
-* [x] PSENet速度上还是比较慢，尝试更快的STD算法。
-* [x] 加入更多的训练数据。
-* [x] 加入对外部模型的支持。
+* [x] 进一步精简模型结构，降低模型大小
+* [x] PSENet速度上还是比较慢，尝试更快的STD算法
+* [x] 加入更多的训练数据
+* [x] 加入对外部模型的支持
+* [x] 加入数学公式检测（MFD）与 版面分析（Layout Analysis）模型
 * [ ] 加入对文档结构与表格的检测
 
 
 
 ## 给作者来杯咖啡
 
-开源不易，如果此项目对您有帮助，可以考虑 [给作者来杯咖啡 ☕️](https://dun.mianbaoduo.com/@breezedeus) 。
+开源不易，如果此项目对您有帮助，可以考虑 [给作者来杯咖啡 ☕️](https://cnocr.readthedocs.io/zh/latest/buymeacoffee/) 。
 
 ---
 

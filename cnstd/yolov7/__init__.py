@@ -1,5 +1,5 @@
 # coding: utf-8
-# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
+# Copyright (C) 2022, [Breezedeus](https://github.com/breezedeus).
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,8 +17,3 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from .detector import Detector
-from .ppocr import PPDetector
-from .yolov7.layout_analyzer import LayoutAnalyzer, save_layout_img
-
-from .cn_std import CnStd

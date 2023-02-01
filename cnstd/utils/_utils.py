@@ -45,7 +45,7 @@ def extract_crops(img: np.ndarray, boxes: np.ndarray) -> List[np.ndarray]:
 
     # Project relative coordinates
     _boxes = boxes.copy()
-    if _boxes.dtype != np.int:
+    if 'float' in str(_boxes.dtype) and _boxes.max() <= 1.0:
         _boxes[:, [0, 2]] *= img.shape[1]
         _boxes[:, [1, 3]] *= img.shape[0]
         _boxes = _boxes.round().astype(int)
@@ -74,7 +74,7 @@ def extract_rcrops(img: np.ndarray, boxes: np.ndarray, dtype=np.float32) -> List
 
     # Project relative coordinates
     _boxes = boxes.copy()
-    if _boxes.dtype != np.int:
+    if 'float' in str(_boxes.dtype) and _boxes[:, 0:4].max() <= 1.0:
         _boxes[:, [0, 2]] *= img.shape[1]
         _boxes[:, [1, 3]] *= img.shape[0]
 

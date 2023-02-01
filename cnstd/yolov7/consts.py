@@ -1,5 +1,5 @@
 # coding: utf-8
-# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
+# Copyright (C) 2022, [Breezedeus](https://github.com/breezedeus).
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,9 +16,22 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+# Credits to: CDLA Dataset --- https://github.com/buptlihang/CDLA
 
-from .detector import Detector
-from .ppocr import PPDetector
-from .yolov7.layout_analyzer import LayoutAnalyzer, save_layout_img
-
-from .cn_std import CnStd
+# Analysis
+CATEGORY_DICT = {
+    'layout': [  # Layout Analysis
+        '_background_',
+        'Text',
+        'Title',
+        'Figure',
+        'Figure caption',
+        'Table',
+        'Table caption',
+        'Header',
+        'Footer',
+        'Reference',
+        'Equation',
+    ],
+    'mfd': ['embedding', 'isolated'],  # Mathematical Formula Detection
+}

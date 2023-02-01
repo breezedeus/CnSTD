@@ -1,5 +1,10 @@
 # Release Notes
 
+# Update 2023.02.01：发布 V1.2.1
+
+主要变更：
+* 支持基于 **YOLOv7** 的 **数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）和 **版面分析**（**Layout Analysis**）模型，并提供预训练好的模型可直接使用。
+* 修复了不兼容 Numpy>=1.24 的bug。
 
 # Update 2022.07.07：发布 cnstd V1.2
 

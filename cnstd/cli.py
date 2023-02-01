@@ -1,5 +1,5 @@
 # coding: utf-8
-# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
+# Copyright (C) 2022, [Breezedeus](https://github.com/breezedeus).
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -24,6 +24,7 @@ import time
 import glob
 
 from pprint import pformat
+import cv2
 import numpy as np
 import torchvision.transforms as T
 
@@ -41,8 +42,8 @@ from .utils import (
 from .datasets import StdDataModule
 from .trainer import PlTrainer, resave_model
 from .model import gen_model
-from . import CnStd
-
+from . import CnStd, LayoutAnalyzer
+from .yolov7.consts import CATEGORY_DICT
 
 _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
 
@@ -85,6 +86,7 @@ def train(
     model_name, index_dir, train_config_fp, resume_from_checkpoint, pretrained_model_fp
 ):
     """训练文本检测模型"""
+    logger = set_logger(log_level='DEBUG')
     train_config = json.load(open(train_config_fp))
     fpn_type = train_config.get('fpn_type', 'fpn')
     kwargs = dict(
@@ -315,6 +317,88 @@ def resave_model_file(
 ):
     """训练好的模型会存储训练状态，使用此命令去掉预测时无关的数据，降低模型大小"""
     resave_model(input_model_fp, output_model_fp, map_location='cpu')
+
+
+@cli.command('analyze')
+@click.option(
+    '-m',
+    '--model-name',
+    type=click.Choice(['mfd', 'layout']),
+    default='mfd',
+    help='模型类型。`mfd` 表示数学公式检测，`layout` 表示版面分析；默认为：`mfd`',
+)
+@click.option(
+    '-t',
+    '--model-type',
+    type=str,
+    default='yolov7_tiny',
+    help='模型类型。当前仅支持 `yolov7_tiny`',
+)
+@click.option(
+    '-b',
+    '--model-backend',
+    type=click.Choice(['pytorch', 'onnx']),
+    default='pytorch',
+    help='模型后端架构。当前仅支持 `pytorch`',
+)
+@click.option(
+    '-p',
+    '--model-fp',
+    type=str,
+    default=None,
+    help='使用训练好的模型。默认为 `None`，表示使用系统自带的预训练模型',
+)
+@click.option('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+@click.option(
+    '-i', '--img-fp', type=str, default='./examples/mfd/zh.jpg', help='待分析的图片路径'
+)
+@click.option(
+    '-o',
+    '--output-fp',
+    type=str,
+    default=None,
+    help='分析结果输出的图片路径。默认为 `None`，会存储在当前文件夹，文件名称为输入文件名称前面增加`out-`；'
+         '如输入文件名为 `img.jpg`, 输出文件名即为 `out-img.jpg`',
+)
+@click.option(
+    "--resized-shape", type=int, default=700, help='分析时把图片resize到此大小再进行。默认为 `700`',
+)
+@click.option(
+    '--conf-thresh', type=float, default=0.25, help='Confidence Threshold。默认值为 `0.25`'
+)
+@click.option(
+    '--iou-thresh', type=float, default=0.45, help='IOU threshold for NMS。默认值为 `0.45`'
+)
+def layout_analyze(
+    model_name,
+    model_type,
+    model_backend,
+    model_fp,
+    device,
+    img_fp,
+    output_fp,
+    resized_shape,
+    conf_thresh,
+    iou_thresh,
+):
+    """对给定图片进行 MFD 或者 版面分析。"""
+    analyzer = LayoutAnalyzer(
+        model_name=model_name,
+        model_type=model_type,
+        model_backend=model_backend,
+        model_fp=model_fp,
+        device=device,
+    )
+    out = analyzer.analyze(
+        img_fp,
+        resized_shape=resized_shape,
+        conf_threshold=conf_thresh,
+        iou_threshold=iou_thresh,
+    )
+    img0 = cv2.imread(img_fp, cv2.IMREAD_COLOR)
+    if output_fp is None:
+        output_fp = 'out-' + os.path.basename(img_fp)
+    analyzer.save_img(img0, out, output_fp)
 
 
 if __name__ == '__main__':

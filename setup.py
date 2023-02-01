@@ -39,11 +39,13 @@ exec(
 required = [
     'click',
     'tqdm',
+    'pyyaml',
     'unidecode',
     "torch>=1.8.0",
     "torchvision>=0.9.0",
     'numpy',
     'scipy',
+    'pandas',
     "pytorch-lightning",
     'pillow>=5.3.0',
     'opencv-python>=4.0.0',
@@ -51,6 +53,7 @@ required = [
     'Polygon3',
     'pyclipper',
     'matplotlib',
+    'seaborn',
     "onnx",
     "onnxruntime",
 ]
@@ -78,6 +81,15 @@ setup(
     packages=find_packages(),
     entry_points=entry_points,
     include_package_data=True,
+    data_files=[
+        (
+            '',
+            [
+                'cnstd/yolov7/yolov7-tiny-layout.yaml',
+                'cnstd/yolov7/yolov7-tiny-mfd.yaml',
+            ],
+        )
+    ],
     install_requires=required,
     extras_require=extras_require,
     zip_safe=False,
