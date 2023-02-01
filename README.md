@@ -52,7 +52,8 @@
 
 <div align="center">
   <img src="./docs/cases.png" alt="STD效果" width="700px"/>
-</div> 
+</div>
+
 ### 数学公式检测（MFD）
 
 MFD 模型检测图片中包含的数学公式，其中行内的公式检测为 `embedding` 类别，独立行的公式检测为 `isolated`。模型训练使用了英文 [IBEM](https://zenodo.org/record/4757865) 和中文 [CnMFD_Dataset](https://github.com/breezedeus/CnMFD_Dataset) 两个数据集。
@@ -378,15 +379,34 @@ class LayoutAnalyzer(object):
 
 对指定图片（列表）进行版面分析。
 
+```python
+def analyze(
+    self,
+    img_list: Union[
+        str,
+        Path,
+        Image.Image,
+        np.ndarray,
+        List[Union[str, Path, Image.Image, np.ndarray]],
+    ],
+    resized_shape: Union[int, Tuple[int, int]] = 700,
+    box_margin: int = 2,
+    conf_threshold: float = 0.25,
+    iou_threshold: float = 0.45,
+) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
+```
+
+
+
 **函数说明**：
 
 函数输入参数包括：
 
 * `img_list` (str or list): 待识别图片或图片列表；如果是 `np.ndarray`，则应该是shape为 `[H, W, 3]` 的 RGB 格式数组
 * `resized_shape` (int or tuple): (H, W); 把图片resize到此大小再做分析；默认值为 `700`
-* `box_margin` (int): 对识别出的内容框往外扩展的像素大小
-* `conf_threshold` (float): 分数阈值
-* `iou_threshold` (float): IOU阈值
+* `box_margin` (int): 对识别出的内容框往外扩展的像素大小；默认值为 `2`
+* `conf_threshold` (float): 分数阈值；默认值为 `0.25`
+* `iou_threshold` (float): IOU阈值；默认值为 `0.45`
 * `**kwargs`: 额外的参数。
 
 

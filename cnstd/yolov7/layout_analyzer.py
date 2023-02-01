@@ -248,9 +248,9 @@ class LayoutAnalyzer(object):
         Args:
             img_list (str or list): 待识别图片或图片列表；如果是 `np.ndarray`，则应该是shape为 `[H, W, 3]` 的 RGB 格式数组
             resized_shape (int or tuple): (H, W); 把图片resize到此大小再做分析；默认值为 `700`
-            box_margin (int): 对识别出的内容框往外扩展的像素大小
-            conf_threshold (float): 分数阈值
-            iou_threshold (float): IOU阈值
+            box_margin (int): 对识别出的内容框往外扩展的像素大小；默认值为 `2`
+            conf_threshold (float): 分数阈值；默认值为 `0.25`
+            iou_threshold (float): IOU阈值；默认值为 `0.45`
             **kwargs ():
 
         Returns: 一张图片的结果为一个list，其中每个元素表示识别出的版面中的一个元素，包含以下信息：
