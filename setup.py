@@ -87,6 +87,7 @@ setup(
             [
                 'cnstd/yolov7/yolov7-tiny-layout.yaml',
                 'cnstd/yolov7/yolov7-tiny-mfd.yaml',
+                'cnstd/yolov7/yolov7-mfd.yaml',
             ],
         )
     ],

@@ -245,6 +245,10 @@ ANALYSIS_MODELS = {
         ('yolov7_tiny', 'pytorch'): {
             'url': ROOT_URL + 'yolov7_tiny_mfd-pytorch.zip',
             'arch_yaml': Path(__file__).parent / 'yolov7' / 'yolov7-tiny-mfd.yaml',
+        },
+        ('yolov7', 'pytorch'): {
+            'url': ROOT_URL + 'yolov7_mfd-pytorch.zip',
+            'arch_yaml': Path(__file__).parent / 'yolov7' / 'yolov7-mfd.yaml',
         }
     },
 }
