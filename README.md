@@ -411,6 +411,20 @@ def analyze(
 
 
 
+#### 调用示例
+
+```python
+from cnstd import LayoutAnalyzer
+img_fp = 'examples/mfd/zh5.jpg'
+analyzer = LayoutAnalyzer('mfd')
+out = analyzer.analyze(img_fp, resized_shape=700)
+print(out)
+```
+
+
+
+
+
 ### 脚本使用
 
 **cnstd** 包含了几个命令行工具，安装 **cnstd** 后即可使用。
