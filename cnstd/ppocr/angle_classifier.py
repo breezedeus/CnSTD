@@ -50,7 +50,7 @@ class AngleClassifier(object):
         clf_image_shape='3, 48, 192',
         clf_batch_num=6,
         clf_thresh=0.9,
-        label_list=['0', '180'],
+        label_list=['0', '180'],  # 只支持0和180两个角度，参考：https://github.com/PaddlePaddle/PaddleOCR/blob/release%2F2.6/doc/doc_ch/angle_class.md  # noqa
         root: Union[str, Path] = data_dir(),
     ):
         self._model_name = model_name

@@ -32,7 +32,7 @@ import numpy as np
 
 from .consts import PP_SPACE
 from ..consts import MODEL_VERSION, AVAILABLE_MODELS
-from ..utils import data_dir, get_model_file, sorted_boxes, get_resized_shape
+from ..utils import data_dir, get_model_file, sort_boxes, get_resized_shape
 from .utility import (
     get_image_file_list,
     check_and_read_gif,
@@ -243,7 +243,7 @@ class PPDetector(object):
         )
         dt_boxes = list(zip(post_result[0]['points'], post_result[0]['scores']))
         dt_boxes = self.filter_tag_det_res(dt_boxes, ori_im.shape, min_box_size)
-        dt_boxes = sorted_boxes(dt_boxes)
+        dt_boxes = sort_boxes(dt_boxes, key=0)
 
         detected_results = []
         for bno in range(len(dt_boxes)):

@@ -31,7 +31,7 @@ from torch import nn
 from numpy import random
 
 from ..consts import MODEL_VERSION, ANALYSIS_SPACE, ANALYSIS_MODELS
-from ..utils import data_dir, get_model_file
+from ..utils import data_dir, get_model_file, sort_boxes
 from .yolo import Model
 from .consts import CATEGORY_DICT
 from .common import Conv
@@ -95,27 +95,6 @@ def attempt_load(
         for k in ['names', 'stride']:
             setattr(model, k, getattr(model[-1], k))
         return model  # return ensemble
-
-
-def sort_boxes(dt_boxes: List[Dict[str, Any]], key='box') -> List[Dict[str, Any]]:
-    """
-    Sort resulting boxes in order from top to bottom, left to right
-    args:
-        dt_boxes(array): list of dict, box with shape [4, 2]
-    return:
-        sorted boxes(array): list of dict, box with shape [4, 2]
-    """
-    num_boxes = len(dt_boxes)
-    _boxes = sorted(dt_boxes, key=lambda x: (x[key][0][1], x[key][0][0]))
-
-    for i in range(num_boxes - 1):
-        if abs(_boxes[i + 1][key][0][1] - _boxes[i][key][0][1]) < 10 and (
-            _boxes[i + 1][key][0][0] < _boxes[i][key][0][0]
-        ):
-            tmp = _boxes[i]
-            _boxes[i] = _boxes[i + 1]
-            _boxes[i + 1] = tmp
-    return _boxes
 
 
 def dedup_boxes(one_out, threshold):
@@ -360,7 +339,7 @@ class LayoutAnalyzer(object):
                 f'Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS'
             )
 
-        one_out = sort_boxes(one_out)
+        one_out = sort_boxes(one_out, key='box')
         return dedup_boxes(one_out, threshold=0.1)
 
     def _expand(self, xyxy, box_margin, shape):

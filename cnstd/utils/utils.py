@@ -21,10 +21,11 @@ import os
 import hashlib
 import requests
 from pathlib import Path
-from typing import Tuple, Union, List
+from typing import Tuple, Union, List, Dict, Any
 import logging
 import platform
 import zipfile
+from functools import cmp_to_key
 
 from tqdm import tqdm
 import cv2
@@ -327,25 +328,40 @@ def sort_box_points(points):
     return box
 
 
-def sorted_boxes(dt_boxes: List[Tuple[np.ndarray, float]]) -> List[np.ndarray]:
-    """
-    Sort text boxes in order from top to bottom, left to right
-    args:
-        dt_boxes(array): list of (box, score), box with shape [4, 2]
-    return:
-        sorted boxes(array): list of (box, score), box with shape [4, 2]
-    """
-    num_boxes = len(dt_boxes)
-    _boxes = sorted(dt_boxes, key=lambda x: (x[0][0][1], x[0][0][0]))
-    # _boxes = list(sorted_boxes)
+def _compare_box(box1, box2, key):
+    # 从上到下，从左到右
+    # box1, box2 to: [xmin, ymin, xmax, ymax]
+    box1 = [box1[key][0][0], box1[key][0][1], box1[key][2][0], box1[key][2][1]]
+    box2 = [box2[key][0][0], box2[key][0][1], box2[key][2][0], box2[key][2][1]]
 
-    for i in range(num_boxes - 1):
-        if abs(_boxes[i + 1][0][0][1] - _boxes[i][0][0][1]) < 10 and (
-            _boxes[i + 1][0][0][0] < _boxes[i][0][0][0]
-        ):
-            tmp = _boxes[i]
-            _boxes[i] = _boxes[i + 1]
-            _boxes[i + 1] = tmp
+    def y_iou():
+        # 计算它们在y轴上的IOU: Interaction / min(height1, height2)
+        # 判断是否有交集
+        if box1[3] <= box2[1] or box2[3] <= box1[1]:
+            return 0
+        # 计算交集的高度
+        y_min = max(box1[1], box2[1])
+        y_max = min(box1[3], box2[3])
+        return (y_max - y_min) / max(1, min(box1[3] - box1[1], box2[3] - box2[1]))
+
+    if y_iou() > 0.5:
+        return box1[0] - box2[0]
+    else:
+        return box1[1] - box2[1]
+
+
+def sort_boxes(
+    dt_boxes: List[Union[Dict[str, Any], Tuple[np.ndarray, float]]],
+    key: Union[str, int] = 'box',
+) -> List[Union[Dict[str, Any], Tuple[np.ndarray, float]]]:
+    """
+    Sort resulting boxes in order from top to bottom, left to right
+    args:
+        dt_boxes(array): list of dict or tuple, box with shape [4, 2]
+    return:
+        sorted boxes(array): list of dict or tuple, box with shape [4, 2]
+    """
+    _boxes = sorted(dt_boxes, key=cmp_to_key(lambda x, y: _compare_box(x, y, key)))
     return _boxes
 
 
