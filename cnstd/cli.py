@@ -332,7 +332,7 @@ def resave_model_file(
     '--model-type',
     type=str,
     default='yolov7_tiny',
-    help='模型类型。当前仅支持 `yolov7_tiny`',
+    help='模型类型。当前支持 [`yolov7_tiny`, `yolov7`]',
 )
 @click.option(
     '-b',
