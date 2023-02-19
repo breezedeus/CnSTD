@@ -15,11 +15,14 @@
 
 # CnSTD
 
-【Update 2023.02.01：V1.2.1 发布】
 
-* 支持基于 **YOLOv7** 的 **数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）和 **版面分析**（**Layout Analysis**）模型，并提供预训练好的模型可直接使用。
+# Update 2023.02.19：发布 V1.2.2
 
+主要变更：
+* MFD训练了参数更多精度更高的模型，供 [P2T网页版](https://p2t.behye.com) 使用。
+* 优化了检测出的boxes的排序算法，使得boxes的顺序更加符合人类的阅读习惯。
 
+了解更多：[RELEASE.md](./RELEASE.md) 。
 
 ---
 
