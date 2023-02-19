@@ -2,7 +2,7 @@
 	<img src="./docs/logo.png" width="250px"/>
   <div>&nbsp;</div>
 
-[![Downloads](https://static.pepy.tech/personalized-badge/cnstd?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads)](https://github.com/breezedeus/CnSTD)
+[![Downloads](https://static.pepy.tech/personalized-badge/cnstd?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads)](https://pepy.tech/project/cnstd)
 [![license](https://img.shields.io/github/license/breezedeus/cnstd)](./LICENSE)
 [![PyPI version](https://badge.fury.io/py/cnstd.svg)](https://badge.fury.io/py/cnstd)
 [![forks](https://img.shields.io/github/forks/breezedeus/cnstd)](https://img.shields.io/github/forks/breezedeus/cnstd)
@@ -15,11 +15,14 @@
 
 # CnSTD
 
-【Update 2023.02.01：V1.2.1 发布】
 
-* 支持基于 **YOLOv7** 的 **数学公式检测**（**Mathematical Formula Detection**，简称**MFD**）和 **版面分析**（**Layout Analysis**）模型，并提供预训练好的模型可直接使用。
+# Update 2023.02.19：发布 V1.2.2
 
+主要变更：
+* MFD训练了参数更多精度更高的模型，供 [P2T网页版](https://p2t.behye.com) 使用。
+* 优化了检测出的boxes的排序算法，使得boxes的顺序更加符合人类的阅读习惯。
 
+了解更多：[RELEASE.md](./RELEASE.md) 。
 
 ---
 
@@ -351,7 +354,7 @@ class LayoutAnalyzer(object):
 
 - `model_name`: 字符串类型，表示模型类型。可选值：'mfd' 表示数学公式检测；'layout' 表示版面分析。默认值：'mfd'
 
-- `model_type`: 字符串类型，表示模型类型。当前仅支持 'yolov7_tiny'；默认值：'yolov7_tiny'
+- `model_type`: 字符串类型，表示模型类型。当前支持 'yolov7_tiny' 和 'yolov7'；默认值：'yolov7_tiny'
 
 - `model_backend`: 字符串类型，表示backend。当前仅支持: 'pytorch'；默认值：'pytorch'
 
@@ -408,6 +411,20 @@ def analyze(
 * `conf_threshold` (float): 分数阈值；默认值为 `0.25`
 * `iou_threshold` (float): IOU阈值；默认值为 `0.45`
 * `**kwargs`: 额外的参数。
+
+
+
+#### 调用示例
+
+```python
+from cnstd import LayoutAnalyzer
+img_fp = 'examples/mfd/zh5.jpg'
+analyzer = LayoutAnalyzer('mfd')
+out = analyzer.analyze(img_fp, resized_shape=700)
+print(out)
+```
+
+
 
 
 
@@ -470,15 +487,15 @@ Usage: cnstd analyze [OPTIONS]
 Options:
   -m, --model-name [mfd|layout]   模型类型。`mfd` 表示数学公式检测，`layout`
                                   表示版面分析；默认为：`mfd`
-  -t, --model-type TEXT           模型类型。当前仅支持 `yolov7_tiny`
+  -t, --model-type TEXT           模型类型。当前支持 [`yolov7_tiny`, `yolov7`]
   -b, --model-backend [pytorch|onnx]
                                   模型后端架构。当前仅支持 `pytorch`
   -p, --model-fp TEXT             使用训练好的模型。默认为 `None`，表示使用系统自带的预训练模型
   --device TEXT                   cuda device, i.e. 0 or 0,1,2,3 or cpu
-  -i, --img-fp TEXT               待分析的图片路径
+  -i, --img-fp TEXT               待分析的图片路径或图片目录
   -o, --output-fp TEXT            分析结果输出的图片路径。默认为 `None`，会存储在当前文件夹，文件名称为输入文件名称
                                   前面增加`out-`；如输入文件名为 `img.jpg`, 输出文件名即为 `out-
-                                  img.jpg`
+                                  img.jpg`；如果输入为目录，则此路径也应该是一个目录，会将输出文件存储在此目录下
   --resized-shape INTEGER         分析时把图片resize到此大小再进行。默认为 `700`
   --conf-thresh FLOAT             Confidence Threshold。默认值为 `0.25`
   --iou-thresh FLOAT              IOU threshold for NMS。默认值为 `0.45`
