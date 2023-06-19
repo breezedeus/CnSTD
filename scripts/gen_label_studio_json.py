@@ -65,10 +65,6 @@ def deduplicate_images(img_dir):
 def main():
     parser = ArgumentParser()
     parser.add_argument(
-        '-i', '--img-dir', type=str, required=True, help='image directory'
-    )
-
-    parser.add_argument(
         '-t',
         '--model-type',
         type=str,
@@ -93,6 +89,9 @@ def main():
         help='这个路径对应 Label Studio 启动时使用的 LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT 值',
     )
     parser.add_argument(
+        '-i', '--img-dir', type=str, required=True, help='image directory'
+    )
+    parser.add_argument(
         '-o',
         '--out-json-fp',
         type=str,
@@ -103,7 +102,7 @@ def main():
     img_dir = args.img_dir
 
     analyzer = LayoutAnalyzer(
-        model_name='mfd', model_type='yolov7', model_fp=args.model_fp
+        model_name='mfd', model_type=args.model_type, model_fp=args.model_fp
     )
 
     img_fp_list = deduplicate_images(img_dir)
