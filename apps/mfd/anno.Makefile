@@ -9,8 +9,8 @@ predict:
 	--resized-shape 608 -l $(LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT) -i $(INPUT_IMAGE_DIR) -o 'prediction_results.json'
 
 convert_to_yolov7:
-	python scripts/convert_label_studio_to_yolov7.py --anno-json-fp-list 'prediction_results.json' \
+	python scripts/convert_label_studio_to_yolov7.py --anno-json-fp-list 'annotation.json' \
 	--index-prefix 'data/call_images/images/2023-02-27_2023-03-05' \
-	--out-labels-dir 'data/call_images/labels/2023-02-27_2023-03-05' --out-index-fp 'train.txt'
+	--out-labels-dir '/data/jinlong/std_data/call_images/labels/2023-02-27_2023-03-05' --out-index-fp 'train.txt'
 
 .PHONY: predict convert_to_yolov7
