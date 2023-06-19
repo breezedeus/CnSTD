@@ -139,7 +139,7 @@ def main():
         # 则下面字典中的 `image` 中对应的路径应该为 `image/1.jpg`，
         # 此时 `image` 应该取值为 `/data/local-files/?d=image/1.jpg` 。
         # 注：如果下面代码输出的文件路径有问题，改一下以下几行的逻辑就行
-        local_fp = Path(img_fp).relative(args.local_file_doc_root_dir)
+        local_fp = Path(img_fp).relative_to(args.local_file_doc_root_dir)
         data = {
             # "image": img_fp,
             "image": "/data/local-files/?d="
