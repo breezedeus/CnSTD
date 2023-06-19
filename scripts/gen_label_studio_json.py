@@ -85,7 +85,7 @@ def main():
         '-l',
         '--local-file-doc-root-dir',
         type=str,
-        default='/data/jinlong/std_data',
+        required=True,
         help='这个路径对应 Label Studio 启动时使用的 LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT 值',
     )
     parser.add_argument(
