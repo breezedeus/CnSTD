@@ -4,10 +4,9 @@ from collections import OrderedDict
 from glob import glob
 import json
 from argparse import ArgumentParser
-import hashlib
 import tqdm
+from pathlib import Path
 
-from PIL import Image
 import cv2
 
 from cnstd import LayoutAnalyzer
@@ -36,6 +35,7 @@ def to_json(total_width, total_height, box_type, x0, y0, w, h, _id):
 
 
 def deduplicate_images(img_dir):
+    # 对文件夹下的图片做去重
     def calculate_image_hash(image_path):
         # with open(img_fp, 'rb') as f:
         #     image_data = f.read()
@@ -82,7 +82,16 @@ def main():
         default='epoch_124-mfd.pt',
         help='使用训练好的模型。默认为 `None`，表示使用系统自带的预训练模型',
     )
-
+    parser.add_argument(
+        "--resized-shape", type=int, default=608, help='分析时把图片resize到此大小再进行。默认为 `608`',
+    )
+    parser.add_argument(
+        '-l',
+        '--local-file-doc-root-dir',
+        type=str,
+        default='/data/jinlong/std_data',
+        help='这个路径对应 Label Studio 启动时使用的 LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT 值',
+    )
     parser.add_argument(
         '-o',
         '--out-json-fp',
@@ -102,9 +111,9 @@ def main():
     total_json = []
     num_boxes = 0
     for img_fp in tqdm.tqdm(img_fp_list):
-        img0 = read_img(img_fp, return_type='Image')
+        img0 = read_img(img_fp)
         width, height = img0.size
-        out = analyzer.analyze(img0, resized_shape=608)
+        out = analyzer.analyze(img0, resized_shape=args.resized_shape)
 
         results = []
         for box_info in out:
@@ -126,10 +135,16 @@ def main():
             results.append(info)
 
         predictions = [{"model_version": "one", "score": 0.5, "result": results}]
+        # 这个路径要相对于Label Studio初始化时设置的 LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT 值，
+        # 例如：如果图片绝对路径为 `/home/user1/images/1.jpg`，而 `LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT` 为 `/home/user1`，
+        # 则下面字典中的 `image` 中对应的路径应该为 `image/1.jpg`，
+        # 此时 `image` 应该取值为 `/data/local-files/?d=image/1.jpg` 。
+        # 注：如果下面代码输出的文件路径有问题，改一下以下几行的逻辑就行
+        local_fp = Path(img_fp).relative(args.local_file_doc_root_dir)
         data = {
             # "image": img_fp,
             "image": "/data/local-files/?d="
-            + img_fp,
+            + str(local_fp),
         }
         total_json.append({"data": data, "predictions": predictions})
 
