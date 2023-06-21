@@ -280,7 +280,9 @@ def restore_img(img):
 
 
 def read_img(img_fp) -> Image.Image:
-    return Image.open(img_fp)
+    img = Image.open(img_fp)
+    img = ImageOps.exif_transpose(img).convert('RGB')  # 识别旋转后的图片（pillow不会自动识别）
+    return img
 
 
 def pil_to_numpy(img: Image.Image) -> np.ndarray:
