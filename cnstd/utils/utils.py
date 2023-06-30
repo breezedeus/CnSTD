@@ -1,5 +1,5 @@
 # coding: utf-8
-# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
+# Copyright (C) 2021-2023, [Breezedeus](https://github.com/breezedeus).
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -26,12 +26,15 @@ import logging
 import platform
 import zipfile
 from functools import cmp_to_key
+import shutil
+import tempfile
 
 from tqdm import tqdm
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 import torch
+from huggingface_hub import hf_hub_download
 
 from ..consts import MODEL_VERSION, MODEL_CONFIGS, AVAILABLE_MODELS
 
@@ -130,13 +133,13 @@ def check_sha1(filename, sha1_hash):
 
 
 def download(url, path=None, overwrite=False, sha1_hash=None):
-    """Download an given URL
+    """Download a given URL
     Parameters
     ----------
-    url : str
-        URL to download
+    url : dict, url for downloading the model, with keys:
+            repo_id, subfolder, filename
     path : str, optional
-        Destination path to store downloaded file. By default stores to the
+        Destination path to store downloaded file. By default, stores to the
         current directory with same name as in url.
     overwrite : bool, optional
         Whether to overwrite destination file if already exists.
@@ -149,11 +152,11 @@ def download(url, path=None, overwrite=False, sha1_hash=None):
         The file path of the downloaded file.
     """
     if path is None:
-        fname = url.split('/')[-1]
+        fname = url['filename']
     else:
         path = os.path.expanduser(path)
         if os.path.isdir(path):
-            fname = os.path.join(path, url.split('/')[-1])
+            fname = os.path.join(path, url['filename'])
         else:
             fname = path
 
@@ -167,38 +170,21 @@ def download(url, path=None, overwrite=False, sha1_hash=None):
             os.makedirs(dirname)
 
         logger.info('Downloading %s from %s...' % (fname, url))
-        r = requests.get(url, stream=True)
-        if r.status_code != 200:
-            raise RuntimeError(
-                'Failed downloading url %s. Probably because this model is not free anymore.'
-                % url
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            local_path = hf_hub_download(
+                repo_id=url["repo_id"],
+                subfolder=url["subfolder"],
+                filename=url["filename"],
+                repo_type="model",
+                cache_dir=tmp_dir,
             )
-        total_length = r.headers.get('content-length')
-        with open(fname, 'wb') as f:
-            if total_length is None:  # no content length header
-                for chunk in r.iter_content(chunk_size=1024):
-                    if chunk:  # filter out keep-alive new chunks
-                        f.write(chunk)
-            else:
-                total_length = int(total_length)
-                for chunk in tqdm(
-                    r.iter_content(chunk_size=1024),
-                    total=int(total_length / 1024.0 + 0.5),
-                    unit='KB',
-                    unit_scale=False,
-                    dynamic_ncols=True,
-                ):
-                    f.write(chunk)
-
-        if sha1_hash and not check_sha1(fname, sha1_hash):
-            raise UserWarning(
-                'File {} is downloaded but the content hash does not match. '
-                'The repo may be outdated or download may be incomplete. '
-                'If the "repo_url" is overridden, consider switching to '
-                'the default repo.'.format(fname)
-            )
+            shutil.copy2(local_path, fname)
 
     return fname
+
+
+class ModelDownloadingError(Exception):
+    pass
 
 
 def get_model_file(url, model_dir):
@@ -209,7 +195,8 @@ def get_model_file(url, model_dir):
 
     Parameters
     ----------
-    url: str, url for downloading the model
+    url : dict, url for downloading the model, with keys:
+            repo_id, subfolder, filename
     model_dir : str, default $CNSTD_HOME
         Location for keeping the model parameters.
 
@@ -222,9 +209,17 @@ def get_model_file(url, model_dir):
     par_dir = os.path.dirname(model_dir)
     os.makedirs(par_dir, exist_ok=True)
 
-    zip_file_path = os.path.join(par_dir, os.path.basename(url))
+    zip_file_path = os.path.join(par_dir, url['filename'])
     if not os.path.exists(zip_file_path):
-        download(url, path=zip_file_path, overwrite=True)
+        try:
+            download(url, path=zip_file_path, overwrite=True)
+        except Exception as e:
+            logger.error(e)
+            message = f'Failed to download model: {url["filename"]}.'
+            message += '\n\tPlease open your VPN and try again. \n\t' \
+                       'If this error persists, please follow the instruction at ' \
+                       '[CnSTD/CnOCR Doc](https://www.breezedeus.com/cnocr) to manually download the model files.'
+            raise ModelDownloadingError(message)
     with zipfile.ZipFile(zip_file_path) as zf:
         zf.extractall(par_dir)
     os.remove(zip_file_path)

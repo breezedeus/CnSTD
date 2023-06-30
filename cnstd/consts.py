@@ -1,5 +1,5 @@
 # coding: utf-8
-# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
+# Copyright (C) 2021-2023, [Breezedeus](https://github.com/breezedeus).
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -111,10 +111,16 @@ MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-ROOT_URL = (
-    'https://huggingface.co/breezedeus/cnstd-cnocr-models/resolve/main/models/cnstd/%s/'
-    % MODEL_VERSION
-)
+HF_HUB_REPO_ID = "breezedeus/cnstd-cnocr-models"
+HF_HUB_SUBFOLDER = "models/cnstd/%s" % MODEL_VERSION
+
+
+def format_hf_hub_url(url: str) -> dict:
+    return {
+        'repo_id': HF_HUB_REPO_ID,
+        'subfolder': HF_HUB_SUBFOLDER,
+        'filename': url,
+    }
 
 
 class AvailableModels(object):
@@ -216,10 +222,10 @@ class AvailableModels(object):
     def get_fpn_type(self, model_name, model_backend) -> Optional[int]:
         return self.get_value(model_name, model_backend, 'fpn_type')
 
-    def get_url(self, model_name, model_backend) -> Optional[str]:
+    def get_url(self, model_name, model_backend) -> Optional[dict]:
         url = self.get_value(model_name, model_backend, 'url')
         if url:
-            url = ROOT_URL + url
+            url = format_hf_hub_url(url)
 
         return url
 
@@ -229,7 +235,7 @@ AVAILABLE_MODELS = AvailableModels()
 ANGLE_CLF_SPACE = 'angle_clf'
 ANGLE_CLF_MODELS = {
     ('ch_ppocr_mobile_v2.0_cls', 'onnx'): {
-        'url': ROOT_URL + 'ch_ppocr_mobile_v2.0_cls_infer-onnx.zip'
+        'url': format_hf_hub_url('ch_ppocr_mobile_v2.0_cls_infer-onnx.zip')
     }
 }
 
@@ -237,18 +243,18 @@ ANALYSIS_SPACE = 'analysis'
 ANALYSIS_MODELS = {
     'layout': {
         ('yolov7_tiny', 'pytorch'): {
-            'url': ROOT_URL + 'yolov7_tiny_layout-pytorch.zip',
+            'url': format_hf_hub_url('yolov7_tiny_layout-pytorch.zip'),
             'arch_yaml': Path(__file__).parent / 'yolov7' / 'yolov7-tiny-layout.yaml',
         }
     },
     'mfd': {
         ('yolov7_tiny', 'pytorch'): {
-            'url': ROOT_URL + 'yolov7_tiny_mfd-pytorch.zip',
+            'url': format_hf_hub_url('yolov7_tiny_mfd-pytorch.zip'),
             'arch_yaml': Path(__file__).parent / 'yolov7' / 'yolov7-tiny-mfd.yaml',
         },
         ('yolov7', 'pytorch'): {
-            'url': ROOT_URL + 'yolov7_mfd-pytorch.zip',
+            'url': format_hf_hub_url('yolov7_mfd-pytorch.zip'),
             'arch_yaml': Path(__file__).parent / 'yolov7' / 'yolov7-mfd.yaml',
-        }
+        },
     },
 }
