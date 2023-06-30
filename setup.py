@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-# Copyright (C) 2021, [Breezedeus](https://github.com/breezedeus).
+# Copyright (C) 2021-2023, [Breezedeus](https://github.com/breezedeus).
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -56,6 +56,7 @@ required = [
     'seaborn',
     "onnx",
     "onnxruntime",
+    "huggingface_hub",
 ]
 
 extras_require = {
@@ -70,7 +71,8 @@ cnstd = cnstd.cli:cli
 setup(
     name=PACKAGE_NAME,
     version=about['__version__'],
-    description="Python3 package for Chinese/English STR (Scene Text Recognition), with small pretrained models",
+    description="Python3 package for Chinese/English Scene Text Detection (STD), Mathematical Formula Detection (MFD), "
+                "and Layout Analysis, with free pretrained models",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author='breezedeus',
@@ -102,9 +104,10 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: Implementation',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
     ],
 )

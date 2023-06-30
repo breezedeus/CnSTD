@@ -1,4 +1,5 @@
---index-url https://pypi.doubanio.com/simple --extra-index-url https://pypi.org/simple
+--index-url https://pypi.tuna.tsinghua.edu.cn/simple
+--extra-index-url https://mirrors.aliyun.com/pypi/simple
 
 click
 tqdm
@@ -19,3 +20,4 @@ matplotlib
 seaborn
 onnx
 onnxruntime
+huggingface_hub
