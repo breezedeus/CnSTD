@@ -198,7 +198,7 @@ MODELS = sorted(MODELS)
     help='使用训练好的模型。默认为 `None`，表示使用系统自带的预训练模型',
 )
 @click.option(
-    "-r", "--rotated-bbox", is_flag=True, help="是否检测带角度（非水平和垂直）的文本框。默认为 `True`"
+    "-r", "--rotated-bbox", is_flag=True, help="是否检测带角度（非水平和垂直）的文本框"
 )
 @click.option(
     "--resized-shape",
