@@ -176,7 +176,7 @@ class DetectionPredictor(NestedObject):
                 For Image.Image, it should be generated from read_img;
                 For np.ndarray, it should be RGB-style, with shape [H, W, 3], scale [0, 255]
             resized_shape: tuple, [height, width], height and width after resizing original images
-            preserve_aspect_ratio: whether or not presserve aspect ratio of original images when resizing them
+            preserve_aspect_ratio: whether or not preserve aspect ratio of original images when resizing them
             min_box_size: minimal size of detected boxes; boxes with smaller height or width will be ignored
             box_score_thresh: score threshold for boxes, boxes with scores lower than this value will be ignored
             **kwargs:
@@ -207,7 +207,9 @@ class DetectionPredictor(NestedObject):
             _boxes = _boxes[:, :-1]
             # resize back
             _boxes[:, [0, 2]] /= compress_ratio[1]
+            _boxes[:, [0, 2]] = np.clip(_boxes[:, [0, 2]], 0.0, 1.0)
             _boxes[:, [1, 3]] /= compress_ratio[0]
+            _boxes[:, [1, 3]] = np.clip(_boxes[:, [1, 3]], 0.0, 1.0)
 
             out_boxes = _boxes.copy()
             out_boxes[:, [0, 2]] *= rotated_img.shape[1]
