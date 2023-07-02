@@ -155,6 +155,8 @@ class LayoutAnalyzer(object):
         self._model_type = model_type
         self._model_backend = model_backend
 
+        if device.lower().strip() in ('cuda', 'cuda:0', 'gpu'):
+            device = '0'
         self.device = select_device(device)
 
         self._assert_and_prepare_model_files(model_fp, root)
