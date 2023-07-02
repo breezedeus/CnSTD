@@ -1,5 +1,10 @@
 # Release Notes
 
+# Update 2023.07.02：发布 V1.2.3.2
+
+主要变更：
+* 修复参数 `device` 的取值bug，感谢 @Shadow-Alex 。
+
 # Update 2023.06.30：发布 V1.2.3.1
 
 主要变更：
