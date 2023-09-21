@@ -148,7 +148,7 @@ class LayoutAnalyzer(object):
             device (str): 'cpu', or 'gpu'; default: 'cpu'
             **kwargs ():
         """
-        assert model_name in ('layout', 'mfd')
+        assert model_name in CATEGORY_DICT.keys()
         model_backend = model_backend.lower()
         assert model_backend in ('pytorch', 'onnx')
         self._model_name = model_name
@@ -356,12 +356,30 @@ class LayoutAnalyzer(object):
         save_layout_img(img0, self.categories, one_out, save_path)
 
 
+COLOR_LIST = [
+    [0, 140, 255],  # 深橙色
+    [127, 255, 0],  # 春绿色
+    [255, 144, 30],  # 道奇蓝
+    [180, 105, 255],  # 粉红色
+    [128, 0, 128],  # 紫色
+    [0, 255, 255],  # 黄色
+    [255, 191, 0],  # 深天蓝色
+    [50, 205, 50],  # 石灰绿色
+    [60, 20, 220],  # 猩红色
+    [130, 0, 75]  # 靛蓝色
+]
+
+
 def save_layout_img(img0, categories, one_out, save_path):
     """可视化版面分析结果。"""
     if isinstance(img0, Image.Image):
         img0 = cv2.cvtColor(np.asarray(img0.convert('RGB')), cv2.COLOR_RGB2BGR)
 
-    colors = [[random.randint(0, 255) for _ in range(3)] for _ in categories]
+    if len(categories) > 10:
+        colors = [[random.randint(0, 255) for _ in range(3)] for _ in categories]
+    else:
+        colors = COLOR_LIST
+
     for one_box in one_out:
         _type = one_box['type']
         conf = one_box['score']
