@@ -604,8 +604,7 @@ class RepConv(nn.Module):
     def fuse_repvgg_block(self):    
         if self.deploy:
             return
-        print(f"RepConv.fuse_repvgg_block")
-                
+
         self.rbr_dense = self.fuse_conv_bn(self.rbr_dense[0], self.rbr_dense[1])
         
         self.rbr_1x1 = self.fuse_conv_bn(self.rbr_1x1[0], self.rbr_1x1[1])

@@ -170,6 +170,7 @@ def download(url, path=None, overwrite=False, sha1_hash=None):
             os.makedirs(dirname)
 
         logger.info('Downloading %s from %s...' % (fname, url))
+        HF_TOKEN = os.environ.get('HF_TOKEN')
         with tempfile.TemporaryDirectory() as tmp_dir:
             local_path = hf_hub_download(
                 repo_id=url["repo_id"],
@@ -177,6 +178,7 @@ def download(url, path=None, overwrite=False, sha1_hash=None):
                 filename=url["filename"],
                 repo_type="model",
                 cache_dir=tmp_dir,
+                token=HF_TOKEN,
             )
             shutil.copy2(local_path, fname)
 
