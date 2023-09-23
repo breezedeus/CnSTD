@@ -55,11 +55,12 @@ required = [
     'matplotlib',
     'seaborn',
     "onnx",
-    "onnxruntime",
     "huggingface_hub",
 ]
 
 extras_require = {
+    "ort-cpu": ["onnxruntime"],
+    "ort-gpu": ["onnxruntime-gpu"],
     "dev": ["pip-tools", "pytest"],
 }
 

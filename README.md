@@ -98,10 +98,22 @@ MFD 模型检测图片中包含的数学公式，其中行内的公式检测为 
 pip install cnstd
 ```
 
+如果需要使用 ONNX 模型（`model_backend=onnx`），请使用以下命令安装：
+
+* CPU环境使用 ONNX 模型：
+  ```bash
+  pip install cnstd[ort-cpu]
+  ```
+* GPU环境使用 ONNX 模型：
+  ```bash
+  pip install cnstd[ort-gpu]
+  ```
+  * 注意：如果当前环境已经安装了 `onnxruntime` 包，请先手动卸载（`pip uninstall onnxruntime`）后再运行上面的命令。
+
 安装速度慢的话，可以指定国内的安装源，如使用豆瓣源：
 
 ```bash
-pip install cnstd -i https://pypi.doubanio.com/simple
+pip install cnstd -i https://mirrors.aliyun.com/pypi/simple
 ```
 
 【注意】：
