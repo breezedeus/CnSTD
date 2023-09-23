@@ -1,5 +1,13 @@
 # Release Notes
 
+# Update 2023.09.23：发布 V1.2.3.4
+
+主要变更：
+* 增加了对 `onnxruntine` (ORT) 新版的兼容：`InferenceSession` 中显式提供了 `providers` 参数。
+* `setup.py` 中去除对 `onnxruntime` 的依赖，改为在 `extras_require` 中按需指定：
+  * `cnstd[ort-cpu]`：`onnxruntime`；
+  * `cnstd[ort-gpu]`: `onnxruntime-gpu`。
+
 # Update 2023.09.21：发布 V1.2.3.3
 
 主要变更：
