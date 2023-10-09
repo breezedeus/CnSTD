@@ -21,7 +21,7 @@ package:
 	rm -rf build
 	python setup.py sdist bdist_wheel
 
-VERSION = 1.2.3.4
+VERSION = 1.2.3.5
 upload:
 	python -m twine upload  dist/cnstd-$(VERSION)* --verbose
 
