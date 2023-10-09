@@ -154,7 +154,9 @@ def create_predictor(model_fp, mode, logger):
     model_file_path = model_fp
     if not os.path.exists(model_file_path):
         raise ValueError("not find model file path {}".format(model_file_path))
-    sess = ort.InferenceSession(model_file_path, providers=['AzureExecutionProvider', 'CPUExecutionProvider'])
+    sess = ort.InferenceSession(
+        model_file_path, providers=ort.get_available_providers()
+    )
     return sess, sess.get_inputs()[0], None, None
 
 

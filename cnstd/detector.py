@@ -28,7 +28,7 @@ from typing import Tuple, List, Dict, Union, Any, Optional
 from PIL import Image
 import numpy as np
 
-from .consts import MODEL_VERSION, AVAILABLE_MODELS
+from .consts import MODEL_VERSION, AVAILABLE_MODELS, DOWNLOAD_SOURCE
 from .model import gen_model
 from .model.core import DetectionPredictor
 from .utils import (
@@ -144,7 +144,7 @@ class Detector(object):
                     % ((self._model_name, self._model_backend),)
                 )
             url = AVAILABLE_MODELS.get_url(self._model_name, self._model_backend)
-            get_model_file(url, self._model_dir)  # download the .zip file and unzip
+            get_model_file(url, self._model_dir, download_source=DOWNLOAD_SOURCE)  # download the .zip file and unzip
             fps = glob('%s/%s*.ckpt' % (self._model_dir, self._model_file_prefix))
 
         self._model_fp = fps[0]

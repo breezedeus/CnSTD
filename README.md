@@ -14,15 +14,19 @@
 </div>
 
 # CnSTD
+# Update 2023.10.09：发布 V1.2.3.5
+
+主要变更：
+
+* 支持基于环境变量 `CNSTD_DOWNLOAD_SOURCE` 的取值，来决定不同的模型下载路径，默认使用国内OSS地址。
+* `LayoutAnalyzer` 中增加了参数 `model_categories` 和 `model_arch_yaml`，用于指定模型的类别名称列表和模型架构。
+
+... 
+
 # Update 2023.06.30：发布 V1.2.3
 
 主要变更：
-* 修复了模型文件自动下载的功能。HuggingFace似乎对下载文件的逻辑做了调整，导致之前版本的自动下载失败，当前版本已修复。但由于HuggingFace国内被墙，国内下载仍需 **梯子（VPN）**。
-* 更新了各个依赖包的版本号。
 
-# Update 2023.06.20：
-
-主要变更：
 * 基于新标注的数据，重新训练了 **MFD YoloV7** 模型，目前新模型已部署到 [P2T网页版](https://p2t.behye.com) 。具体说明见：[Pix2Text (P2T) 新版公式检测模型 | Breezedeus.com](https://www.breezedeus.com/article/p2t-mfd-20230613) 。
 * 之前的 MFD YoloV7 模型已开放给星球会员下载，具体说明见：[P2T YoloV7 数学公式检测模型开放给星球会员下载 | Breezedeus.com](https://www.breezedeus.com/article/p2t-yolov7-for-zsxq-20230619) 。
 * 增加了一些Label Studio相关的脚本，见 [scripts](scripts) 。如：利用 CnSTD 自带的 MFD 模型对目录中的图片进行公式检测后生成可导入到Label Studio中的JSON文件；以及，Label Studio标注后把导出的JSON文件转换成训练 MFD 模型所需的数据格式。注意，MFD 模型的训练代码在 [yolov7](https://github.com/breezedeus/yolov7) （`dev` branch）中。
@@ -358,13 +362,15 @@ class LayoutAnalyzer(object):
         self,
         model_name: str = 'mfd',  # 'layout' or 'mfd'
         *,
-        model_type: str = 'yolov7_tiny',
+        model_type: str = 'yolov7_tiny',  # 当前支持 [`yolov7_tiny`, `yolov7`]'
         model_backend: str = 'pytorch',
+        model_categories: Optional[List[str]] = None,
         model_fp: Optional[str] = None,
+        model_arch_yaml: Optional[str] = None,
         root: Union[str, Path] = data_dir(),
         device: str = 'cpu',
         **kwargs,
-    ):
+    )
 ```
 
 其中的参数含义如下：
@@ -375,7 +381,11 @@ class LayoutAnalyzer(object):
 
 - `model_backend`: 字符串类型，表示backend。当前仅支持: 'pytorch'；默认值：'pytorch'
 
+- `model_categories`: 模型的检测类别名称。默认值：None，表示基于 `model_name` 自动决定
+
 - `model_fp`: 字符串类型，表示模型文件的路径。默认值：`None`，表示使用默认的文件路径
+
+- `model_arch_yaml`: 架构文件路径，例如 'yolov7-mfd.yaml'；默认值为 None，表示将自动选择。
 
 - `root`: 字符串或`Path`类型，表示模型文件所在的根目录。
   - Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.2/analysis`
@@ -502,18 +512,21 @@ Usage: cnstd analyze [OPTIONS]
   对给定图片进行 MFD 或者 版面分析。
 
 Options:
-  -m, --model-name [mfd|layout]   模型类型。`mfd` 表示数学公式检测，`layout`
+  -m, --model-name TEXT           模型类型。`mfd` 表示数学公式检测，`layout`
                                   表示版面分析；默认为：`mfd`
   -t, --model-type TEXT           模型类型。当前支持 [`yolov7_tiny`, `yolov7`]
   -b, --model-backend [pytorch|onnx]
                                   模型后端架构。当前仅支持 `pytorch`
+  -c, --model-categories TEXT     模型的检测类别名称（","分割）。默认值：None，表示基于 `model_name`
+                                  自动决定
   -p, --model-fp TEXT             使用训练好的模型。默认为 `None`，表示使用系统自带的预训练模型
+  -y, --model-arch-yaml TEXT      模型的配置文件路径
   --device TEXT                   cuda device, i.e. 0 or 0,1,2,3 or cpu
   -i, --img-fp TEXT               待分析的图片路径或图片目录
   -o, --output-fp TEXT            分析结果输出的图片路径。默认为 `None`，会存储在当前文件夹，文件名称为输入文件名称
                                   前面增加`out-`；如输入文件名为 `img.jpg`, 输出文件名即为 `out-
                                   img.jpg`；如果输入为目录，则此路径也应该是一个目录，会将输出文件存储在此目录下
-  --resized-shape INTEGER         分析时把图片resize到此大小再进行。默认为 `700`
+  --resized-shape INTEGER         分析时把图片resize到此大小再进行。默认为 `608`
   --conf-thresh FLOAT             Confidence Threshold。默认值为 `0.25`
   --iou-thresh FLOAT              IOU threshold for NMS。默认值为 `0.45`
   -h, --help                      Show this message and exit.

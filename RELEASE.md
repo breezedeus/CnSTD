@@ -1,5 +1,12 @@
 # Release Notes
 
+# Update 2023.10.09：发布 V1.2.3.5
+
+主要变更：
+
+* 支持基于环境变量 `CNSTD_DOWNLOAD_SOURCE` 的取值，来决定不同的模型下载路径。
+* `LayoutAnalyzer` 中增加了参数 `model_categories` 和 `model_arch_yaml`，用于指定模型的类别名称列表和模型架构。
+
 # Update 2023.09.23：发布 V1.2.3.4
 
 主要变更：

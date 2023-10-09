@@ -17,6 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import os
 import logging
 from pathlib import Path
 from typing import Tuple, Set, Dict, Any, Optional, Union
@@ -43,6 +44,8 @@ logger = logging.getLogger(__name__)
 # 如: __version__ = '1.0.*'，对应的 MODEL_VERSION 都是 '1.0'
 MODEL_VERSION = '.'.join(__version__.split('.', maxsplit=2)[:2])
 VOCAB_FP = Path(__file__).parent.parent / 'label_cn.txt'
+# Which OSS source will be used for downloading model files, 'CN' or 'HF'
+DOWNLOAD_SOURCE = os.environ.get('CNSTD_DOWNLOAD_SOURCE', 'CN')
 
 MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
     'db_resnet50': {
@@ -113,6 +116,9 @@ MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
 
 HF_HUB_REPO_ID = "breezedeus/cnstd-cnocr-models"
 HF_HUB_SUBFOLDER = "models/cnstd/%s" % MODEL_VERSION
+CN_OSS_ENDPOINT = (
+    "https://sg-models.oss-cn-beijing.aliyuncs.com/cnstd/%s/" % MODEL_VERSION
+)
 
 
 def format_hf_hub_url(url: str) -> dict:
@@ -120,6 +126,7 @@ def format_hf_hub_url(url: str) -> dict:
         'repo_id': HF_HUB_REPO_ID,
         'subfolder': HF_HUB_SUBFOLDER,
         'filename': url,
+        'cn_oss': CN_OSS_ENDPOINT,
     }
 
 
