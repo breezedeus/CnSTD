@@ -197,9 +197,7 @@ MODELS = sorted(MODELS)
     default=None,
     help='使用训练好的模型。默认为 `None`，表示使用系统自带的预训练模型',
 )
-@click.option(
-    "-r", "--rotated-bbox", is_flag=True, help="是否检测带角度（非水平和垂直）的文本框"
-)
+@click.option("-r", "--rotated-bbox", is_flag=True, help="是否检测带角度（非水平和垂直）的文本框")
 @click.option(
     "--resized-shape",
     type=str,
@@ -323,7 +321,7 @@ def resave_model_file(
 @click.option(
     '-m',
     '--model-name',
-    type=click.Choice(['mfd', 'layout']),
+    type=str,
     default='mfd',
     help='模型类型。`mfd` 表示数学公式检测，`layout` 表示版面分析；默认为：`mfd`',
 )
@@ -342,12 +340,20 @@ def resave_model_file(
     help='模型后端架构。当前仅支持 `pytorch`',
 )
 @click.option(
+    '-c',
+    '--model-categories',
+    type=str,
+    default=None,
+    help='模型的检测类别名称（","分割）。默认值：None，表示基于 `model_name` 自动决定',
+)
+@click.option(
     '-p',
     '--model-fp',
     type=str,
     default=None,
     help='使用训练好的模型。默认为 `None`，表示使用系统自带的预训练模型',
 )
+@click.option('-y', '--model-arch-yaml', type=str, default=None, help='模型的配置文件路径')
 @click.option('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
 @click.option(
     '-i', '--img-fp', type=str, default='./examples/mfd/zh.jpg', help='待分析的图片路径或图片目录'
@@ -358,11 +364,11 @@ def resave_model_file(
     type=str,
     default=None,
     help='分析结果输出的图片路径。默认为 `None`，会存储在当前文件夹，文件名称为输入文件名称前面增加`out-`；'
-         '如输入文件名为 `img.jpg`, 输出文件名即为 `out-img.jpg`；'
-         '如果输入为目录，则此路径也应该是一个目录，会将输出文件存储在此目录下',
+    '如输入文件名为 `img.jpg`, 输出文件名即为 `out-img.jpg`；'
+    '如果输入为目录，则此路径也应该是一个目录，会将输出文件存储在此目录下',
 )
 @click.option(
-    "--resized-shape", type=int, default=700, help='分析时把图片resize到此大小再进行。默认为 `700`',
+    "--resized-shape", type=int, default=608, help='分析时把图片resize到此大小再进行。默认为 `608`',
 )
 @click.option(
     '--conf-thresh', type=float, default=0.25, help='Confidence Threshold。默认值为 `0.25`'
@@ -374,7 +380,9 @@ def layout_analyze(
     model_name,
     model_type,
     model_backend,
+    model_categories,
     model_fp,
+    model_arch_yaml,
     device,
     img_fp,
     output_fp,
@@ -383,11 +391,18 @@ def layout_analyze(
     iou_thresh,
 ):
     """对给定图片进行 MFD 或者 版面分析。"""
+    if not os.path.exists(img_fp):
+        raise FileNotFoundError(img_fp)
+
+    if model_categories is not None:
+        model_categories = model_categories.split(',')
     analyzer = LayoutAnalyzer(
         model_name=model_name,
         model_type=model_type,
         model_backend=model_backend,
+        model_categories=model_categories,
         model_fp=model_fp,
+        model_arch_yaml=model_arch_yaml,
         device=device,
     )
 
@@ -400,11 +415,11 @@ def layout_analyze(
     elif os.path.isdir(img_fp):
         fn_list = glob.glob1(img_fp, '*g')
         input_fp_list = [os.path.join(img_fp, fn) for fn in fn_list]
-        assert output_fp is not None, 'output_fp should NOT be None when img_fp is a directory'
+        assert (
+            output_fp is not None
+        ), 'output_fp should NOT be None when img_fp is a directory'
         os.makedirs(output_fp, exist_ok=True)
-        output_fp_list = [
-            os.path.join(output_fp, 'analysis-' + fn) for fn in fn_list
-        ]
+        output_fp_list = [os.path.join(output_fp, 'analysis-' + fn) for fn in fn_list]
 
     for input_fp, output_fp in zip(input_fp_list, output_fp_list):
         out = analyzer.analyze(

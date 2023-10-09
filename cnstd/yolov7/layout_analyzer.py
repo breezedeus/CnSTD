@@ -30,7 +30,7 @@ import torch
 from torch import nn
 from numpy import random
 
-from ..consts import MODEL_VERSION, ANALYSIS_SPACE, ANALYSIS_MODELS
+from ..consts import MODEL_VERSION, ANALYSIS_SPACE, ANALYSIS_MODELS, DOWNLOAD_SOURCE
 from ..utils import data_dir, get_model_file, sort_boxes
 from .yolo import Model
 from .consts import CATEGORY_DICT
@@ -130,7 +130,9 @@ class LayoutAnalyzer(object):
         *,
         model_type: str = 'yolov7_tiny',  # 当前支持 [`yolov7_tiny`, `yolov7`]'
         model_backend: str = 'pytorch',
+        model_categories: Optional[List[str]] = None,
         model_fp: Optional[str] = None,
+        model_arch_yaml: Optional[str] = None,
         root: Union[str, Path] = data_dir(),
         device: str = 'cpu',
         **kwargs,
@@ -141,14 +143,17 @@ class LayoutAnalyzer(object):
             model_name (str): 模型类型。可选值：'mfd' 表示数学公式检测；'layout' 表示版面分析。默认值：'mfd'
             model_type (str): 模型类型。当前支持 'yolov7_tiny' 和 'yolov7'; 默认值: 'yolov7_tiny'
             model_backend (str): backend; 当前仅支持: 'pytorch'; 默认值: 'pytorch'
-            model_fp (str): model file path; default: `None`, means that the default file path will be used
+            model_categories (List[str]): 模型的检测类别名称。默认值：None，表示基于 `model_name` 自动决定
+            model_fp (str): 模型文件路径；默认值为 None，表示使用默认文件路径。
+            model_arch_yaml (str): 架构文件路径，例如 'yolov7-mfd.yaml'；默认值为 None，表示将自动选择。
             root (str or Path): 模型文件所在的根目录。
                 Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.2/analysis`
                 Windows下默认值为 `C:/Users/<username>/AppData/Roaming/cnstd`。
             device (str): 'cpu', or 'gpu'; default: 'cpu'
             **kwargs ():
         """
-        assert model_name in CATEGORY_DICT.keys()
+        if model_name:
+            assert model_name in CATEGORY_DICT.keys()
         model_backend = model_backend.lower()
         assert model_backend in ('pytorch', 'onnx')
         self._model_name = model_name
@@ -162,7 +167,19 @@ class LayoutAnalyzer(object):
         self._assert_and_prepare_model_files(model_fp, root)
         logger.info('Use model: %s' % self._model_fp)
 
-        self.categories = CATEGORY_DICT[self._model_name]
+        if model_categories is not None:
+            self.categories = model_categories
+        else:
+            self.categories = CATEGORY_DICT[self._model_name]
+
+        if model_arch_yaml is not None:
+            self._arch_yaml = model_arch_yaml
+        else:
+            VALID_MODELS = ANALYSIS_MODELS[self._model_name]
+            self._arch_yaml = VALID_MODELS[(self._model_type, self._model_backend)][
+                'arch_yaml'
+            ]
+
         self.model = attempt_load(
             self.categories,
             self._model_fp,
@@ -175,8 +192,11 @@ class LayoutAnalyzer(object):
         # self.img_size = check_img_size(image_size, s=self.stride)  # check img_size
 
     def _assert_and_prepare_model_files(self, model_fp, root):
-        if model_fp is not None and not os.path.isfile(model_fp):
-            raise FileNotFoundError('can not find model file %s' % model_fp)
+        if model_fp is not None:
+            if not os.path.isfile(model_fp):
+                raise FileNotFoundError('can not find model file %s' % model_fp)
+            self._model_fp = model_fp
+            return
 
         VALID_MODELS = ANALYSIS_MODELS[self._model_name]
         if (self._model_type, self._model_backend) not in VALID_MODELS:
@@ -184,13 +204,6 @@ class LayoutAnalyzer(object):
                 'model %s is not supported currently'
                 % ((self._model_type, self._model_backend),)
             )
-
-        self._arch_yaml = VALID_MODELS[(self._model_type, self._model_backend)][
-            'arch_yaml'
-        ]
-        if model_fp is not None:
-            self._model_fp = model_fp
-            return
 
         self._model_dir = os.path.join(root, MODEL_VERSION, ANALYSIS_SPACE)
         suffix = 'pt' if self._model_backend == 'pytorch' else 'onnx'
@@ -201,7 +214,7 @@ class LayoutAnalyzer(object):
             logger.warning('Can NOT find model file %s' % model_fp)
             url = VALID_MODELS[(self._model_type, self._model_backend)]['url']
 
-            get_model_file(url, self._model_dir)  # download the .zip file and unzip
+            get_model_file(url, self._model_dir, download_source=DOWNLOAD_SOURCE)  # download the .zip file and unzip
 
         self._model_fp = model_fp
 
