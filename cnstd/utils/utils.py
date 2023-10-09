@@ -132,7 +132,7 @@ def check_sha1(filename, sha1_hash):
     return sha1.hexdigest()[0:l] == sha1_hash[0:l]
 
 
-def download(url, path=None, overwrite=False, sha1_hash=None):
+def download(url, path=None, download_source='CN', overwrite=False, sha1_hash=None):
     """Download a given URL
     Parameters
     ----------
@@ -141,6 +141,7 @@ def download(url, path=None, overwrite=False, sha1_hash=None):
     path : str, optional
         Destination path to store downloaded file. By default, stores to the
         current directory with same name as in url.
+    download_source: which OSS source will be used, 'CN' or 'HF'
     overwrite : bool, optional
         Whether to overwrite destination file if already exists.
     sha1_hash : str, optional
@@ -169,19 +170,49 @@ def download(url, path=None, overwrite=False, sha1_hash=None):
         if not os.path.exists(dirname):
             os.makedirs(dirname)
 
-        logger.info('Downloading %s from %s...' % (fname, url))
-        HF_TOKEN = os.environ.get('HF_TOKEN')
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            local_path = hf_hub_download(
-                repo_id=url["repo_id"],
-                subfolder=url["subfolder"],
-                filename=url["filename"],
-                repo_type="model",
-                cache_dir=tmp_dir,
-                token=HF_TOKEN,
-            )
-            shutil.copy2(local_path, fname)
+        if download_source == 'CN' and 'cn_oss' in url:
+            oss_url = url['cn_oss'] + url['filename']
+            logger.info('Downloading %s from %s...' % (fname, oss_url))
+            r = requests.get(oss_url, stream=True)
+            if r.status_code != 200:
+                raise RuntimeError("Failed downloading url %s" % oss_url)
+            total_length = r.headers.get('content-length')
+            with open(fname, 'wb') as f:
+                if total_length is None:  # no content length header
+                    for chunk in r.iter_content(chunk_size=1024):
+                        if chunk:  # filter out keep-alive new chunks
+                            f.write(chunk)
+                else:
+                    total_length = int(total_length)
+                    for chunk in tqdm(
+                            r.iter_content(chunk_size=1024),
+                            total=int(total_length / 1024.0 + 0.5),
+                            unit='KB',
+                            unit_scale=False,
+                            dynamic_ncols=True,
+                    ):
+                        f.write(chunk)
+        else:
+            HF_TOKEN = os.environ.get('HF_TOKEN')
+            logger.info('Downloading %s from HF Repo %s...' % (fname, url["repo_id"]))
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                local_path = hf_hub_download(
+                    repo_id=url["repo_id"],
+                    subfolder=url["subfolder"],
+                    filename=url["filename"],
+                    repo_type="model",
+                    cache_dir=tmp_dir,
+                    token=HF_TOKEN,
+                )
+                shutil.copy2(local_path, fname)
 
+        if sha1_hash and not check_sha1(fname, sha1_hash):
+            raise UserWarning(
+                'File {} is downloaded but the content hash does not match. '
+                'The repo may be outdated or download may be incomplete. '
+                'If the "repo_url" is overridden, consider switching to '
+                'the default repo.'.format(fname)
+            )
     return fname
 
 
@@ -189,7 +220,7 @@ class ModelDownloadingError(Exception):
     pass
 
 
-def get_model_file(url, model_dir):
+def get_model_file(url, model_dir, download_source='CN'):
     r"""Return location for the downloaded models on local file system.
 
     This function will download from online model zoo when model cannot be found or has mismatch.
@@ -201,6 +232,7 @@ def get_model_file(url, model_dir):
             repo_id, subfolder, filename
     model_dir : str, default $CNSTD_HOME
         Location for keeping the model parameters.
+    download_source : which OSS source will be used, 'CN' or 'HF'
 
     Returns
     -------
@@ -214,7 +246,7 @@ def get_model_file(url, model_dir):
     zip_file_path = os.path.join(par_dir, url['filename'])
     if not os.path.exists(zip_file_path):
         try:
-            download(url, path=zip_file_path, overwrite=True)
+            download(url, path=zip_file_path, download_source=download_source, overwrite=True)
         except Exception as e:
             logger.error(e)
             message = f'Failed to download model: {url["filename"]}.'

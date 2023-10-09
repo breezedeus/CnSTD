@@ -28,7 +28,7 @@ from typing import Union, Optional, Any, List, Dict
 import cv2
 import numpy as np
 
-from ..consts import MODEL_VERSION, ANGLE_CLF_MODELS, ANGLE_CLF_SPACE
+from ..consts import MODEL_VERSION, ANGLE_CLF_MODELS, ANGLE_CLF_SPACE, DOWNLOAD_SOURCE
 from ..utils import data_dir, get_model_file
 from .postprocess import build_post_process
 from .utility import (
@@ -89,7 +89,7 @@ class AngleClassifier(object):
                 )
             url = ANGLE_CLF_MODELS[(self._model_name, self._model_backend)]['url']
 
-            get_model_file(url, self._model_dir)  # download the .zip file and unzip
+            get_model_file(url, self._model_dir, download_source=DOWNLOAD_SOURCE)  # download the .zip file and unzip
 
         self._model_fp = model_fp
         logger.info('use model: %s' % self._model_fp)

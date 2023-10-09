@@ -31,7 +31,7 @@ import cv2
 import numpy as np
 
 from .consts import PP_SPACE
-from ..consts import MODEL_VERSION, AVAILABLE_MODELS
+from ..consts import MODEL_VERSION, AVAILABLE_MODELS, DOWNLOAD_SOURCE
 from ..utils import data_dir, get_model_file, sort_boxes, get_resized_shape
 from .utility import (
     get_image_file_list,
@@ -129,7 +129,7 @@ class PPDetector(object):
                 )
             url = AVAILABLE_MODELS.get_url(self._model_name, self._model_backend)
 
-            get_model_file(url, self._model_dir)  # download the .zip file and unzip
+            get_model_file(url, self._model_dir, download_source=DOWNLOAD_SOURCE)  # download the .zip file and unzip
 
         self._model_fp = model_fp
         logger.info('use model: %s' % self._model_fp)
