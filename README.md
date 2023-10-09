@@ -14,15 +14,19 @@
 </div>
 
 # CnSTD
+# Update 2023.10.09：发布 V1.2.3.5
+
+主要变更：
+
+* 支持基于环境变量 `CNSTD_DOWNLOAD_SOURCE` 的取值，来决定不同的模型下载路径，默认使用国内OSS地址。
+* `LayoutAnalyzer` 中增加了参数 `model_categories` and `model_arch_yaml`，用于指定模型的类别名称列表和模型架构。
+
+... 
+
 # Update 2023.06.30：发布 V1.2.3
 
 主要变更：
-* 修复了模型文件自动下载的功能。HuggingFace似乎对下载文件的逻辑做了调整，导致之前版本的自动下载失败，当前版本已修复。但由于HuggingFace国内被墙，国内下载仍需 **梯子（VPN）**。
-* 更新了各个依赖包的版本号。
 
-# Update 2023.06.20：
-
-主要变更：
 * 基于新标注的数据，重新训练了 **MFD YoloV7** 模型，目前新模型已部署到 [P2T网页版](https://p2t.behye.com) 。具体说明见：[Pix2Text (P2T) 新版公式检测模型 | Breezedeus.com](https://www.breezedeus.com/article/p2t-mfd-20230613) 。
 * 之前的 MFD YoloV7 模型已开放给星球会员下载，具体说明见：[P2T YoloV7 数学公式检测模型开放给星球会员下载 | Breezedeus.com](https://www.breezedeus.com/article/p2t-yolov7-for-zsxq-20230619) 。
 * 增加了一些Label Studio相关的脚本，见 [scripts](scripts) 。如：利用 CnSTD 自带的 MFD 模型对目录中的图片进行公式检测后生成可导入到Label Studio中的JSON文件；以及，Label Studio标注后把导出的JSON文件转换成训练 MFD 模型所需的数据格式。注意，MFD 模型的训练代码在 [yolov7](https://github.com/breezedeus/yolov7) （`dev` branch）中。
