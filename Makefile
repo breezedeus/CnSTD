@@ -21,7 +21,7 @@ package:
 	rm -rf build
 	python setup.py sdist bdist_wheel
 
-VERSION := $(shell sed -n "s/^__version__ = '\(.*\)'/\1/p" cnocr/__version__.py)
+VERSION := $(shell sed -n "s/^__version__ = '\(.*\)'/\1/p" cnstd/__version__.py)
 upload:
 	python -m twine upload  dist/cnstd-$(VERSION)* --verbose
 
