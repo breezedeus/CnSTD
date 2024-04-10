@@ -45,7 +45,8 @@ logger = logging.getLogger(__name__)
 MODEL_VERSION = '.'.join(__version__.split('.', maxsplit=2)[:2])
 VOCAB_FP = Path(__file__).parent.parent / 'label_cn.txt'
 # Which OSS source will be used for downloading model files, 'CN' or 'HF'
-DOWNLOAD_SOURCE = os.environ.get('CNSTD_DOWNLOAD_SOURCE', 'CN')
+DOWNLOAD_SOURCE = os.environ.get('CNSTD_DOWNLOAD_SOURCE', 'HF')
+HF_ENDPOINT_LIST = ['https://huggingface.co', 'https://hf-mirror.com']
 
 MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
     'db_resnet50': {
