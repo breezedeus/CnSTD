@@ -36,7 +36,7 @@ from PIL import Image, ImageOps
 import torch
 from huggingface_hub import hf_hub_download
 
-from ..consts import MODEL_VERSION, MODEL_CONFIGS, AVAILABLE_MODELS
+from ..consts import MODEL_VERSION, MODEL_CONFIGS, HF_ENDPOINT_LIST
 
 
 fmt = '[%(levelname)s %(asctime)s %(funcName)s:%(lineno)d] %(' 'message)s '
@@ -185,26 +185,38 @@ def download(url, path=None, download_source='CN', overwrite=False, sha1_hash=No
                 else:
                     total_length = int(total_length)
                     for chunk in tqdm(
-                            r.iter_content(chunk_size=1024),
-                            total=int(total_length / 1024.0 + 0.5),
-                            unit='KB',
-                            unit_scale=False,
-                            dynamic_ncols=True,
+                        r.iter_content(chunk_size=1024),
+                        total=int(total_length / 1024.0 + 0.5),
+                        unit='KB',
+                        unit_scale=False,
+                        dynamic_ncols=True,
                     ):
                         f.write(chunk)
         else:
             HF_TOKEN = os.environ.get('HF_TOKEN')
-            logger.info('Downloading %s from HF Repo %s...' % (fname, url["repo_id"]))
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                local_path = hf_hub_download(
-                    repo_id=url["repo_id"],
-                    subfolder=url["subfolder"],
-                    filename=url["filename"],
-                    repo_type="model",
-                    cache_dir=tmp_dir,
-                    token=HF_TOKEN,
-                )
-                shutil.copy2(local_path, fname)
+            for hf_endpoint in HF_ENDPOINT_LIST:
+                try:
+                    logger.info(
+                        'Downloading %s from HF Repo %s/%s...'
+                        % (fname, hf_endpoint, url["repo_id"])
+                    )
+                    with tempfile.TemporaryDirectory() as tmp_dir:
+                        local_path = hf_hub_download(
+                            repo_id=url["repo_id"],
+                            subfolder=url["subfolder"],
+                            filename=url["filename"],
+                            repo_type="model",
+                            cache_dir=tmp_dir,
+                            token=HF_TOKEN,
+                            endpoint=hf_endpoint,
+                        )
+                        shutil.copy2(local_path, fname)
+                        break
+                except:
+                    logger.warning(
+                        'Failed to download %s from HF Repo %s/%s.'
+                        % (fname, hf_endpoint, url["repo_id"])
+                    )
 
         if sha1_hash and not check_sha1(fname, sha1_hash):
             raise UserWarning(
@@ -246,13 +258,17 @@ def get_model_file(url, model_dir, download_source='CN'):
     zip_file_path = os.path.join(par_dir, url['filename'])
     if not os.path.exists(zip_file_path):
         try:
-            download(url, path=zip_file_path, download_source=download_source, overwrite=True)
+            download(
+                url, path=zip_file_path, download_source=download_source, overwrite=True
+            )
         except Exception as e:
             logger.error(e)
             message = f'Failed to download model: {url["filename"]}.'
-            message += '\n\tPlease open your VPN and try again. \n\t' \
-                       'If this error persists, please follow the instruction at ' \
-                       '[CnSTD/CnOCR Doc](https://www.breezedeus.com/cnocr) to manually download the model files.'
+            message += (
+                '\n\tPlease open your VPN and try again. \n\t'
+                'If this error persists, please follow the instruction at '
+                '[CnSTD/CnOCR Doc](https://www.breezedeus.com/cnocr) to manually download the model files.'
+            )
             raise ModelDownloadingError(message)
     with zipfile.ZipFile(zip_file_path) as zf:
         zf.extractall(par_dir)
