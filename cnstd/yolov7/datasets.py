@@ -45,8 +45,8 @@ from copy import deepcopy
 from torchvision.utils import save_image
 from torchvision.ops import roi_pool, roi_align, ps_roi_pool, ps_roi_align
 
-from .general import check_requirements, xyxy2xywh, xywh2xyxy, xywhn2xyxy, xyn2xy, segment2box, segments2boxes, \
-    resample_segments, clean_str
+from .general import check_requirements, segment2box, segments2boxes, resample_segments, clean_str
+from ..utils import xyxy2xywh, xywh2xyxy, xywhn2xyxy, xyn2xy
 from .torch_utils import torch_distributed_zero_first
 
 # Parameters

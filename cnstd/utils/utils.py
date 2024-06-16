@@ -38,7 +38,6 @@ from huggingface_hub import hf_hub_download
 
 from ..consts import MODEL_VERSION, MODEL_CONFIGS, HF_ENDPOINT_LIST
 
-
 fmt = '[%(levelname)s %(asctime)s %(funcName)s:%(lineno)d] %(' 'message)s '
 logging.basicConfig(format=fmt)
 logging.captureWarnings(True)
@@ -100,6 +99,17 @@ def data_dir():
     :return: data directory in the filesystem for storage, for example when downloading models
     """
     return os.getenv('CNSTD_HOME', data_dir_default())
+
+
+def select_device(device) -> str:
+    if device is not None:
+        return device
+
+    device = 'mps' if torch.backends.mps.is_available() else 'cpu'
+    if torch.cuda.is_available():
+        device = 'cuda'
+
+    return device
 
 
 def check_model_name(model_name):
@@ -412,6 +422,32 @@ def sort_boxes(
     return _boxes
 
 
+def dedup_boxes(one_out, threshold):
+    def _to_iou_box(ori):
+        return torch.tensor([ori[0][0], ori[0][1], ori[2][0], ori[2][1]]).unsqueeze(0)
+
+    keep = [True] * len(one_out)
+    for idx, info in enumerate(one_out):
+        box = _to_iou_box(info['box'])
+        if not keep[idx]:
+            continue
+        for l in range(idx + 1, len(one_out)):
+            if not keep[l]:
+                continue
+            box2 = _to_iou_box(one_out[l]['box'])
+            v1 = float(box_partial_overlap(box, box2).squeeze())
+            v2 = float(box_partial_overlap(box2, box).squeeze())
+            if v1 >= v2:
+                if v1 >= threshold:
+                    keep[l] = False
+            else:
+                if v2 >= threshold:
+                    keep[idx] = False
+                    break
+
+    return [info for idx, info in enumerate(one_out) if keep[idx]]
+
+
 def imread(img_fp) -> np.ndarray:
     """
     返回RGB格式的numpy数组
@@ -579,3 +615,73 @@ def plot_for_debugging(rotated_img, one_out, box_score_thresh, prefix_fp):
     result_fp = '%s-result.png' % prefix_fp
     imsave(rotated_img, result_fp, normalized=False)
     logger.info('boxes results are save to file %s' % result_fp)
+
+
+def box_partial_overlap(box1, cond_box):
+    """ intersection / area(cand_box) """
+
+    def box_area(box):
+        # box = 4xn
+        return (box[2] - box[0]) * (box[3] - box[1])
+
+    # area1 = box_area(box1.T)
+    area2 = box_area(cond_box.T)
+
+    # inter(N,M) = (rb(N,M,2) - lt(N,M,2)).clamp(0).prod(2)
+    inter = (torch.min(box1[:, None, 2:], cond_box[:, 2:]) - torch.max(box1[:, None, :2], cond_box[:, :2])).clamp(0).prod(2)
+    return inter / (area2[:, None] + 1e-6)  # iou = inter / area2
+
+
+def xyxy2xywh(x):
+    # Convert nx4 boxes from [x1, y1, x2, y2] to [x, y, w, h] where xy1=top-left, xy2=bottom-right
+    y = x.clone() if isinstance(x, torch.Tensor) else np.copy(x)
+    y[:, 0] = (x[:, 0] + x[:, 2]) / 2  # x center
+    y[:, 1] = (x[:, 1] + x[:, 3]) / 2  # y center
+    y[:, 2] = x[:, 2] - x[:, 0]  # width
+    y[:, 3] = x[:, 3] - x[:, 1]  # height
+    return y
+
+
+def xywh2xyxy(x):
+    # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
+    y = x.clone() if isinstance(x, torch.Tensor) else np.copy(x)
+    y[:, 0] = x[:, 0] - x[:, 2] / 2  # top left x
+    y[:, 1] = x[:, 1] - x[:, 3] / 2  # top left y
+    y[:, 2] = x[:, 0] + x[:, 2] / 2  # bottom right x
+    y[:, 3] = x[:, 1] + x[:, 3] / 2  # bottom right y
+    return y
+
+
+def xywhn2xyxy(x, w=640, h=640, padw=0, padh=0):
+    # Convert nx4 boxes from [x, y, w, h] normalized to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
+    y = x.clone() if isinstance(x, torch.Tensor) else np.copy(x)
+    y[:, 0] = w * (x[:, 0] - x[:, 2] / 2) + padw  # top left x
+    y[:, 1] = h * (x[:, 1] - x[:, 3] / 2) + padh  # top left y
+    y[:, 2] = w * (x[:, 0] + x[:, 2] / 2) + padw  # bottom right x
+    y[:, 3] = h * (x[:, 1] + x[:, 3] / 2) + padh  # bottom right y
+    return y
+
+
+def xyn2xy(x, w=640, h=640, padw=0, padh=0):
+    # Convert normalized segments into pixel segments, shape (n,2)
+    y = x.clone() if isinstance(x, torch.Tensor) else np.copy(x)
+    y[:, 0] = w * x[:, 0] + padw  # top left x
+    y[:, 1] = h * x[:, 1] + padh  # top left y
+    return y
+
+
+def xyxy24p(x, ret_type=torch.Tensor):
+    xmin, ymin, xmax, ymax = [float(_x) for _x in x]
+    out = [xmin, ymin, xmax, ymin, xmax, ymax, xmin, ymax]
+    if ret_type is not None:
+        return ret_type(out).reshape((4, 2))
+    return out
+
+
+def expand_box_by_margin(xyxy, box_margin, shape_hw):
+    xmin, ymin, xmax, ymax = [float(_x) for _x in xyxy]
+    xmin = max(0, xmin - box_margin)
+    ymin = max(0, ymin - box_margin)
+    xmax = min(shape_hw[1], xmax + box_margin)
+    ymax = min(shape_hw[0], ymax + box_margin)
+    return [xmin, ymin, xmax, ymax]

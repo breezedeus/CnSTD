@@ -15,14 +15,12 @@
 </div>
 
 # CnSTD
-# Update 2023.10.09：发布 V1.2.3.5
+# Update 2024.06.16：发布 V1.2.4
 
 主要变更：
 
-* 支持基于环境变量 `CNSTD_DOWNLOAD_SOURCE` 的取值，来决定不同的模型下载路径，默认使用国内OSS地址。
-* `LayoutAnalyzer` 中增加了参数 `model_categories` 和 `model_arch_yaml`，用于指定模型的类别名称列表和模型架构。
+* 支持基于 Ultralytics 的 YOLO Detector。
 
-... 
 
 # Update 2023.06.30：发布 V1.2.3
 
