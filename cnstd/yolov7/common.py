@@ -33,7 +33,8 @@ from PIL import Image
 from torch.cuda import amp
 
 from .datasets import letterbox
-from .general import non_max_suppression, make_divisible, scale_coords, increment_path, xyxy2xywh
+from .general import non_max_suppression, make_divisible, scale_coords, increment_path
+from ..utils import xyxy2xywh
 from .plots import color_list, plot_one_box
 from .torch_utils import time_synchronized
 

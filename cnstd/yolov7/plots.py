@@ -37,7 +37,7 @@ import yaml
 from PIL import Image, ImageDraw, ImageFont
 from scipy.signal import butter, filtfilt
 
-from .general import xywh2xyxy, xyxy2xywh
+from ..utils import xyxy2xywh, xywh2xyxy
 from .metrics import fitness
 
 # Settings

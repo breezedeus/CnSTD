@@ -56,6 +56,7 @@ required = [
     'seaborn',
     "onnx",
     "huggingface_hub",
+    "ultralytics",
 ]
 
 extras_require = {

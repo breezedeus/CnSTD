@@ -1,5 +1,5 @@
 --index-url https://pypi.tuna.tsinghua.edu.cn/simple
---extra-index-url https://mirrors.aliyun.com/pypi/simple
+--extra-index-url https://pypi.org/simple
 
 click
 tqdm
@@ -21,3 +21,4 @@ seaborn
 onnx
 onnxruntime
 huggingface_hub
+ultralytics

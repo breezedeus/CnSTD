@@ -31,7 +31,7 @@ from torch import nn
 from numpy import random
 
 from ..consts import MODEL_VERSION, ANALYSIS_SPACE, ANALYSIS_MODELS, DOWNLOAD_SOURCE
-from ..utils import data_dir, get_model_file, sort_boxes
+from ..utils import data_dir, get_model_file, sort_boxes, dedup_boxes, xyxy24p
 from .yolo import Model
 from .consts import CATEGORY_DICT
 from .common import Conv
@@ -39,9 +39,7 @@ from .datasets import letterbox
 from .general import (
     check_img_size,
     non_max_suppression,
-    xyxy24p,
     scale_coords,
-    box_partial_overlap,
 )
 from .torch_utils import select_device, time_synchronized
 from .plots import plot_one_box
@@ -95,32 +93,6 @@ def attempt_load(
         for k in ['names', 'stride']:
             setattr(model, k, getattr(model[-1], k))
         return model  # return ensemble
-
-
-def dedup_boxes(one_out, threshold):
-    def _to_iou_box(ori):
-        return torch.tensor([ori[0][0], ori[0][1], ori[2][0], ori[2][1]]).unsqueeze(0)
-
-    keep = [True] * len(one_out)
-    for idx, info in enumerate(one_out):
-        box = _to_iou_box(info['box'])
-        if not keep[idx]:
-            continue
-        for l in range(idx + 1, len(one_out)):
-            if not keep[l]:
-                continue
-            box2 = _to_iou_box(one_out[l]['box'])
-            v1 = float(box_partial_overlap(box, box2).squeeze())
-            v2 = float(box_partial_overlap(box2, box).squeeze())
-            if v1 >= v2:
-                if v1 >= threshold:
-                    keep[l] = False
-            else:
-                if v2 >= threshold:
-                    keep[idx] = False
-                    break
-
-    return [info for idx, info in enumerate(one_out) if keep[idx]]
 
 
 class LayoutAnalyzer(object):
