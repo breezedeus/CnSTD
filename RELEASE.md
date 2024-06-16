@@ -1,5 +1,17 @@
 # Release Notes
 
+# Update 2024.06.16：发布 V1.2.4
+
+Major Changes:
+
+* Support for YOLO Detector based on Ultralytics.
+
+
+主要变更：
+
+* 支持基于 Ultralytics 的 YOLO Detector。
+
+
 # Update 2024.04.10：发布 V1.2.3.6
 
 主要变更：
