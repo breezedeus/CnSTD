@@ -36,10 +36,8 @@ import pandas as pd
 import torch
 import torchvision
 
-# from utils.google_utils import gsutil_getsize
-# from utils.metrics import fitness
 from .torch_utils import init_torch_seeds
-from ..utils import xyxy2xywh, xywh2xyxy
+from ..utils import xyxy2xywh, xywh2xyxy, box_partial_overlap
 
 logger = logging.getLogger(__name__)
 
