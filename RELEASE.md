@@ -1,5 +1,16 @@
 # Release Notes
 
+# Update 2024.06.17：发布 V1.2.4.1
+
+Major Changes:
+
+* Fixed a bug in the `detect` method of `YoloDetector`: when the input is a single file, the output is not a double-layer nested list.
+
+主要变更：
+
+* 修复了 `YoloDetector` 中 `detect` 方法的一个bug：输入为单个文件时，输出不是双层嵌套的 list。
+
+
 # Update 2024.06.16：发布 V1.2.4
 
 Major Changes:

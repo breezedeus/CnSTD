@@ -75,6 +75,7 @@ class YoloDetector(object):
 
         """
         dedup_thrsh = kwargs.pop('dedup_thrsh') if 'dedup_thrsh' in kwargs else 0.1
+        single = not isinstance(img_list, (list, tuple))
         # Ultralytics 需要的 ndarray 是 HWC，BGR 格式
         if isinstance(img_list, np.ndarray):
             img_list = img_list[:, :, ::-1]
@@ -104,4 +105,6 @@ class YoloDetector(object):
             one_out = dedup_boxes(one_out, threshold=dedup_thrsh)
             outs.append(one_out)
 
+        if single and len(outs) == 1:
+            return outs[0]
         return outs
