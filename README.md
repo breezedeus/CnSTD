@@ -396,13 +396,6 @@ class LayoutAnalyzer(object):
 
 
 
-函数输出结果为一个`list`，其中每个元素表示识别出的版面中的一个元素，包含以下信息：
-
-* type: 版面元素对应的类型；可选值来自：`self.categories` ;
-* box: 版面元素对应的矩形框；`np.ndarray`, shape: (4, 2)，对应 box 4个点的坐标值 `(x, y)` ;
-* score: 得分，越高表示越可信 。
-
-
 
 #### 类函数`LayoutAnalyzer.analyze()`
 
@@ -437,6 +430,13 @@ def analyze(
 * `conf_threshold` (float): 分数阈值；默认值为 `0.25`
 * `iou_threshold` (float): IOU阈值；默认值为 `0.45`
 * `**kwargs`: 额外的参数。
+
+函数输出结果为一个`list`（如果 `img_list` 为 `list`，返回为两层嵌套的 `list`，其中每个元素为对应图片的检测结果），其中每个元素表示识别出的版面中的一个元素，包含以下信息：
+
+* type: 版面元素对应的类型；可选值来自：`self.categories` ;
+* box: 版面元素对应的矩形框；`np.ndarray`, shape: (4, 2)，对应 box 4个点的坐标值 `(x, y)` ;
+* score: 得分，越高表示越可信 。
+
 
 
 
