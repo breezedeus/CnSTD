@@ -1,5 +1,16 @@
 # Release Notes
 
+# Update 2024.06.22：发布 V1.2.4.2
+
+Major Changes:
+
+* Added a new parameter `static_resized_shape` when initializing `YoloDetector`, which is used to resize the input image to a fixed size. Some formats of models require fixed-size input images during inference, such as `CoreML`.
+
+主要变更：
+
+* `YoloDetector` 初始化时加入了参数 `static_resized_shape`, 用于把输入图片 resize 为固定大小。某些格式的模型在推理时需要固定大小的输入图片，如 `CoreML`。
+
+
 # Update 2024.06.17：发布 V1.2.4.1
 
 Major Changes:

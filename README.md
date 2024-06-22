@@ -14,6 +14,13 @@
 
 </div>
 
+<div align="center">
+
+[English](./README_en.md) | 中文
+
+</div>
+
+
 # CnSTD
 # Update 2024.06.16：发布 V1.2.4
 

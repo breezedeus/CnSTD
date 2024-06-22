@@ -1,3 +1,25 @@
+<div align="center">
+	<img src="./docs/logo.png" width="250px"/>
+  <div>&nbsp;</div>
+
+[![Downloads](https://static.pepy.tech/personalized-badge/cnstd?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads)](https://pepy.tech/project/cnstd)
+[![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fbreezedeus%2FCnSTD&label=Visitors&countColor=%23f5c791&style=flat&labelStyle=none)](https://visitorbadge.io/status?path=https%3A%2F%2Fgithub.com%2Fbreezedeus%2FCnSTD)
+[![license](https://img.shields.io/github/license/breezedeus/cnstd)](./LICENSE)
+[![PyPI version](https://badge.fury.io/py/cnstd.svg)](https://badge.fury.io/py/cnstd)
+[![forks](https://img.shields.io/github/forks/breezedeus/cnstd)](https://img.shields.io/github/forks/breezedeus/cnstd)
+[![stars](https://img.shields.io/github/stars/breezedeus/cnstd)](https://github.com/breezedeus/cnocr)
+![last-releast](https://img.shields.io/github/release-date/breezedeus/cnstd?style=plastic)
+![last-commit](https://img.shields.io/github/last-commit/breezedeus/cnstd)
+[![Twitter](https://img.shields.io/twitter/url?url=https%3A%2F%2Ftwitter.com%2Fbreezedeus)](https://twitter.com/breezedeus)
+
+</div>
+
+<div align="center">
+
+[中文](./README.md) | English
+
+</div>
+
 # CnSTD
 
 ## Update 2024.06.16: Release V1.2.4
