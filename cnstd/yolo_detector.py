@@ -20,12 +20,15 @@
 
 from pathlib import Path
 from typing import Union, Optional, Any, List, Dict, Tuple
+import logging
 
 from PIL import Image
 import numpy as np
 from ultralytics import YOLO
 
 from .utils import sort_boxes, dedup_boxes, xyxy24p, select_device, expand_box_by_margin
+
+logger = logging.getLogger(__name__)
 
 
 class YoloDetector(object):
@@ -34,9 +37,22 @@ class YoloDetector(object):
         *,
         model_path: Optional[str] = None,
         device: Optional[str] = None,
+        static_resized_shape: Optional[Union[int, Tuple[int, int]]] = None,
         **kwargs,
     ):
+        """
+        YOLO Detector based on Ultralytics.
+        Args:
+            model_path (optional str): model path, default is None.
+            device (optional str): device to use, default is None.
+            static_resized_shape (optional int or tuple): static resized shape, default is None.
+                When it is not None, the input image will be resized to this shape before detection,
+                ignoring the input parameter `resized_shape` if .detect() is called.
+                Some format of models may require a fixed input size, such as CoreML.
+            **kwargs (): other parameters.
+        """
         self.device = select_device(device)
+        self.static_resized_shape = static_resized_shape
         self.model = YOLO(model_path, task='detect')
 
     def __call__(self, *args, **kwargs):
@@ -85,6 +101,8 @@ class YoloDetector(object):
                 for img in img_list
             ]
 
+        if self.static_resized_shape is not None:
+            resized_shape = self.static_resized_shape
         batch_results = self.model.predict(
             img_list, imgsz=resized_shape, conf=conf, device=self.device, **kwargs
         )
