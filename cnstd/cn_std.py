@@ -29,7 +29,7 @@ import numpy as np
 
 from .consts import AVAILABLE_MODELS
 from .detector import Detector
-from .ppocr import PP_SPACE, PPDetector
+from .ppocr import PP_SPACE, PPDetector, RapidDetector
 from .ppocr.angle_classifier import AngleClassifier
 from .utils import data_dir
 
@@ -43,7 +43,7 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name: str = 'ch_PP-OCRv3_det',
+        model_name: str = 'ch_PP-OCRv4_det',
         *,
         auto_rotate_whole_image: bool = False,
         rotated_bbox: bool = True,
@@ -57,7 +57,7 @@ class CnStd(object):
     ):
         """
         Args:
-            model_name: 模型名称。默认为 'ch_PP-OCRv3_det'
+            model_name: 模型名称。默认为 'ch_PP-OCRv4_det'
             auto_rotate_whole_image: 是否自动对整张图片进行旋转调整。默认为False
             rotated_bbox: 是否支持检测带角度的文本框；默认为 True，表示支持；取值为 False 时，只检测水平或垂直的文本
             context: 'cpu', or 'gpu'。表明预测时是使用CPU还是GPU。默认为CPU
@@ -89,7 +89,8 @@ class CnStd(object):
         if self.space == AVAILABLE_MODELS.CNSTD_SPACE:
             det_cls = Detector
         elif self.space == PP_SPACE:
-            det_cls = PPDetector
+            det_name = AVAILABLE_MODELS.get_value(model_name, model_backend, 'detector')
+            det_cls = RapidDetector if det_name == 'RapidDetector' else PPDetector
         else:
             raise NotImplementedError(
                 '%s is not supported currently' % ((model_name, model_backend),)
@@ -103,6 +104,7 @@ class CnStd(object):
             model_fp=model_fp,
             model_backend=model_backend,
             root=root,
+            **kwargs,
         )
 
         self.use_angle_clf = use_angle_clf
