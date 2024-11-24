@@ -1,5 +1,21 @@
 # Release Notes
 
+## Update 2024.11.24：发布 V1.2.5
+
+Major Changes:
+
+* Integrated latest PPOCRv4 text detection functionality based on RapidOCR for faster inference
+  * Added support for PP-OCRv4 detection models, including standard and server versions
+  * Added support for PP-OCRv3 English detection model
+* Optimized model download functionality with support for domestic mirrors
+
+主要变更：
+
+* 基于 RapidOCR 集成 PPOCRv4 最新版文本检测功能，提供更快的推理速度
+  * 新增支持 PP-OCRv4 检测模型，包括标准版和服务器版
+  * 新增支持 PP-OCRv3 英文检测模型
+* 优化模型下载功能，支持从国内镜像下载模型文件
+
 # Update 2024.06.22：发布 V1.2.4.2
 
 Major Changes:
@@ -9,7 +25,6 @@ Major Changes:
 主要变更：
 
 * `YoloDetector` 初始化时加入了参数 `static_resized_shape`, 用于把输入图片 resize 为固定大小。某些格式的模型在推理时需要固定大小的输入图片，如 `CoreML`。
-
 
 # Update 2024.06.17：发布 V1.2.4.1
 
@@ -21,7 +36,6 @@ Major Changes:
 
 * 修复了 `YoloDetector` 中 `detect` 方法的一个bug：输入为单个文件时，输出不是双层嵌套的 list。
 
-
 # Update 2024.06.16：发布 V1.2.4
 
 Major Changes:
@@ -32,7 +46,6 @@ Major Changes:
 主要变更：
 
 * 支持基于 Ultralytics 的 YOLO Detector。
-
 
 # Update 2024.04.10：发布 V1.2.3.6
 
@@ -151,4 +164,3 @@ bugfix:
 初次发布，主要功能：
 
 * 利用PSENet进行场景文字检测（STD），支持两种backbone模型：`mobilenetv3` 和 `resnet50_v1b`。
-
