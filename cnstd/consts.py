@@ -174,11 +174,11 @@ class AvailableModels(object):
     # 付费模型
     PAID_MODELS = OrderedDict(
         {
-            ('db_shufflenet_v2_tiny', 'pytorch'): {
-                'model_epoch': 48,
-                'fpn_type': 'pan',
-                'url': 'db_shufflenet_v2_tiny-pan.zip',
-            },
+            # ('db_shufflenet_v2_tiny', 'pytorch'): {
+            #     'model_epoch': 48,
+            #     'fpn_type': 'pan',
+            #     'url': 'db_shufflenet_v2_tiny-pan.zip',
+            # },
         }
     )
 
