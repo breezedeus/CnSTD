@@ -50,13 +50,14 @@ required = [
     'pillow>=5.3.0',
     'opencv-python>=4.0.0',
     'shapely',
-    'Polygon3',
+    # 'Polygon3',
     'pyclipper',
     'matplotlib',
     'seaborn',
     "onnx",
     "huggingface_hub",
     "ultralytics",
+    "rapidocr_onnxruntime<1.4",
 ]
 
 extras_require = {

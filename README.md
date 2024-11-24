@@ -22,14 +22,23 @@
 
 
 # CnSTD
-# Update 2024.06.16：发布 V1.2.4
+## Update 2024.11.24：发布 V1.2.5
+
+主要变更：
+
+* 基于 RapidOCR 集成 PPOCRv4 最新版文本检测功能，提供更快的推理速度
+  * 新增支持 PP-OCRv4 检测模型，包括标准版和服务器版
+  * 新增支持 PP-OCRv3 英文检测模型
+* 优化模型下载功能，支持从国内镜像下载模型文件
+
+## Update 2024.06.16：发布 V1.2.4
 
 主要变更：
 
 * 支持基于 Ultralytics 的 YOLO Detector。
 
 
-# Update 2023.06.30：发布 V1.2.3
+## Update 2023.06.30：发布 V1.2.3
 
 主要变更：
 
@@ -166,6 +175,8 @@ CnSTD 从 **V1.2** 开始，可直接使用的模型包含两类：1）CnSTD 自
 | ch_PP-OCRv3_det | X          | √       | 简体中问、英文、数字 | 2.3 M  |
 | ch_PP-OCRv2_det | X          | √       | 简体中问、英文、数字 | 2.2 M  |
 | en_PP-OCRv3_det | X          | √       | **英文**、数字  | 2.3 M  |
+| ch_PP-OCRv4_det | X          | √       | 简体中问、英文、数字 | 4.5 M  |
+| ch_PP-OCRv4_det_server | X          | √       | 简体中问、英文、数字 | 108 M  |
 
 更多模型可参考 [PaddleOCR/models_list.md](https://github.com/PaddlePaddle/PaddleOCR/blob/release%2F2.5/doc/doc_ch/models_list.md) 。如有其他外语（如日、韩等）检测需求，可在 **知识星球** [**CnOCR/CnSTD私享群**](https://t.zsxq.com/FEYZRJQ) 中向作者提出建议。
 
@@ -187,7 +198,7 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name: str = 'ch_PP-OCRv3_det',
+        model_name: str = 'ch_PP-OCRv4_det',
         *,
         auto_rotate_whole_image: bool = False,
         rotated_bbox: bool = True,
@@ -203,7 +214,7 @@ class CnStd(object):
 
 其中的几个参数含义如下：
 
-* `model_name`:  模型名称，即前面模型表格第一列中的值。默认为 **ch_PP-OCRv3_det** 。
+* `model_name`:  模型名称，即前面模型表格第一列中的值。默认为 **ch_PP-OCRv4_det** 。
 
 * `auto_rotate_whole_image`:  是否自动对整张图片进行旋转调整。默认为`False`。
 
@@ -476,7 +487,7 @@ Usage: cnstd predict [OPTIONS]
   预测单个文件，或者指定目录下的所有图片
 
 Options:
-  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|db_shufflenet_v2_tiny|en_PP-OCRv3_det]
+  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|db_shufflenet_v2_tiny|en_PP-OCRv3_det]
                                   模型名称。默认值为 db_shufflenet_v2_small
   -b, --model-backend [pytorch|onnx]
                                   模型类型。默认值为 `onnx`

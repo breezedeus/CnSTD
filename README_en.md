@@ -22,6 +22,15 @@
 
 # CnSTD
 
+## Update 2024.11.24: Release V1.2.5
+
+Major Changes:
+
+* Integrated latest PPOCRv4 text detection functionality based on RapidOCR for faster inference
+  * Added support for PP-OCRv4 detection models, including standard and server versions
+  * Added support for PP-OCRv3 English detection model
+* Optimized model download functionality with support for domestic mirrors
+
 ## Update 2024.06.16: Release V1.2.4
 
 **Key Changes:**
@@ -156,8 +165,9 @@ The following models are ONNX versions from [**PaddleOCR**](https://github.com/P
 
 | `model_name`    | PyTorch Version | ONNX Version | Supported Languages | Model File Size |
 |-----------------|-----------------|--------------|---------------------|-----------------|
-| ch_PP-OCRv3_det | X               | √            | Chinese, English, Numbers | 2.3 M        |
-| ch_PP-OCRv2_det | X               | √            | Chinese, English, Numbers | 2.2 M        |
+| ch_PP-OCRv4_det | X               | √            | Chinese, English, Numbers | 4.5 M        |
+| ch_PP-OCRv4_det_server | X               | √            | Chinese, English, Numbers | 108 M        |
+| ch_PP-OCRv3_det | X               | √            | Chinese, English, Numbers | 2.2 M        |
 | en_PP-OCRv3_det | X               | √            | **English**, Numbers | 2.3 M          |
 
 For more models, refer to [PaddleOCR/models_list
@@ -182,7 +192,7 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name: str = 'ch_PP-OCRv3_det',
+        model_name: str = 'ch_PP-OCRv4_det',
         *,
         auto_rotate_whole_image: bool = False,
         rotated_bbox: bool = True,
@@ -198,7 +208,7 @@ class CnStd(object):
 
 Key parameters:
 
-* `model_name`: Model name, corresponding to the first column in the model table. Default is **ch_PP-OCRv3_det**.
+* `model_name`: Model name, corresponding to the first column in the model table. Default is **ch_PP-OCRv4_det**.
 * `auto_rotate_whole_image`: Automatically adjust the rotation of the entire image. Default is `False`.
 * `rotated_bbox`: Support detection of angled text boxes; Default is `True`. If `False`, only horizontal or vertical text is detected.
 * `context`: Resource for prediction, can be `cpu`, `gpu`, or `cuda:0`.
@@ -423,7 +433,7 @@ Usage: cnstd predict [OPTIONS]
   Predict text in a single file or all images in a directory.
 
 Options:
-  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|db_shufflenet_v2_tiny|en_PP-OCRv3_det]
+  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|db_shufflenet_v2_tiny|en_PP-OCRv3_det]
                                   Model name. Default: db_shufflenet_v2_small.
   -b, --model-backend [pytorch|onnx]
                                   Model type. Default: `onnx`.

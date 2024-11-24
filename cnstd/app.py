@@ -88,7 +88,7 @@ def main():
     models = list(STD_MODELS.all_models())
     models.sort()
     std_model_name = st.sidebar.selectbox(
-        '模型名称', models, index=models.index(('ch_PP-OCRv3_det', 'onnx'))
+        '模型名称', models, index=models.index(('ch_PP-OCRv4_det', 'onnx'))
     )
     rotated_bbox = st.sidebar.checkbox('是否检测带角度文本框', value=True)
     use_angle_clf = st.sidebar.checkbox('是否使用角度预测模型校正文本框', value=False)

@@ -475,6 +475,7 @@ def get_rotate_crop_image(img, points):
             [0, img_crop_height],
         ]
     )
+    points = points.astype(np.float32)
     M = cv2.getPerspectiveTransform(points, pts_std)
     dst_img = cv2.warpPerspective(
         img,
