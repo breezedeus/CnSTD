@@ -153,7 +153,6 @@ Available models:
 | db_mobilenet_v3_small     | 2.0 M      | 7.9 M     | 0.7054              | 1.24                          | Automatic     |
 | db_shufflenet_v2          | 4.7 M      | 18 M      | 0.7238              | 1.73                          | Automatic     |
 | db_shufflenet_v2_small    | 3.0 M      | 12 M      | 0.7190              | 1.29                          | Automatic     |
-| db_shufflenet_v2_tiny     | **1.9 M**  | **7.5 M** | **0.7172**          | **1.14**                      | [Download Link](https://mp.weixin.qq.com/s/fHPNoGyo72EFApVhEgR6Nw) |
 
 > The above times are based on a local Mac. Absolute values may not be very useful, but relative values are for reference. IoU calculation has been adjusted, so only relative values are for reference.
 
@@ -433,7 +432,7 @@ Usage: cnstd predict [OPTIONS]
   Predict text in a single file or all images in a directory.
 
 Options:
-  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|db_shufflenet_v2_tiny|en_PP-OCRv3_det]
+  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|en_PP-OCRv3_det]
                                   Model name. Default: db_shufflenet_v2_small.
   -b, --model-backend [pytorch|onnx]
                                   Model type. Default: `onnx`.
