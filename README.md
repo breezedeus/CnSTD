@@ -160,7 +160,6 @@ CnSTD 从 **V1.2** 开始，可直接使用的模型包含两类：1）CnSTD 自
 | db_mobilenet_v3_small      | 2.0 M     | 7.9 M     | 0.7054     | 1.24              | 自动                                                        |
 | db_shufflenet_v2           | 4.7 M     | 18 M      | 0.7238     | 1.73              | 自动                                                        |
 | **db_shufflenet_v2_small** | 3.0 M     | 12 M      | 0.7190     | 1.29              | 自动                                                        |
-| db_shufflenet_v2_tiny      | **1.9 M** | **7.5 M** | **0.7172** | **1.14**          | [下载链接](https://mp.weixin.qq.com/s/fHPNoGyo72EFApVhEgR6Nw) |
 
 > 上表耗时基于本地 Mac 获得，绝对值无太大参考价值，相对值可供参考。IoU的计算方式经过调整，仅相对值可供参考。
 
@@ -487,7 +486,7 @@ Usage: cnstd predict [OPTIONS]
   预测单个文件，或者指定目录下的所有图片
 
 Options:
-  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|db_shufflenet_v2_tiny|en_PP-OCRv3_det]
+  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|en_PP-OCRv3_det]
                                   模型名称。默认值为 db_shufflenet_v2_small
   -b, --model-backend [pytorch|onnx]
                                   模型类型。默认值为 `onnx`
