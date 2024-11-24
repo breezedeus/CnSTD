@@ -101,6 +101,30 @@ def data_dir():
     return os.getenv('CNSTD_HOME', data_dir_default())
 
 
+def prepare_model_files(model_fp, remote_repo, mirror_url='https://hf-mirror.com'):
+    """
+    从远程指定的仓库下载模型文件。
+    Args:
+        model_fp: 下载的模型文件会保存到此路径
+        remote_repo: 指定的远程仓库
+        mirror_url: 指定的 HuggingFace 国内镜像网址；如果无法从 HuggingFace 官方仓库下载，会自动从此国内镜像下载。默认值为 'https://hf-mirror.com'
+    """
+    model_fp = Path(model_fp)
+    model_dir = model_fp.parent
+    if model_fp.exists():
+        return model_fp
+    if model_dir.exists():
+        shutil.rmtree(str(model_dir))
+    model_dir.mkdir(parents=True)
+    download_cmd = f'huggingface-cli download --repo-type model --resume-download --local-dir-use-symlinks False {remote_repo} --local-dir {model_dir}'
+    os.system(download_cmd)
+    if not model_fp.exists():  # download failed above
+        if model_dir.exists():
+            shutil.rmtree(str(model_dir))
+        os.system(f'HF_ENDPOINT={mirror_url} ' + download_cmd)
+    return model_fp
+
+
 def select_device(device) -> str:
     if device is not None:
         return device
