@@ -1,5 +1,15 @@
 # Release Notes
 
+## Update 2024.11.30：发布 V1.2.5.1 
+
+Major Changes:
+
+* en_PP-OCRv3_det still uses the previous version and does not use RapidDetector
+
+Bug Fixes:
+
+* en_PP-OCRv3_det 依旧使用之前的版本，不使用 RapidDetector
+
 ## Update 2024.11.24：发布 V1.2.5
 
 Major Changes:

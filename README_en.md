@@ -28,7 +28,6 @@ Major Changes:
 
 * Integrated latest PPOCRv4 text detection functionality based on RapidOCR for faster inference
   * Added support for PP-OCRv4 detection models, including standard and server versions
-  * Added support for PP-OCRv3 English detection model
 * Optimized model download functionality with support for domestic mirrors
 
 ## Update 2024.06.16: Release V1.2.4
