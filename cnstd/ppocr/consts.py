@@ -27,8 +27,8 @@ MODEL_LABELS_FILE_DICT = {
     },
     ('en_PP-OCRv3_det', 'onnx'): {
         'url': 'en_PP-OCRv3_det_infer-onnx.zip',
-        'detector': 'RapidDetector',
-        'repo': 'breezedeus/cnstd-ppocr-en_PP-OCRv3_det',
+        # 'detector': 'RapidDetector',
+        # 'repo': 'breezedeus/cnstd-ppocr-en_PP-OCRv3_det',
     },
     ('ch_PP-OCRv4_det', 'onnx'): {
         'detector': 'RapidDetector',
