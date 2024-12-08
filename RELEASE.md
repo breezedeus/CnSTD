@@ -1,5 +1,17 @@
 # Release Notes
 
+## Update 2024.12.08：发布 V1.2.5.2
+
+Bug Fixes:
+
+* Fix compatibility issue of setting environment variables on Windows systems
+* Use subprocess.run instead of os.system for better cross-platform support
+
+Bug Fixes:
+
+* 修复在 Windows 系统下设置环境变量的兼容性问题
+* 使用 subprocess.run 替代 os.system 以提供更好的跨平台支持
+
 ## Update 2024.11.30：发布 V1.2.5.1 
 
 Major Changes:
