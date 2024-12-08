@@ -28,6 +28,7 @@ import zipfile
 from functools import cmp_to_key
 import shutil
 import tempfile
+import subprocess
 
 from tqdm import tqdm
 import cv2
@@ -117,11 +118,13 @@ def prepare_model_files(model_fp, remote_repo, mirror_url='https://hf-mirror.com
         shutil.rmtree(str(model_dir))
     model_dir.mkdir(parents=True)
     download_cmd = f'huggingface-cli download --repo-type model --resume-download --local-dir-use-symlinks False {remote_repo} --local-dir {model_dir}'
-    os.system(download_cmd)
+    subprocess.run(download_cmd, shell=True)
     if not model_fp.exists():  # download failed above
         if model_dir.exists():
             shutil.rmtree(str(model_dir))
-        os.system(f'HF_ENDPOINT={mirror_url} ' + download_cmd)
+        env = os.environ.copy()
+        env['HF_ENDPOINT'] = mirror_url
+        subprocess.run(download_cmd, env=env, shell=True)
     return model_fp
 
 
