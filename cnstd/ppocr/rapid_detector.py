@@ -109,7 +109,7 @@ class RapidDetector(object):
 
     def __init__(
         self,
-        model_name: str = 'ch_PP-OCRv4_det',
+        model_name: str = 'ch_PP-OCRv5_det',
         *,
         model_fp: Optional[str] = None,
         root: Union[str, Path] = data_dir(),
