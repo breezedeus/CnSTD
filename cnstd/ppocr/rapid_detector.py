@@ -26,8 +26,11 @@ from typing import Tuple, List, Dict, Union, Any, Optional
 import numpy as np
 from PIL import Image
 import cv2
-from rapidocr_onnxruntime.ch_ppocr_det import TextDetector
-from rapidocr_onnxruntime import RapidOCR
+# from rapidocr_onnxruntime.ch_ppocr_det import TextDetector
+# from rapidocr_onnxruntime import RapidOCR
+from rapidocr import EngineType, LangDet, ModelType, OCRVersion
+from rapidocr.utils.typings import TaskType
+from rapidocr.ch_ppocr_det import TextDetector
 
 from ..consts import AVAILABLE_MODELS, MODEL_VERSION
 from ..utils import read_img, data_dir, prepare_model_files
@@ -35,6 +38,68 @@ from .utility import get_rotate_crop_image
 from .consts import PP_SPACE
 
 logger = logging.getLogger(__name__)
+
+class Config(dict):
+    DEFAULT_CFG = {
+        "engine_type": EngineType.ONNXRUNTIME,
+        "lang_type": LangDet.CH,
+        "model_type": ModelType.SERVER,
+        "ocr_version": OCRVersion.PPOCRV5,
+        "task_type": TaskType.DET,
+        "model_path": None,
+        "model_dir": None,
+        "limit_side_len": 736,
+        "limit_type": "min",
+        "std": [0.5, 0.5, 0.5],
+        "mean": [0.5, 0.5, 0.5],
+        "thresh": 0.3,
+        "box_thresh": 0.5,
+        "max_candidates": 1000,
+        "unclip_ratio": 1.6,
+        "use_dilation": True,
+        "score_mode": "fast",
+        "engine_cfg": {
+            "intra_op_num_threads": -1,
+            "inter_op_num_threads": -1,
+            "enable_cpu_mem_arena": False,
+            "cpu_ep_cfg": {"arena_extend_strategy": "kSameAsRequested"},
+            "use_cuda": False,
+            "cuda_ep_cfg": {
+                "device_id": 0,
+                "arena_extend_strategy": "kNextPowerOfTwo",
+                "cudnn_conv_algo_search": "EXHAUSTIVE",
+                "do_copy_in_default_stream": True,
+            },
+            "use_dml": False,
+            "dm_ep_cfg": None,
+            "use_cann": False,
+            "cann_ep_cfg": {
+                "device_id": 0,
+                "arena_extend_strategy": "kNextPowerOfTwo",
+                "npu_mem_limit": 21474836480,
+                "op_select_impl_mode": "high_performance",
+                "optypelist_for_implmode": "Gelu",
+                "enable_cann_graph": True,
+            },
+        },
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        data = dict(*args, **kwargs)
+        for k, v in data.items():
+            if isinstance(v, dict):
+                v = Config(v)
+            self[k] = v
+
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(name)
+
+    def __setattr__(self, name, value):
+        self[name] = value
 
 
 class RapidDetector(object):
@@ -80,8 +145,12 @@ class RapidDetector(object):
         self._assert_and_prepare_model_files(model_fp, root)
         use_gpu = context.lower() not in ('cpu', 'mps')
 
-        config = {
-            "use_cuda": use_gpu,
+        config = Config.DEFAULT_CFG
+        config["engine_cfg"]["use_cuda"] = use_gpu
+        if "engine_cfg" in kwargs:
+            config["engine_cfg"].update(kwargs["engine_cfg"])
+
+        config.update({
             "limit_side_len": limit_side_len,
             "limit_type": limit_type,
             "thresh": thresh,
@@ -91,7 +160,12 @@ class RapidDetector(object):
             "use_dilation": use_dilation,
             "score_mode": score_mode,
             "model_path": self._model_fp,
-        }
+        })
+        # 从 model_name 中获取 model_type 和 ocr_version
+        config["model_type"] = ModelType.SERVER if "server" in model_name else ModelType.MOBILE
+        config["ocr_version"] = OCRVersion.PPOCRV5 if "v5" in model_name else OCRVersion.PPOCRV4
+
+        config = Config(config)
         self._detector = TextDetector(config)
 
     def _assert_and_prepare_model_files(self, model_fp, root):
@@ -170,25 +244,25 @@ class RapidDetector(object):
             if len(img.shape) == 3 and img.shape[2] == 3:
                 img = img[..., ::-1]  # RGB to BGR
 
-            boxes, _ = self._detector(img)
-            if boxes is None or len(boxes) < 1:
+            det_out = self._detector(img)
+            if det_out is None or len(det_out.boxes) < 1:
                 out.append({
                     'rotated_angle': 0.0,  # rapidocr 不支持自动旋转
                     'detected_texts': [],
                 })
                 continue
 
-            boxes = RapidOCR.sorted_boxes(boxes)
+            # boxes = self._detector.sorted_boxes(boxes)
 
             # 构造返回结果
             detected_texts = []
-            for box in boxes:
+            for box, score in zip(det_out.boxes, det_out.scores):
                 box = np.array(box).astype(np.int32)
                 img_crop = get_rotate_crop_image(img, deepcopy(box))
                 img_crop = cv2.cvtColor(img_crop, cv2.COLOR_BGR2RGB)
                 detected_texts.append({
                     'box': box,
-                    'score': 1.0,  # rapidocr 没有返回 score，这里统一设为 1.0
+                    'score': score,
                     'cropped_img': img_crop.astype('uint8'),
                 })
 
