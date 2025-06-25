@@ -22,6 +22,14 @@
 
 # CnSTD
 
+## Update 2025.06.25: Release V1.2.6
+
+Major Changes:
+
+* Integrated the latest PPOCRv5 text detection functionality based on RapidOCR for even faster inference speed
+  * Added support for PP-OCRv5 detection models: `ch_PP-OCRv5_det` and `ch_PP-OCRv5_det_server`
+* Fixed some known bugs
+
 ## Update 2024.11.24: Release V1.2.5
 
 Major Changes:
@@ -161,12 +169,14 @@ Models based on **MobileNet** and **ShuffleNet** are smaller and faster than tho
 
 The following models are ONNX versions from [**PaddleOCR**](https://github.com/PaddlePaddle/PaddleOCR), so they do not depend on **PaddlePaddle** and do not support further fine-tuning on specific domain data. These models support vertical text detection.
 
-| `model_name`    | PyTorch Version | ONNX Version | Supported Languages | Model File Size |
-|-----------------|-----------------|--------------|---------------------|-----------------|
-| ch_PP-OCRv4_det | X               | √            | Chinese, English, Numbers | 4.5 M        |
-| ch_PP-OCRv4_det_server | X               | √            | Chinese, English, Numbers | 108 M        |
-| ch_PP-OCRv3_det | X               | √            | Chinese, English, Numbers | 2.2 M        |
-| en_PP-OCRv3_det | X               | √            | **English**, Numbers | 2.3 M          |
+| `model_name`    | PyTorch Version | ONNX Version | Supported Languages         | Model File Size |
+|-----------------|-----------------|--------------|----------------------------|-----------------|
+| ch_PP-OCRv5_det | X               | √            | Chinese, English, Numbers  | 4.6 M           |
+| ch_PP-OCRv5_det_server | X        | √            | Chinese, English, Numbers  | 84 M            |
+| ch_PP-OCRv4_det | X               | √            | Chinese, English, Numbers  | 4.5 M           |
+| ch_PP-OCRv4_det_server | X        | √            | Chinese, English, Numbers  | 108 M           |
+| ch_PP-OCRv3_det | X               | √            | Chinese, English, Numbers  | 2.2 M           |
+| en_PP-OCRv3_det | X               | √            | **English**, Numbers       | 2.3 M           |
 
 For more models, refer to [PaddleOCR/models_list
 
@@ -190,7 +200,7 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name: str = 'ch_PP-OCRv4_det',
+        model_name: str = 'ch_PP-OCRv5_det',
         *,
         auto_rotate_whole_image: bool = False,
         rotated_bbox: bool = True,
@@ -206,7 +216,7 @@ class CnStd(object):
 
 Key parameters:
 
-* `model_name`: Model name, corresponding to the first column in the model table. Default is **ch_PP-OCRv4_det**.
+* `model_name`: Model name, corresponding to the first column in the model table. Default is **ch_PP-OCRv5_det**.
 * `auto_rotate_whole_image`: Automatically adjust the rotation of the entire image. Default is `False`.
 * `rotated_bbox`: Support detection of angled text boxes; Default is `True`. If `False`, only horizontal or vertical text is detected.
 * `context`: Resource for prediction, can be `cpu`, `gpu`, or `cuda:0`.
@@ -431,7 +441,7 @@ Usage: cnstd predict [OPTIONS]
   Predict text in a single file or all images in a directory.
 
 Options:
-  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|en_PP-OCRv3_det]
+  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|ch_PP-OCRv5_det|ch_PP-OCRv5_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|en_PP-OCRv3_det]
                                   Model name. Default: db_shufflenet_v2_small.
   -b, --model-backend [pytorch|onnx]
                                   Model type. Default: `onnx`.
@@ -525,9 +535,7 @@ Usage: cnstd resave [OPTIONS]
 Options:
   -i, --input-model-fp TEXT   Path to input model file. [required]
   -o, --output-model-fp TEXT  Path to output model file. [required]
-  -h
-
-, --help                  Show this message and exit.
+  -h, --help                  Show this message and exit.
 ```
 
 ## Future Work
