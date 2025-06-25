@@ -57,7 +57,7 @@ required = [
     "onnx",
     "huggingface_hub",
     "ultralytics",
-    "rapidocr_onnxruntime<1.4",
+    "rapidocr>=3.0",
 ]
 
 extras_require = {

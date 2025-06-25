@@ -15,7 +15,7 @@ example_dir = os.path.join(root_dir, 'examples')
 
 
 def test_ppocr_models():
-    model_name, model_backend = 'ch_PP-OCRv3_det', 'onnx'
+    model_name, model_backend = 'ch_PP-OCRv5_det_server', 'onnx'
     img_fp = os.path.join(example_dir, 'beauty2.jpg')
     std = CnStd(model_name, model_backend=model_backend, use_angle_clf=True)
     img = Image.open(img_fp)

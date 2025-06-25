@@ -22,6 +22,15 @@
 
 
 # CnSTD
+## Update 2025.06.25：发布 V1.2.6
+
+主要变更：
+
+* 基于 RapidOCR 集成 PPOCRv5 最新版文本检测功能，提供更快的推理速度
+  * 新增支持 PP-OCRv4 检测模型：`ch_PP-OCRv5_det` 和 `ch_PP-OCRv5_det_server`
+* 修复部分已知 bug
+
+
 ## Update 2024.11.24：发布 V1.2.5
 
 主要变更：
@@ -170,11 +179,14 @@ CnSTD 从 **V1.2** 开始，可直接使用的模型包含两类：1）CnSTD 自
 
 | `model_name`    | PyTorch 版本 | ONNX 版本 | 支持检测的语言    | 模型文件大小 |
 | --------------- | ---------- | ------- | ---------- | ------ |
-| ch_PP-OCRv3_det | X          | √       | 简体中问、英文、数字 | 2.3 M  |
-| ch_PP-OCRv2_det | X          | √       | 简体中问、英文、数字 | 2.2 M  |
-| en_PP-OCRv3_det | X          | √       | **英文**、数字  | 2.3 M  |
+| ch_PP-OCRv5_det | X          | √       | 简体中问、英文、数字 | 4.6 M  |
+| ch_PP-OCRv5_det_server | X          | √       | 简体中问、英文、数字 | 84 M  |
 | ch_PP-OCRv4_det | X          | √       | 简体中问、英文、数字 | 4.5 M  |
 | ch_PP-OCRv4_det_server | X          | √       | 简体中问、英文、数字 | 108 M  |
+| ch_PP-OCRv3_det | X          | √       | 简体中问、英文、数字 | 2.3 M  |
+| en_PP-OCRv3_det | X          | √       | **英文**、数字  | 2.3 M  |
+| ch_PP-OCRv2_det | X          | √       | 简体中问、英文、数字 | 2.2 M  |
+
 
 更多模型可参考 [PaddleOCR/models_list.md](https://github.com/PaddlePaddle/PaddleOCR/blob/release%2F2.5/doc/doc_ch/models_list.md) 。如有其他外语（如日、韩等）检测需求，可在 **知识星球** [**CnOCR/CnSTD私享群**](https://t.zsxq.com/FEYZRJQ) 中向作者提出建议。
 
@@ -196,7 +208,7 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name: str = 'ch_PP-OCRv4_det',
+        model_name: str = 'ch_PP-OCRv5_det',
         *,
         auto_rotate_whole_image: bool = False,
         rotated_bbox: bool = True,
@@ -212,7 +224,7 @@ class CnStd(object):
 
 其中的几个参数含义如下：
 
-* `model_name`:  模型名称，即前面模型表格第一列中的值。默认为 **ch_PP-OCRv4_det** 。
+* `model_name`:  模型名称，即前面模型表格第一列中的值。默认为 **ch_PP-OCRv5_det** 。
 
 * `auto_rotate_whole_image`:  是否自动对整张图片进行旋转调整。默认为`False`。
 
@@ -485,22 +497,20 @@ Usage: cnstd predict [OPTIONS]
   预测单个文件，或者指定目录下的所有图片
 
 Options:
-  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|en_PP-OCRv3_det]
+  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|ch_PP-OCRv5_det|ch_PP-OCRv5_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|en_PP-OCRv3_det]
                                   模型名称。默认值为 db_shufflenet_v2_small
   -b, --model-backend [pytorch|onnx]
                                   模型类型。默认值为 `onnx`
   -p, --pretrained-model-fp TEXT  使用训练好的模型。默认为 `None`，表示使用系统自带的预训练模型
-  -r, --rotated-bbox              是否检测带角度（非水平和垂直）的文本框。默认为 `True`
+  -r, --rotated-bbox              是否检测带角度（非水平和垂直）的文本框
   --resized-shape TEXT            格式："height,width";
                                   预测时把图片resize到此大小再进行预测。两个值都需要是32的倍数。默认为
                                   `768,768`
-
   --box-score-thresh FLOAT        检测结果只保留分数大于此值的文本框。默认值为 `0.3`
   --preserve-aspect-ratio BOOLEAN
                                   resize时是否保留图片原始比例。默认值为 `True`
   --context TEXT                  使用cpu还是 `gpu` 运行代码，也可指定为特定gpu，如`cuda:0`。默认为
                                   `cpu`
-
   -i, --img-file-or-dir TEXT      输入图片的文件路径或者指定的文件夹
   -o, --output-dir TEXT           检测结果存放的文件夹。默认为 `./predictions`
   -h, --help                      Show this message and exit.
