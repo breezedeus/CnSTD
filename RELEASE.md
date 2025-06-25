@@ -11,7 +11,7 @@ Major Changes:
 主要变更：
 
 * 基于 RapidOCR 集成 PPOCRv5 最新版文本检测功能，提供更快的推理速度
-  * 新增支持 PP-OCRv4 检测模型：`ch_PP-OCRv5_det` 和 `ch_PP-OCRv5_det_server`
+  * 新增支持 PP-OCRv5 检测模型：`ch_PP-OCRv5_det` 和 `ch_PP-OCRv5_det_server`
 * 修复部分已知 bug
 
 ## Update 2024.12.08：发布 V1.2.5.2
