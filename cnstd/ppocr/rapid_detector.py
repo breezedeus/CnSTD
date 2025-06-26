@@ -245,7 +245,7 @@ class RapidDetector(object):
                 img = img[..., ::-1]  # RGB to BGR
 
             det_out = self._detector(img)
-            if det_out is None or len(det_out.boxes) < 1:
+            if det_out is None or det_out.boxes is None or len(det_out.boxes) < 1:
                 out.append({
                     'rotated_angle': 0.0,  # rapidocr 不支持自动旋转
                     'detected_texts': [],
