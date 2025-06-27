@@ -1,5 +1,15 @@
 # Release Notes
 
+## Update 2025.06.27：发布 V1.2.6.1
+
+Major Changes:
+
+* Bug Fixed
+
+主要变更：
+
+* 修复已知 bug
+
 ## Update 2025.06.25：发布 V1.2.6
 
 Major Changes:
