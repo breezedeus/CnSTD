@@ -25,6 +25,7 @@ from unittest.mock import patch
 
 from rapidocr import RapidOCR, EngineType, LangDet, ModelType, OCRVersion, LangRec
 from rapidocr.utils.load_image import LoadImage
+from rapidocr.utils.download_file import DownloadFileException
 from rapidocr.ch_ppocr_det import TextDetector
 
 from cnstd.utils import set_logger
@@ -37,20 +38,28 @@ def require_onnxruntime():
     pytest.importorskip("onnxruntime")
 
 
+def skip_if_model_download_unavailable(exc):
+    pytest.skip(f"rapidocr model download is unavailable in this environment: {exc}")
+
+
 def test_whole_pipeline():
     require_onnxruntime()
-    engine = RapidOCR(
-        params={
-            "Det.engine_type": EngineType.ONNXRUNTIME,
-            "Det.lang_type": LangDet.CH,
-            "Det.model_type": ModelType.SERVER,
-            "Det.ocr_version": OCRVersion.PPOCRV5,
-            "Rec.engine_type": EngineType.ONNXRUNTIME,
-            "Rec.lang_type": LangRec.CH,
-            "Rec.model_type": ModelType.SERVER,
-            "Rec.ocr_version": OCRVersion.PPOCRV5,
-        }
-    )
+    try:
+        engine = RapidOCR(
+            params={
+                "Det.engine_type": EngineType.ONNXRUNTIME,
+                "Det.lang_type": LangDet.CH,
+                "Det.model_type": ModelType.SERVER,
+                "Det.ocr_version": OCRVersion.PPOCRV5,
+                "Rec.engine_type": EngineType.ONNXRUNTIME,
+                "Rec.lang_type": LangRec.CH,
+                "Rec.model_type": ModelType.SERVER,
+                "Rec.ocr_version": OCRVersion.PPOCRV5,
+            }
+        )
+    except DownloadFileException as exc:
+        skip_if_model_download_unavailable(exc)
+
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     example_dir = Path(root_dir) / "examples"
     img_path = example_dir / 'multi-line_cn1.png'
@@ -61,7 +70,10 @@ def test_whole_pipeline():
 def test_det():
     require_onnxruntime()
     config = Config(Config.DEFAULT_CFG)
-    engine = TextDetector(config)
+    try:
+        engine = TextDetector(config)
+    except DownloadFileException as exc:
+        skip_if_model_download_unavailable(exc)
 
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     example_dir = Path(root_dir) / "docs"
@@ -78,10 +90,13 @@ def test_rapid_detector():
     # 测试直接指定模型文件路径
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     model_fp = os.path.join(root_dir, "models", "ch_PP-OCRv4_det_infer.onnx")
-    detector = RapidDetector(
-        model_name="ch_PP-OCRv5_det",
-        # model_fp=model_fp,
-    )
+    try:
+        detector = RapidDetector(
+            model_name="ch_PP-OCRv5_det",
+            # model_fp=model_fp,
+        )
+    except DownloadFileException as exc:
+        skip_if_model_download_unavailable(exc)
 
     example_dir = Path(root_dir) / "docs"
     img_path = example_dir / "cnocr-wx.png"
