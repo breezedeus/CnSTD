@@ -28,6 +28,7 @@ from rapidocr.utils.load_image import LoadImage
 from rapidocr.utils.download_file import DownloadFileException
 from rapidocr.ch_ppocr_det import TextDetector
 
+from cnstd import CnStd
 from cnstd.utils import set_logger
 from cnstd.ppocr.rapid_detector import RapidDetector, Config
 
@@ -159,3 +160,29 @@ def test_rapid_detector_respects_custom_model_root_dir():
 
     assert detector_calls
     assert detector_calls[0].model_root_dir == custom_root_dir
+
+
+def test_cnstd_passes_model_root_dir_to_rapid_detector():
+    detector_calls = []
+
+    def fake_text_detector(config):
+        detector_calls.append(config)
+        return lambda img: None
+
+    def fake_prepare_model_files(self, model_fp, root):
+        self._model_fp = "/tmp/mock-model.onnx"
+        self._model_dir = "/tmp/mock-model-dir"
+
+    with patch("cnstd.ppocr.rapid_detector.TextDetector", side_effect=fake_text_detector):
+        with patch.object(
+            RapidDetector,
+            "_assert_and_prepare_model_files",
+            fake_prepare_model_files,
+        ):
+            std = CnStd(model_name="ch_PP-OCRv5_det", model_backend="onnx")
+
+    assert isinstance(std.det_model, RapidDetector)
+    assert detector_calls
+    config = detector_calls[0]
+    assert config.model_root_dir == std.det_model._model_dir
+    assert config.model_path == std.det_model._model_fp
