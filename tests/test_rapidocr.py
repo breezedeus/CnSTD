@@ -24,7 +24,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from rapidocr import RapidOCR, EngineType, LangDet, ModelType, OCRVersion, LangRec
-from rapidocr.utils import LoadImage
+from rapidocr.utils.load_image import LoadImage
 from rapidocr.ch_ppocr_det import TextDetector
 
 from cnstd.utils import set_logger
@@ -33,7 +33,12 @@ from cnstd.ppocr.rapid_detector import RapidDetector, Config
 logger = set_logger()
 
 
+def require_onnxruntime():
+    pytest.importorskip("onnxruntime")
+
+
 def test_whole_pipeline():
+    require_onnxruntime()
     engine = RapidOCR(
         params={
             "Det.engine_type": EngineType.ONNXRUNTIME,
@@ -54,6 +59,7 @@ def test_whole_pipeline():
 
 
 def test_det():
+    require_onnxruntime()
     config = Config(Config.DEFAULT_CFG)
     engine = TextDetector(config)
 
@@ -68,6 +74,7 @@ def test_det():
 
 
 def test_rapid_detector():
+    require_onnxruntime()
     # 测试直接指定模型文件路径
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     model_fp = os.path.join(root_dir, "models", "ch_PP-OCRv4_det_infer.onnx")
