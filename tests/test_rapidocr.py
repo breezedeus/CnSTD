@@ -21,6 +21,7 @@ import os
 import pytest
 import torch
 from pathlib import Path
+from unittest.mock import patch
 
 from rapidocr import RapidOCR, EngineType, LangDet, ModelType, OCRVersion, LangRec
 from rapidocr.utils import LoadImage
@@ -102,3 +103,37 @@ def test_rapid_detector():
     # 测试错误的模型名称
     with pytest.raises(NotImplementedError):
         RapidDetector(model_name="invalid")
+
+
+def test_rapid_detector_sets_model_root_dir_for_new_rapidocr():
+    detector_calls = []
+
+    def fake_text_detector(config):
+        detector_calls.append(config)
+        return lambda img: None
+
+    with patch("cnstd.ppocr.rapid_detector.TextDetector", side_effect=fake_text_detector):
+        detector = RapidDetector(model_name="ch_PP-OCRv5_det")
+
+    assert detector_calls
+    config = detector_calls[0]
+    assert config.model_root_dir == detector._model_dir
+    assert config.model_path == detector._model_fp
+
+
+def test_rapid_detector_respects_custom_model_root_dir():
+    detector_calls = []
+    custom_root_dir = "/tmp/custom-rapidocr-models"
+
+    def fake_text_detector(config):
+        detector_calls.append(config)
+        return lambda img: None
+
+    with patch("cnstd.ppocr.rapid_detector.TextDetector", side_effect=fake_text_detector):
+        RapidDetector(
+            model_name="ch_PP-OCRv5_det",
+            model_root_dir=custom_root_dir,
+        )
+
+    assert detector_calls
+    assert detector_calls[0].model_root_dir == custom_root_dir
