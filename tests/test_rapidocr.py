@@ -21,30 +21,46 @@ import os
 import pytest
 import torch
 from pathlib import Path
+from unittest.mock import patch
 
 from rapidocr import RapidOCR, EngineType, LangDet, ModelType, OCRVersion, LangRec
-from rapidocr.utils import LoadImage
+from rapidocr.utils.load_image import LoadImage
+from rapidocr.utils.download_file import DownloadFileException
 from rapidocr.ch_ppocr_det import TextDetector
 
+from cnstd import CnStd
 from cnstd.utils import set_logger
 from cnstd.ppocr.rapid_detector import RapidDetector, Config
 
 logger = set_logger()
 
 
+def require_onnxruntime():
+    pytest.importorskip("onnxruntime")
+
+
+def skip_if_model_download_unavailable(exc):
+    pytest.skip(f"rapidocr model download is unavailable in this environment: {exc}")
+
+
 def test_whole_pipeline():
-    engine = RapidOCR(
-        params={
-            "Det.engine_type": EngineType.ONNXRUNTIME,
-            "Det.lang_type": LangDet.CH,
-            "Det.model_type": ModelType.SERVER,
-            "Det.ocr_version": OCRVersion.PPOCRV5,
-            "Rec.engine_type": EngineType.ONNXRUNTIME,
-            "Rec.lang_type": LangRec.CH,
-            "Rec.model_type": ModelType.SERVER,
-            "Rec.ocr_version": OCRVersion.PPOCRV5,
-        }
-    )
+    require_onnxruntime()
+    try:
+        engine = RapidOCR(
+            params={
+                "Det.engine_type": EngineType.ONNXRUNTIME,
+                "Det.lang_type": LangDet.CH,
+                "Det.model_type": ModelType.SERVER,
+                "Det.ocr_version": OCRVersion.PPOCRV5,
+                "Rec.engine_type": EngineType.ONNXRUNTIME,
+                "Rec.lang_type": LangRec.CH,
+                "Rec.model_type": ModelType.SERVER,
+                "Rec.ocr_version": OCRVersion.PPOCRV5,
+            }
+        )
+    except DownloadFileException as exc:
+        skip_if_model_download_unavailable(exc)
+
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     example_dir = Path(root_dir) / "examples"
     img_path = example_dir / 'multi-line_cn1.png'
@@ -53,8 +69,12 @@ def test_whole_pipeline():
 
 
 def test_det():
+    require_onnxruntime()
     config = Config(Config.DEFAULT_CFG)
-    engine = TextDetector(config)
+    try:
+        engine = TextDetector(config)
+    except DownloadFileException as exc:
+        skip_if_model_download_unavailable(exc)
 
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     example_dir = Path(root_dir) / "docs"
@@ -67,13 +87,17 @@ def test_det():
 
 
 def test_rapid_detector():
+    require_onnxruntime()
     # 测试直接指定模型文件路径
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     model_fp = os.path.join(root_dir, "models", "ch_PP-OCRv4_det_infer.onnx")
-    detector = RapidDetector(
-        model_name="ch_PP-OCRv5_det",
-        # model_fp=model_fp,
-    )
+    try:
+        detector = RapidDetector(
+            model_name="ch_PP-OCRv5_det",
+            # model_fp=model_fp,
+        )
+    except DownloadFileException as exc:
+        skip_if_model_download_unavailable(exc)
 
     example_dir = Path(root_dir) / "docs"
     img_path = example_dir / "cnocr-wx.png"
@@ -102,3 +126,63 @@ def test_rapid_detector():
     # 测试错误的模型名称
     with pytest.raises(NotImplementedError):
         RapidDetector(model_name="invalid")
+
+
+def test_rapid_detector_sets_model_root_dir_for_new_rapidocr():
+    detector_calls = []
+
+    def fake_text_detector(config):
+        detector_calls.append(config)
+        return lambda img: None
+
+    with patch("cnstd.ppocr.rapid_detector.TextDetector", side_effect=fake_text_detector):
+        detector = RapidDetector(model_name="ch_PP-OCRv5_det")
+
+    assert detector_calls
+    config = detector_calls[0]
+    assert config.model_root_dir == detector._model_dir
+    assert config.model_path == detector._model_fp
+
+
+def test_rapid_detector_respects_custom_model_root_dir():
+    detector_calls = []
+    custom_root_dir = "/tmp/custom-rapidocr-models"
+
+    def fake_text_detector(config):
+        detector_calls.append(config)
+        return lambda img: None
+
+    with patch("cnstd.ppocr.rapid_detector.TextDetector", side_effect=fake_text_detector):
+        RapidDetector(
+            model_name="ch_PP-OCRv5_det",
+            model_root_dir=custom_root_dir,
+        )
+
+    assert detector_calls
+    assert detector_calls[0].model_root_dir == custom_root_dir
+
+
+def test_cnstd_passes_model_root_dir_to_rapid_detector():
+    detector_calls = []
+
+    def fake_text_detector(config):
+        detector_calls.append(config)
+        return lambda img: None
+
+    def fake_prepare_model_files(self, model_fp, root):
+        self._model_fp = "/tmp/mock-model.onnx"
+        self._model_dir = "/tmp/mock-model-dir"
+
+    with patch("cnstd.ppocr.rapid_detector.TextDetector", side_effect=fake_text_detector):
+        with patch.object(
+            RapidDetector,
+            "_assert_and_prepare_model_files",
+            fake_prepare_model_files,
+        ):
+            std = CnStd(model_name="ch_PP-OCRv5_det", model_backend="onnx")
+
+    assert isinstance(std.det_model, RapidDetector)
+    assert detector_calls
+    config = detector_calls[0]
+    assert config.model_root_dir == std.det_model._model_dir
+    assert config.model_path == std.det_model._model_fp

@@ -145,10 +145,15 @@ class RapidDetector(object):
         self._assert_and_prepare_model_files(model_fp, root)
         use_gpu = context.lower() not in ('cpu', 'mps')
 
-        config = Config.DEFAULT_CFG
+        config = deepcopy(Config.DEFAULT_CFG)
         config["engine_cfg"]["use_cuda"] = use_gpu
-        if "engine_cfg" in kwargs:
-            config["engine_cfg"].update(kwargs["engine_cfg"])
+        engine_cfg = kwargs.pop("engine_cfg", None)
+        if engine_cfg is not None:
+            config["engine_cfg"].update(engine_cfg)
+
+        model_root_dir = kwargs.pop("model_root_dir", None)
+        if model_root_dir is None:
+            model_root_dir = getattr(self, "_model_dir", os.path.dirname(self._model_fp))
 
         config.update({
             "limit_side_len": limit_side_len,
@@ -160,7 +165,9 @@ class RapidDetector(object):
             "use_dilation": use_dilation,
             "score_mode": score_mode,
             "model_path": self._model_fp,
+            "model_root_dir": str(model_root_dir),
         })
+        config.update(kwargs)
         # 从 model_name 中获取 model_type 和 ocr_version
         config["model_type"] = ModelType.SERVER if "server" in model_name else ModelType.MOBILE
         config["ocr_version"] = OCRVersion.PPOCRV5 if "v5" in model_name else OCRVersion.PPOCRV4
