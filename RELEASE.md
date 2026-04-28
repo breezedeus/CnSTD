@@ -1,5 +1,15 @@
 # Release Notes
 
+## Update 2026.04.28：发布 V1.2.7.2
+
+Bug Fixes:
+
+* Support `model_root_dir` in `RapidDetector` so RapidOCR model assets can be resolved from a custom model root directory
+
+Bug Fixes:
+
+* 修复 `RapidDetector` 对 `model_root_dir` 的支持，确保 RapidOCR 相关模型资源可从自定义模型根目录正确解析
+
 ## Update 2026.02.07：发布 V1.2.7.1
 
 Bug Fixes:
