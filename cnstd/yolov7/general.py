@@ -96,10 +96,12 @@ def check_git_status():
         assert not isdocker(), 'skipping check (Docker image)'
         assert check_online(), 'skipping check (offline)'
 
-        cmd = 'git fetch && git config --get remote.origin.url'
-        url = subprocess.check_output(cmd, shell=True).decode().strip().rstrip('.git')  # github repo url
-        branch = subprocess.check_output('git rev-parse --abbrev-ref HEAD', shell=True).decode().strip()  # checked out
-        n = int(subprocess.check_output(f'git rev-list {branch}..origin/master --count', shell=True))  # commits behind
+        cmd = ['git', 'fetch']
+        subprocess.check_output(cmd).decode()
+        cmd = ['git', 'config', '--get', 'remote.origin.url']
+        url = subprocess.check_output(cmd).decode().strip().rstrip('.git')  # github repo url
+        branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode().strip()  # checked out
+        n = int(subprocess.check_output(['git', 'rev-list', f'{branch}..origin/master', '--count']).decode())  # commits behind
         if n > 0:
             s = f"⚠️ WARNING: code is out of date by {n} commit{'s' * (n > 1)}. " \
                 f"Use 'git pull' to update or 'git clone {url}' to download latest."
@@ -130,7 +132,7 @@ def check_requirements(requirements='requirements.txt', exclude=()):
         except Exception as e:  # DistributionNotFound or VersionConflict if requirements not met
             n += 1
             logger.warning(f"{prefix} {e.req} not found and is required by YOLOR, attempting auto-update...")
-            print(subprocess.check_output(f"pip install '{e.req}'", shell=True).decode())
+            print(subprocess.check_output(['pip', 'install', str(e.req)]).decode())
 
     if n:  # if packages updated
         source = file.resolve() if 'file' in locals() else requirements
