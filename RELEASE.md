@@ -1,5 +1,15 @@
 # Release Notes
 
+## Update 2026.05.01：发布 V1.2.7.3
+
+Bug Fixes:
+
+* Improve robustness of subprocess calls in YOLOv7 modules by avoiding shell-based invocations in git and pip commands
+
+Bug Fixes:
+
+* 提升 YOLOv7 模块中子进程调用的稳健性，避免在 git 和 pip 命令中依赖 shell 调用
+
 ## Update 2026.04.28：发布 V1.2.7.2
 
 Bug Fixes:
