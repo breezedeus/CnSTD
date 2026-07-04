@@ -22,6 +22,15 @@
 
 
 # CnSTD
+## Update 2026.07.04：发布 V1.2.8
+
+主要变更：
+
+* 基于 RapidOCR 支持 PP-OCRv6 多语种文本检测模型
+  * 新增支持 PP-OCRv6 检测模型：`multi_PP-OCRv6_det_tiny`、`multi_PP-OCRv6_det_small` 和 `multi_PP-OCRv6_det_medium`
+  * CLI 新增 `--lang-type`，可为 RapidOCR v6 检测模型指定语言类型
+
+
 ## Update 2025.06.25：发布 V1.2.6
 
 主要变更：
@@ -152,7 +161,7 @@ pip install cnstd -i https://mirrors.aliyun.com/pypi/simple
 
 CnSTD 从 **V1.2** 开始，可直接使用的模型包含两类：1）CnSTD 自己训练的模型，通常会包含 PyTorch 和 ONNX 版本；2）从其他ocr引擎搬运过来的训练好的外部模型，ONNX化后用于 CnSTD 中。
 
-直接使用的模型都放在 [**cnstd-cnocr-models**](https://huggingface.co/breezedeus/cnstd-cnocr-models) 项目中，可免费下载使用。
+直接使用的模型都放在 [**cnstd-cnocr-models**](https://huggingface.co/breezedeus/cnstd-cnocr-models) 或对应的 `breezedeus/cnstd-ppocr-*` HuggingFace 模型仓库中，可免费下载使用。
 
 ### 1. CnSTD 自己训练的模型
 
@@ -179,13 +188,18 @@ CnSTD 从 **V1.2** 开始，可直接使用的模型包含两类：1）CnSTD 自
 
 | `model_name`    | PyTorch 版本 | ONNX 版本 | 支持检测的语言    | 模型文件大小 |
 | --------------- | ---------- | ------- | ---------- | ------ |
-| ch_PP-OCRv5_det | X          | √       | 简体中问、英文、数字 | 4.6 M  |
-| ch_PP-OCRv5_det_server | X          | √       | 简体中问、英文、数字 | 84 M  |
-| ch_PP-OCRv4_det | X          | √       | 简体中问、英文、数字 | 4.5 M  |
-| ch_PP-OCRv4_det_server | X          | √       | 简体中问、英文、数字 | 108 M  |
-| ch_PP-OCRv3_det | X          | √       | 简体中问、英文、数字 | 2.3 M  |
+| multi_PP-OCRv6_det_tiny | X          | √       | 多语种（不含日文） | 1.7 M  |
+| multi_PP-OCRv6_det_small | X          | √       | 多语种 | 9.5 M  |
+| multi_PP-OCRv6_det_medium | X          | √       | 多语种 | 59 M  |
+| ch_PP-OCRv5_det | X          | √       | 简体中文、英文、数字 | 4.6 M  |
+| ch_PP-OCRv5_det_server | X          | √       | 简体中文、英文、数字 | 84 M  |
+| ch_PP-OCRv4_det | X          | √       | 简体中文、英文、数字 | 4.5 M  |
+| ch_PP-OCRv4_det_server | X          | √       | 简体中文、英文、数字 | 108 M  |
+| ch_PP-OCRv3_det | X          | √       | 简体中文、英文、数字 | 2.3 M  |
 | en_PP-OCRv3_det | X          | √       | **英文**、数字  | 2.3 M  |
-| ch_PP-OCRv2_det | X          | √       | 简体中问、英文、数字 | 2.2 M  |
+| ch_PP-OCRv2_det | X          | √       | 简体中文、英文、数字 | 2.2 M  |
+
+PP-OCRv6 的 `multi_PP-OCRv6_det_small` 和 `multi_PP-OCRv6_det_medium` 支持的 `lang_type` 包括：`ch`, `chinese_cht`, `en`, `japan`, `af`, `az`, `bs`, `ca`, `cs`, `cy`, `da`, `de`, `es`, `et`, `eu`, `fi`, `fr`, `ga`, `gl`, `hr`, `hu`, `id`, `is`, `it`, `ku`, `la`, `lb`, `lt`, `lv`, `mi`, `ms`, `mt`, `nl`, `no`, `oc`, `pl`, `pt`, `qu`, `rm`, `ro`, `rs_latin`, `sk`, `sl`, `sq`, `sv`, `sw`, `tl`, `tr`, `uz`, `vi`, `french`, `german`；`multi_PP-OCRv6_det_tiny` 不支持 `japan`。`multi` 是模型族名称，不是可传入的 `lang_type`。
 
 
 更多模型可参考 [PaddleOCR/models_list.md](https://github.com/PaddlePaddle/PaddleOCR/blob/release%2F2.5/doc/doc_ch/models_list.md) 。如有其他外语（如日、韩等）检测需求，可在 **知识星球** [**CnOCR/CnSTD私享群**](https://t.zsxq.com/FEYZRJQ) 中向作者提出建议。
@@ -208,7 +222,7 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name: str = 'ch_PP-OCRv5_det',
+        model_name: str = 'multi_PP-OCRv6_det_small',
         *,
         auto_rotate_whole_image: bool = False,
         rotated_bbox: bool = True,
@@ -224,7 +238,7 @@ class CnStd(object):
 
 其中的几个参数含义如下：
 
-* `model_name`:  模型名称，即前面模型表格第一列中的值。默认为 **ch_PP-OCRv5_det** 。
+* `model_name`:  模型名称，即前面模型表格第一列中的值。默认为 **multi_PP-OCRv6_det_small** 。
 
 * `auto_rotate_whole_image`:  是否自动对整张图片进行旋转调整。默认为`False`。
 
@@ -238,7 +252,7 @@ class CnStd(object):
 
 * `root`: 模型文件所在的根目录。
   
-  * Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.2/db_shufflenet_v2_small`。
+  * Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.2/ppocr/multi_PP-OCRv6_det_small`。
   * Windows下默认值为 `C:\Users\<username>\AppData\Roaming\cnstd`。
 
 * `use_angle_clf` (bool): 对于检测出的文本框，是否使用角度分类模型进行调整（检测出的文本框可能会存在倒转180度的情况）。默认为 `False`
@@ -497,11 +511,13 @@ Usage: cnstd predict [OPTIONS]
   预测单个文件，或者指定目录下的所有图片
 
 Options:
-  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|ch_PP-OCRv5_det|ch_PP-OCRv5_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|en_PP-OCRv3_det]
-                                  模型名称。默认值为 db_shufflenet_v2_small
+  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|ch_PP-OCRv5_det|ch_PP-OCRv5_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|en_PP-OCRv3_det|multi_PP-OCRv6_det_medium|multi_PP-OCRv6_det_small|multi_PP-OCRv6_det_tiny]
+                                  模型名称。默认值为 multi_PP-OCRv6_det_small
   -b, --model-backend [pytorch|onnx]
                                   模型类型。默认值为 `onnx`
   -p, --pretrained-model-fp TEXT  使用训练好的模型。默认为 `None`，表示使用系统自带的预训练模型
+  --lang-type TEXT                RapidOCR检测模型的语言类型；PP-OCRv6支持如
+                                  ch、en、japan、french、german 等。默认值为 `None`
   -r, --rotated-bbox              是否检测带角度（非水平和垂直）的文本框
   --resized-shape TEXT            格式："height,width";
                                   预测时把图片resize到此大小再进行预测。两个值都需要是32的倍数。默认为
@@ -520,6 +536,12 @@ Options:
 
 ```bash
 cnstd predict -i examples/taobao.jpg -o outputs
+```
+
+PP-OCRv6 多语种检测模型可通过 `--lang-type` 指定语言类型：
+
+```bash
+cnstd predict -m multi_PP-OCRv6_det_small --lang-type en -i examples/taobao.jpg -o outputs
 ```
 
 具体使用也可参考文件 [Makefile](./Makefile) 。

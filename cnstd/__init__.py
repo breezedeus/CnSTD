@@ -17,6 +17,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import logging
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())
+
 from .detector import Detector
 from .ppocr import PPDetector
 from .yolov7.layout_analyzer import LayoutAnalyzer, save_layout_img

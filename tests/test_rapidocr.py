@@ -162,6 +162,143 @@ def test_rapid_detector_respects_custom_model_root_dir():
     assert detector_calls[0].model_root_dir == custom_root_dir
 
 
+@pytest.mark.skipif(
+    not hasattr(OCRVersion, "PPOCRV6") or not hasattr(ModelType, "SMALL"),
+    reason="PP-OCRv6 requires rapidocr>=3.9.0",
+)
+def test_rapid_detector_supports_ppocrv6_config():
+    detector_calls = []
+    prepare_calls = []
+
+    def fake_text_detector(config):
+        detector_calls.append(config)
+        return lambda img: None
+
+    def fake_prepare_model_files(model_fp, remote_repo):
+        prepare_calls.append((model_fp, remote_repo))
+        return model_fp
+
+    with patch(
+        "cnstd.ppocr.rapid_detector.TextDetector",
+        side_effect=fake_text_detector,
+    ), patch(
+        "cnstd.ppocr.rapid_detector.prepare_model_files",
+        side_effect=fake_prepare_model_files,
+    ):
+        detector = RapidDetector(model_name="multi_PP-OCRv6_det_small")
+
+    assert detector_calls
+    config = detector_calls[0]
+    assert config.ocr_version == OCRVersion.PPOCRV6
+    assert config.model_type == ModelType.SMALL
+    assert config.lang_type == LangDet.CH
+    assert config.model_path.endswith("PP-OCRv6_det_small.onnx")
+    assert config.model_root_dir == detector._model_dir
+    assert prepare_calls == [
+        (
+            os.path.join(detector._model_dir, "PP-OCRv6_det_small.onnx"),
+            "breezedeus/cnstd-ppocr-multi_PP-OCRv6_det_small",
+        )
+    ]
+
+
+@pytest.mark.skipif(
+    not hasattr(OCRVersion, "PPOCRV6") or not hasattr(ModelType, "MEDIUM"),
+    reason="PP-OCRv6 requires rapidocr>=3.9.0",
+)
+def test_rapid_detector_supports_ppocrv6_medium_config():
+    detector_calls = []
+
+    def fake_text_detector(config):
+        detector_calls.append(config)
+        return lambda img: None
+
+    with patch(
+        "cnstd.ppocr.rapid_detector.TextDetector",
+        side_effect=fake_text_detector,
+    ), patch(
+        "cnstd.ppocr.rapid_detector.prepare_model_files",
+        side_effect=lambda model_fp, remote_repo: model_fp,
+    ):
+        RapidDetector(model_name="multi_PP-OCRv6_det_medium")
+
+    assert detector_calls[0].ocr_version == OCRVersion.PPOCRV6
+    assert detector_calls[0].model_type == ModelType.MEDIUM
+
+
+@pytest.mark.skipif(
+    not hasattr(OCRVersion, "PPOCRV6") or not hasattr(ModelType, "SMALL"),
+    reason="PP-OCRv6 requires rapidocr>=3.9.0",
+)
+def test_rapid_detector_supports_ppocrv6_lang_override():
+    detector_calls = []
+
+    def fake_text_detector(config):
+        detector_calls.append(config)
+        return lambda img: None
+
+    with patch(
+        "cnstd.ppocr.rapid_detector.TextDetector",
+        side_effect=fake_text_detector,
+    ), patch(
+        "cnstd.ppocr.rapid_detector.prepare_model_files",
+        side_effect=lambda model_fp, remote_repo: model_fp,
+    ):
+        RapidDetector(model_name="multi_PP-OCRv6_det_small", lang_type=LangDet.EN)
+
+    assert detector_calls[0].lang_type == LangDet.EN
+
+
+@pytest.mark.skipif(
+    not hasattr(OCRVersion, "PPOCRV6") or not hasattr(ModelType, "MEDIUM"),
+    reason="PP-OCRv6 requires rapidocr>=3.9.0",
+)
+def test_rapid_detector_supports_ppocrv6_string_lang_type():
+    detector_calls = []
+
+    def fake_text_detector(config):
+        detector_calls.append(config)
+        return lambda img: None
+
+    with patch(
+        "cnstd.ppocr.rapid_detector.TextDetector",
+        side_effect=fake_text_detector,
+    ), patch(
+        "cnstd.ppocr.rapid_detector.prepare_model_files",
+        side_effect=lambda model_fp, remote_repo: model_fp,
+    ):
+        RapidDetector(model_name="multi_PP-OCRv6_det_medium", lang_type="french")
+
+    assert detector_calls[0].lang_type == "french"
+
+
+@pytest.mark.skipif(
+    not hasattr(OCRVersion, "PPOCRV6"),
+    reason="PP-OCRv6 requires rapidocr>=3.9.0",
+)
+def test_rapid_detector_rejects_ppocrv6_multi_lang_type():
+    with pytest.raises(ValueError, match="concrete lang_type"):
+        RapidDetector(model_name="multi_PP-OCRv6_det_small", lang_type=LangDet.MULTI)
+
+
+@pytest.mark.skipif(
+    not hasattr(OCRVersion, "PPOCRV6") or not hasattr(ModelType, "TINY"),
+    reason="PP-OCRv6 requires rapidocr>=3.9.0",
+)
+def test_rapid_detector_rejects_ppocrv6_tiny_japan_lang_type():
+    with pytest.raises(ValueError, match="Unsupported det.lang_type='japan'"):
+        RapidDetector(model_name="multi_PP-OCRv6_det_tiny", lang_type="japan")
+
+
+@pytest.mark.skipif(
+    not hasattr(OCRVersion, "PPOCRV6"),
+    reason="PP-OCRv6 requires rapidocr>=3.9.0",
+)
+def test_rapid_detector_rejects_unknown_ppocrv6_model():
+    with pytest.raises(NotImplementedError, match="not a downloadable model"):
+        RapidDetector(model_name="unknown_PP-OCRv6_det")
+
+
 def test_cnstd_passes_model_root_dir_to_rapid_detector():
     detector_calls = []
 

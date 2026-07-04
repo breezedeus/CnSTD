@@ -30,10 +30,11 @@ import cv2
 # from rapidocr_onnxruntime import RapidOCR
 from rapidocr import EngineType, LangDet, ModelType, OCRVersion
 from rapidocr.utils.typings import TaskType
+from rapidocr.utils.model_resolver import resolve_model_key
 from rapidocr.ch_ppocr_det import TextDetector
 
 from ..consts import AVAILABLE_MODELS, MODEL_VERSION
-from ..utils import read_img, data_dir, prepare_model_files
+from ..utils import read_img, data_dir, prepare_model_files, set_rapidocr_logger_level
 from .utility import get_rotate_crop_image
 from .consts import PP_SPACE
 
@@ -48,6 +49,7 @@ class Config(dict):
         "task_type": TaskType.DET,
         "model_path": None,
         "model_dir": None,
+        "model_root_dir": None,
         "limit_side_len": 736,
         "limit_type": "min",
         "std": [0.5, 0.5, 0.5],
@@ -109,7 +111,7 @@ class RapidDetector(object):
 
     def __init__(
         self,
-        model_name: str = 'ch_PP-OCRv5_det',
+        model_name: str = 'multi_PP-OCRv6_det_small',
         *,
         model_fp: Optional[str] = None,
         root: Union[str, Path] = data_dir(),
@@ -140,8 +142,16 @@ class RapidDetector(object):
             score_mode: 得分模式，可选值为 'fast' 或 'slow'，默认为 'fast'
             kwargs: 其他参数
         """
+        set_rapidocr_logger_level()
         self._model_name = model_name
         self._model_backend = 'onnx'
+        lang_type = kwargs.pop("lang_type", None)
+        model_type = self._get_model_type(model_name)
+        ocr_version = self._get_ocr_version(model_name)
+        lang_type = self._get_lang_type(model_name, model_type, lang_type)
+        self._model_type = model_type
+        self._ocr_version = ocr_version
+        self._lang_type = lang_type
         self._assert_and_prepare_model_files(model_fp, root)
         use_gpu = context.lower() not in ('cpu', 'mps')
 
@@ -153,7 +163,10 @@ class RapidDetector(object):
 
         model_root_dir = kwargs.pop("model_root_dir", None)
         if model_root_dir is None:
-            model_root_dir = getattr(self, "_model_dir", os.path.dirname(self._model_fp))
+            if hasattr(self, "_model_dir"):
+                model_root_dir = self._model_dir
+            else:
+                model_root_dir = os.path.dirname(self._model_fp)
 
         config.update({
             "limit_side_len": limit_side_len,
@@ -169,23 +182,109 @@ class RapidDetector(object):
         })
         config.update(kwargs)
         # 从 model_name 中获取 model_type 和 ocr_version
-        config["model_type"] = ModelType.SERVER if "server" in model_name else ModelType.MOBILE
-        config["ocr_version"] = OCRVersion.PPOCRV5 if "v5" in model_name else OCRVersion.PPOCRV4
+        config["model_type"] = model_type
+        config["ocr_version"] = ocr_version
+        config["lang_type"] = lang_type
 
         config = Config(config)
         self._detector = TextDetector(config)
+
+    @staticmethod
+    def _get_ocr_version(model_name: str):
+        if "v6" in model_name:
+            if not hasattr(OCRVersion, "PPOCRV6"):
+                raise RuntimeError(
+                    "PP-OCRv6 models require rapidocr>=3.9.0. "
+                    "Please upgrade rapidocr to use this model."
+                )
+            return OCRVersion.PPOCRV6
+        if "v5" in model_name:
+            return OCRVersion.PPOCRV5
+        return OCRVersion.PPOCRV4
+
+    @staticmethod
+    def _get_model_type(model_name: str):
+        if "server" in model_name:
+            return ModelType.SERVER
+        for model_type in ("tiny", "small", "medium"):
+            if model_type in model_name:
+                if not hasattr(ModelType, model_type.upper()):
+                    raise RuntimeError(
+                        "PP-OCRv6 models require rapidocr>=3.9.0. "
+                        "Please upgrade rapidocr to use this model."
+                    )
+                return getattr(ModelType, model_type.upper())
+        if "v6" in model_name:
+            if not hasattr(ModelType, "SMALL"):
+                raise RuntimeError(
+                    "PP-OCRv6 models require rapidocr>=3.9.0. "
+                    "Please upgrade rapidocr to use this model."
+                )
+            return ModelType.SMALL
+        return ModelType.MOBILE
+
+    @classmethod
+    def _get_model_file_name(cls, model_name: str):
+        if "v6" in model_name:
+            model_type = cls._get_model_type(model_name).value
+            return f"PP-OCRv6_det_{model_type}.onnx"
+        return '%s_infer.onnx' % model_name
+
+    @staticmethod
+    def _get_lang_type(model_name: str, model_type: ModelType, lang_type=None):
+        # RapidOCR's PP-OCRv6 model files are named "multi_*", but its
+        # resolver expects a concrete language and maps it to the multi model.
+        if lang_type is None:
+            return LangDet.CH
+
+        normalized = lang_type.value if hasattr(lang_type, "value") else str(lang_type)
+        normalized = normalized.strip().lower()
+        if "v6" in model_name and normalized == "multi":
+            raise ValueError(
+                "PP-OCRv6 requires a concrete lang_type such as 'ch' or 'en'; "
+                "'multi' is the model family name, not a valid v6 lang_type."
+            )
+        if "v6" in model_name:
+            resolve_model_key(
+                TaskType.DET, OCRVersion.PPOCRV6, lang_type, model_type
+            )
+        return lang_type
 
     def _assert_and_prepare_model_files(self, model_fp, root):
         if model_fp is not None and not os.path.isfile(model_fp):
             raise FileNotFoundError('can not find model file %s' % model_fp)
 
+        root = os.path.join(root, MODEL_VERSION)
+        self._model_dir = os.path.join(root, PP_SPACE, self._model_name)
+
         if model_fp is not None:
             self._model_fp = model_fp
             return
 
-        root = os.path.join(root, MODEL_VERSION)
-        self._model_dir = os.path.join(root, PP_SPACE, self._model_name)
-        model_fp = os.path.join(self._model_dir, '%s_infer.onnx' % self._model_name)
+        if "v6" in self._model_name:
+            if (self._model_name, self._model_backend) not in AVAILABLE_MODELS:
+                raise NotImplementedError(
+                    '%s is not a downloadable model'
+                    % ((self._model_name, self._model_backend),)
+                )
+            remote_repo = AVAILABLE_MODELS.get_value(
+                self._model_name, self._model_backend, 'repo'
+            )
+            if remote_repo is None:
+                raise RuntimeError(
+                    'no remote repo is configured for model %s'
+                    % ((self._model_name, self._model_backend),)
+                )
+            model_fp = os.path.join(
+                self._model_dir, self._get_model_file_name(self._model_name)
+            )
+            self._model_fp = str(prepare_model_files(model_fp, remote_repo))
+            logger.info('use model: %s' % self._model_fp)
+            return
+
+        model_fp = os.path.join(
+            self._model_dir, self._get_model_file_name(self._model_name)
+        )
         if not os.path.isfile(model_fp):
             logger.warning('can not find model file %s' % model_fp)
             if (self._model_name, self._model_backend) not in AVAILABLE_MODELS:

@@ -43,7 +43,7 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name: str = 'ch_PP-OCRv5_det',
+        model_name: str = 'multi_PP-OCRv6_det_small',
         *,
         auto_rotate_whole_image: bool = False,
         rotated_bbox: bool = True,
@@ -57,7 +57,7 @@ class CnStd(object):
     ):
         """
         Args:
-            model_name: 模型名称。默认为 'ch_PP-OCRv5_det'
+            model_name: 模型名称。默认为 'multi_PP-OCRv6_det_small'
             auto_rotate_whole_image: 是否自动对整张图片进行旋转调整。默认为False
             rotated_bbox: 是否支持检测带角度的文本框；默认为 True，表示支持；取值为 False 时，只检测水平或垂直的文本
             context: 'cpu', or 'gpu'。表明预测时是使用CPU还是GPU。默认为CPU
@@ -65,7 +65,7 @@ class CnStd(object):
             model_backend (str): 'pytorch', or 'onnx'。表明预测时是使用 PyTorch 版本模型，还是使用 ONNX 版本模型。
                 同样的模型，ONNX 版本的预测速度一般是 PyTorch 版本的2倍左右。默认为 'onnx'。
             root: 模型文件所在的根目录。
-                Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.2/db_resnet18`
+                Linux/Mac下默认值为 `~/.cnstd`，表示模型文件所处文件夹类似 `~/.cnstd/1.2/ppocr/multi_PP-OCRv6_det_small`
                 Windows下默认值为 `C:/Users/<username>/AppData/Roaming/cnstd`。
             use_angle_clf (bool): 对于检测出的文本框，是否使用角度分类模型进行调整（检测出的文本框可能会存在倒转180度的情况）。
                 默认为 `False`
@@ -105,6 +105,18 @@ class CnStd(object):
             model_backend=model_backend,
             root=root,
             **kwargs,
+        )
+        det_effective_lang_type = getattr(self.det_model, '_lang_type', None)
+        det_effective_lang_type = getattr(
+            det_effective_lang_type, 'value', det_effective_lang_type
+        )
+        logger.info(
+            'use det model: name=%s, backend=%s, lang_type=%s, fp=%s',
+            model_name,
+            model_backend,
+            det_effective_lang_type,
+            getattr(self.det_model, '_model_fp', model_fp),
+            extra={'log_color': 'green'},
         )
 
         self.use_angle_clf = use_angle_clf

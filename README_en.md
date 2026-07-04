@@ -22,6 +22,15 @@
 
 # CnSTD
 
+## Update 2026.07.04: Release V1.2.8
+
+Main changes:
+
+* Added RapidOCR-based PP-OCRv6 multilingual text detection models
+  * New PP-OCRv6 detection models: `multi_PP-OCRv6_det_tiny`, `multi_PP-OCRv6_det_small`, and `multi_PP-OCRv6_det_medium`
+  * Added the CLI option `--lang-type` for setting the language type used by RapidOCR v6 detection models
+
+
 ## Update 2025.06.25: Release V1.2.6
 
 Major Changes:
@@ -144,7 +153,7 @@ pip install cnstd -i https://mirrors.aliyun.com/pypi/simple
 
 Starting from **V1.2**, CnSTD includes two types of models: 1) models trained by CnSTD, usually available in PyTorch and ONNX versions; 2) pre-trained models from other OCR engines, converted to ONNX for use in CnSTD.
 
-Downloadable models are available in the [**cnstd-cnocr-models**](https://huggingface.co/breezedeus/cnstd-cnocr-models) project.
+Downloadable models are available in the [**cnstd-cnocr-models**](https://huggingface.co/breezedeus/cnstd-cnocr-models) project or the corresponding `breezedeus/cnstd-ppocr-*` HuggingFace model repositories.
 
 ### 1. CnSTD Trained Models
 
@@ -171,12 +180,17 @@ The following models are ONNX versions from [**PaddleOCR**](https://github.com/P
 
 | `model_name`    | PyTorch Version | ONNX Version | Supported Languages         | Model File Size |
 |-----------------|-----------------|--------------|----------------------------|-----------------|
+| multi_PP-OCRv6_det_tiny | X        | √            | Multilingual, except Japanese | 1.7 M         |
+| multi_PP-OCRv6_det_small | X       | √            | Multilingual               | 9.5 M           |
+| multi_PP-OCRv6_det_medium | X      | √            | Multilingual               | 59 M            |
 | ch_PP-OCRv5_det | X               | √            | Chinese, English, Numbers  | 4.6 M           |
 | ch_PP-OCRv5_det_server | X        | √            | Chinese, English, Numbers  | 84 M            |
 | ch_PP-OCRv4_det | X               | √            | Chinese, English, Numbers  | 4.5 M           |
 | ch_PP-OCRv4_det_server | X        | √            | Chinese, English, Numbers  | 108 M           |
 | ch_PP-OCRv3_det | X               | √            | Chinese, English, Numbers  | 2.2 M           |
 | en_PP-OCRv3_det | X               | √            | **English**, Numbers       | 2.3 M           |
+
+For PP-OCRv6, `multi_PP-OCRv6_det_small` and `multi_PP-OCRv6_det_medium` support these `lang_type` values: `ch`, `chinese_cht`, `en`, `japan`, `af`, `az`, `bs`, `ca`, `cs`, `cy`, `da`, `de`, `es`, `et`, `eu`, `fi`, `fr`, `ga`, `gl`, `hr`, `hu`, `id`, `is`, `it`, `ku`, `la`, `lb`, `lt`, `lv`, `mi`, `ms`, `mt`, `nl`, `no`, `oc`, `pl`, `pt`, `qu`, `rm`, `ro`, `rs_latin`, `sk`, `sl`, `sq`, `sv`, `sw`, `tl`, `tr`, `uz`, `vi`, `french`, and `german`. `multi_PP-OCRv6_det_tiny` does not support `japan`. `multi` is the model family name, not a valid `lang_type`.
 
 For more models, refer to [PaddleOCR/models_list
 
@@ -200,7 +214,7 @@ class CnStd(object):
 
     def __init__(
         self,
-        model_name: str = 'ch_PP-OCRv5_det',
+        model_name: str = 'multi_PP-OCRv6_det_small',
         *,
         auto_rotate_whole_image: bool = False,
         rotated_bbox: bool = True,
@@ -216,7 +230,7 @@ class CnStd(object):
 
 Key parameters:
 
-* `model_name`: Model name, corresponding to the first column in the model table. Default is **ch_PP-OCRv5_det**.
+* `model_name`: Model name, corresponding to the first column in the model table. Default is **multi_PP-OCRv6_det_small**.
 * `auto_rotate_whole_image`: Automatically adjust the rotation of the entire image. Default is `False`.
 * `rotated_bbox`: Support detection of angled text boxes; Default is `True`. If `False`, only horizontal or vertical text is detected.
 * `context`: Resource for prediction, can be `cpu`, `gpu`, or `cuda:0`.
@@ -441,11 +455,12 @@ Usage: cnstd predict [OPTIONS]
   Predict text in a single file or all images in a directory.
 
 Options:
-  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|ch_PP-OCRv5_det|ch_PP-OCRv5_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|en_PP-OCRv3_det]
-                                  Model name. Default: db_shufflenet_v2_small.
+  -m, --model-name [ch_PP-OCRv2_det|ch_PP-OCRv3_det|ch_PP-OCRv4_det|ch_PP-OCRv4_det_server|ch_PP-OCRv5_det|ch_PP-OCRv5_det_server|db_mobilenet_v3|db_mobilenet_v3_small|db_resnet18|db_resnet34|db_shufflenet_v2|db_shufflenet_v2_small|en_PP-OCRv3_det|multi_PP-OCRv6_det_medium|multi_PP-OCRv6_det_small|multi_PP-OCRv6_det_tiny]
+                                  Model name. Default: multi_PP-OCRv6_det_small.
   -b, --model-backend [pytorch|onnx]
                                   Model type. Default: `onnx`.
   -p, --pretrained-model-fp TEXT  Pre-trained model. Default: `None`.
+  --lang-type TEXT                RapidOCR detection model language type. PP-OCRv6 supports values such as ch, en, japan, french, and german. Default: `None`.
   -r, --rotated-bbox              Detect angled text boxes. Default: `True`.
   --resized-shape TEXT            Format: "height,width". Resize image to this size for prediction. Values should be multiples of 32. Default: `768,768`.
   --box-score-thresh FLOAT        Filter out text boxes with a score lower than this value. Default: `0.3`.
@@ -460,6 +475,12 @@ Example to detect text in `examples/taobao.jpg` and save results to `outputs`:
 
 ```bash
 cnstd predict -i examples/taobao.jpg -o outputs
+```
+
+For PP-OCRv6 multilingual detection models, use `--lang-type` to set the language type:
+
+```bash
+cnstd predict -m multi_PP-OCRv6_det_small --lang-type en -i examples/taobao.jpg -o outputs
 ```
 
 See the [Makefile](./Makefile) for more usage.
