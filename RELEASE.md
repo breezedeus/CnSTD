@@ -1,5 +1,29 @@
 # Release Notes
 
+## Update 2026.07.04：发布 V1.2.8
+
+Major Changes:
+
+* Added RapidOCR-based PP-OCRv6 text detection models:
+  `multi_PP-OCRv6_det_tiny`, `multi_PP-OCRv6_det_small`, and
+  `multi_PP-OCRv6_det_medium`.
+* Changed the default detection model to `multi_PP-OCRv6_det_small`.
+* Added PP-OCRv6 language selection through `lang_type`; `multi` is the model
+  family name and is not a valid `lang_type`.
+* Added HuggingFace model repositories for PP-OCRv6 detection models.
+* Standardized CnSTD logging for library and CLI usage.
+
+主要变更：
+
+* 基于 RapidOCR 支持 PP-OCRv6 文本检测模型：
+  `multi_PP-OCRv6_det_tiny`、`multi_PP-OCRv6_det_small` 和
+  `multi_PP-OCRv6_det_medium`。
+* 默认检测模型改为 `multi_PP-OCRv6_det_small`。
+* 支持通过 `lang_type` 指定 PP-OCRv6 语言类型；`multi` 是模型族名称，不是可传入的
+  `lang_type`。
+* 新增 PP-OCRv6 检测模型对应的 HuggingFace 模型仓库。
+* 规范 CnSTD 在库调用和 CLI 场景下的日志行为。
+
 ## Update 2026.05.01：发布 V1.2.7.3
 
 Bug Fixes:
