@@ -22,4 +22,4 @@ onnx
 onnxruntime
 huggingface_hub
 ultralytics
-rapidocr>=3.0,<3.8
+rapidocr>=3.9.1

@@ -49,6 +49,7 @@ _CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
 
 logger = set_logger(log_level='INFO')
 DEFAULT_MODEL_NAME = 'db_shufflenet_v2_small'
+DEFAULT_DET_MODEL_NAME = 'multi_PP-OCRv6_det_small'
 
 
 @click.group(context_settings=_CONTEXT_SETTINGS)
@@ -180,8 +181,8 @@ MODELS = sorted(MODELS)
     '-m',
     '--model-name',
     type=click.Choice(MODELS),
-    default=DEFAULT_MODEL_NAME,
-    help='模型名称。默认值为 %s' % DEFAULT_MODEL_NAME,
+    default=DEFAULT_DET_MODEL_NAME,
+    help='模型名称。默认值为 %s' % DEFAULT_DET_MODEL_NAME,
 )
 @click.option(
     '-b',
@@ -196,6 +197,12 @@ MODELS = sorted(MODELS)
     type=str,
     default=None,
     help='使用训练好的模型。默认为 `None`，表示使用系统自带的预训练模型',
+)
+@click.option(
+    '--lang-type',
+    type=str,
+    default=None,
+    help='RapidOCR检测模型的语言类型；PP-OCRv6支持如 ch、en、japan、french、german 等。默认值为 `None`',
 )
 @click.option("-r", "--rotated-bbox", is_flag=True, help="是否检测带角度（非水平和垂直）的文本框")
 @click.option(
@@ -227,6 +234,7 @@ def predict(
     model_name,
     model_backend,
     pretrained_model_fp,
+    lang_type,
     rotated_bbox,
     resized_shape,
     box_score_thresh,
@@ -242,6 +250,7 @@ def predict(
         model_fp=pretrained_model_fp,
         rotated_bbox=rotated_bbox,
         context=context,
+        lang_type=lang_type,
     )
 
     resized_shape = list(map(int, resized_shape.split(',')))  # [H, W]
@@ -303,7 +312,7 @@ def predict(
             % (len(cropped_img_list), time_cost, time_cost / len(cropped_img_list))
         )
         logger.info('ocr result: \n%s' % pformat(ocr_out))
-    except ModuleNotFoundError as e:
+    except Exception as e:
         logger.warning(e)
 
 

@@ -46,6 +46,18 @@ MODEL_LABELS_FILE_DICT = {
         'detector': 'RapidDetector',
         'repo': 'breezedeus/cnstd-ppocr-ch_PP-OCRv5_det_server',
     },
+    ('multi_PP-OCRv6_det_tiny', 'onnx'): {
+        'detector': 'RapidDetector',
+        'repo': 'breezedeus/cnstd-ppocr-multi_PP-OCRv6_det_tiny',
+    },
+    ('multi_PP-OCRv6_det_small', 'onnx'): {
+        'detector': 'RapidDetector',
+        'repo': 'breezedeus/cnstd-ppocr-multi_PP-OCRv6_det_small',
+    },
+    ('multi_PP-OCRv6_det_medium', 'onnx'): {
+        'detector': 'RapidDetector',
+        'repo': 'breezedeus/cnstd-ppocr-multi_PP-OCRv6_det_medium',
+    },
 }
 
 PP_SPACE = 'ppocr'
