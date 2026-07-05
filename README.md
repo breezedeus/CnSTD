@@ -154,7 +154,7 @@ pip install cnstd -i https://mirrors.aliyun.com/pypi/simple
 
 【注意】：
 
-* 请使用 **Python3** (3.6以及之后版本应该都行)，没测过Python2下是否ok。
+* 请使用 **Python 3.8 或更高版本**。
 * 依赖 **opencv**，所以可能需要额外安装opencv。
 
 ## 已有STD模型
