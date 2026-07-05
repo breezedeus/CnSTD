@@ -146,7 +146,7 @@ pip install cnstd -i https://mirrors.aliyun.com/pypi/simple
 
 **Note:**
 
-* Use **Python3** (version 3.6 or later).
+* Use **Python 3.8 or later**.
 * Dependency: **opencv**.
 
 ## Available STD Models

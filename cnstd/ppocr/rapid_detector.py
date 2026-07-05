@@ -34,7 +34,7 @@ from rapidocr.utils.model_resolver import resolve_model_key
 from rapidocr.ch_ppocr_det import TextDetector
 
 from ..consts import AVAILABLE_MODELS, MODEL_VERSION
-from ..utils import read_img, data_dir, prepare_model_files, set_rapidocr_logger_level
+from ..utils import read_img, data_dir, prepare_model_files
 from .utility import get_rotate_crop_image
 from .consts import PP_SPACE
 
@@ -142,7 +142,6 @@ class RapidDetector(object):
             score_mode: 得分模式，可选值为 'fast' 或 'slow'，默认为 'fast'
             kwargs: 其他参数
         """
-        set_rapidocr_logger_level()
         self._model_name = model_name
         self._model_backend = 'onnx'
         lang_type = kwargs.pop("lang_type", None)
