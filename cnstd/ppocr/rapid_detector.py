@@ -30,7 +30,7 @@ import cv2
 # from rapidocr_onnxruntime import RapidOCR
 from rapidocr import EngineType, LangDet, ModelType, OCRVersion
 from rapidocr.utils.typings import TaskType
-from rapidocr.utils.model_resolver import resolve_model_key
+from rapidocr.utils.model_resolver import route_to_model_key
 from rapidocr.ch_ppocr_det import TextDetector
 
 from ..consts import AVAILABLE_MODELS, MODEL_VERSION
@@ -244,7 +244,7 @@ class RapidDetector(object):
                 "'multi' is the model family name, not a valid v6 lang_type."
             )
         if "v6" in model_name:
-            resolve_model_key(
+            route_to_model_key(
                 TaskType.DET, OCRVersion.PPOCRV6, lang_type, model_type
             )
         return lang_type
